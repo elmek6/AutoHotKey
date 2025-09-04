@@ -53,7 +53,7 @@ class HotkeyHandler {
 
     __New() {
         if (HotkeyHandler.instance) {
-            throw Error("HotkeyHandler zaten oluÅŸturulmuÅŸ! getInstance kullan.")
+            throw Error("HotkeyHandler zaten oluşturulmuş! getInstance kullan.")
         }
         this.hgsRight := ""
     }
@@ -70,7 +70,6 @@ class HotkeyHandler {
     ; .combo("F14", () => (this.clicks(3, () => {}), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
     ; Bu, ExecuteActions'Ä±n yerini alÄ±r ve daha esnek bir yapÄ± saÄŸlar.
     ; ExecuteActions ileride gerekirse FKeyBuilder'a aksiyon metodlarÄ± (ClickTimes, Send, vb.) eklenerek tamamen kaldÄ±rÄ±labilir.
-
     handleFKey(builder) {
         mainStart := builder._mainStart
         mainDefault := builder._mainDefault
@@ -87,12 +86,12 @@ class HotkeyHandler {
             state.setBusy(1)
             key := A_ThisHotkey
             if (SubStr(key, 1, 1) == "~") {
-                key := SubStr(key, 2)  ; Ä°lk karakteri at
+                key := SubStr(key, 2)  ; İlk karakteri at
             }
 
             keyCounts.inc(key)
 
-            if (previewFn != "" && IsObject(previewFn)) { ; YENÄ°: Preview mantÄ±ÄŸÄ±
+            if (previewFn != "" && IsObject(previewFn)) { ; YENİ: Preview mantığı
                 ToolTip(previewFn.Call())
             }
 
@@ -112,7 +111,7 @@ class HotkeyHandler {
                 for c in comboActions {
                     if (GetKeyState(c.key, "P")) {
                         state.setBusy(2)
-                        ;Hotkey, %c.key%, Off ; TuÅŸu devre dÄ±ÅŸÄ± bÄ±rak
+                        ;Hotkey, %c.key%, Off ; Tuşu devre dışı bırak
                         KeyWait c.key
                         keyCounts.inc(c.key)
                         c.action.Call()
@@ -120,7 +119,7 @@ class HotkeyHandler {
                         if (gestures.Length > 0) {
                             this.hgsRight.Stop()
                         }
-                        return  ; Combo Ã§alÄ±ÅŸtÄ±, Ã§Ä±k (finally bloÄŸu Ã§alÄ±ÅŸacak)
+                        return  ; Combo çalıştı, çık (finally bloğu çalışacak)
                     }
                 }
                 Sleep 50
@@ -135,14 +134,14 @@ class HotkeyHandler {
                     for g in gestures {
                         if (detectedGesture == g.gesture) {
                             g.action.Call()
-                            return  ; Gesture valid (finally bloÄŸu Ã§alÄ±ÅŸacak)
+                            return  ; Gesture valid (finally bloğu çalışacak)
                         }
                     }
                 }
             }
 
             if (state.getBusy() == 1 && mainDefault != "" && IsObject(mainDefault)) {
-                mainDefault.Call()   ; Gesture yok/invalid, default Ã§alÄ±ÅŸ
+                mainDefault.Call()   ; Gesture yok/invalid, default çalış
             }
 
             if (mainEnd != "" && IsObject(mainEnd)) {
@@ -161,7 +160,7 @@ class HotkeyHandler {
         }
     }
 
-    ; YENÄ°: CapsLock iÃ§in merkezi handler
+    ; YENİ: CapsLock için merkezi handler
     handleCapsLock() {
         static builder := FKeyBuilder()
             .preview(() => clipManager.getHistoryPreviewText())
@@ -180,6 +179,7 @@ class HotkeyHandler {
             .combo("7", () => clipManager.loadFromHistory(7))
             .combo("8", () => clipManager.loadFromHistory(8))
             .combo("9", () => clipManager.loadFromHistory(9)) ;buildHistoryMenu
+            .combo("s", () => clipManager.showHistorySearch())  ; YENİ: History search (klavye)
         this.handleFKey(builder)
     }
 
@@ -196,6 +196,7 @@ class HotkeyHandler {
             .combo("6", () => clipManager.loadFromSlot(6))
             .combo("0", () => clipManager.loadFromSlot(0))
             .combo("PgDn", () => ShowStats())
+            .combo("s", () => clipManager.showSlotsSearch())
         this.handleFKey(builder)
     }
 
@@ -221,6 +222,7 @@ class HotkeyHandler {
             .combo("F18", () => Send("F18"))
             .combo("F19", () => clipManager.press(["^v", "{Enter}"]))
             .combo("F20", () => Send("{Enter}"))
+            .combo("F14", () => clipManager.showHistorySearch())  ; YENİ: History search (fare MButton & F14)
         this.handleFKey(builder)
     }
 
@@ -249,6 +251,7 @@ class HotkeyHandler {
             .combo("F18", () => Send("{End}"))
             .combo("F19", () => Send("^a"))
             .combo("F20", () => Send("^a"))
+            .combo("RButton", () => clipManager.showSlotsSearch())  ; YENİ: Slots search (fare RButton & F14)
         this.handleFKey(builder)
     }
 

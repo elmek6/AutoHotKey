@@ -1,4 +1,6 @@
-﻿class ClipboardManager {
+﻿#Include <array_filter>
+
+class ClipboardManager {
     static instance := ""
 
     static getInstance(maxHistory := 20, maxClipSize := 100000) {
@@ -21,25 +23,26 @@
 
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
-        this.loadSlots()
+        if !DirExist(AppConst.FILES_DIR) {
+            DirCreate(AppConst.FILES_DIR)
+        }
+        this.loadSlotsFromJson()
         this.loadHistory()
     }
 
-    ; ===== SLOT YÖNETİMİ =====
     saveToSlot(slotNumber) {
         local temp := A_Clipboard
         Send("^c")
         Sleep(50)
         try {
-            ClipWait(1) ;1 saniye timeout
+            ClipWait(1)  ;1 saniye timeout
             if (A_Clipboard == "") {
                 throw Error("Kopyalama başarısız: Pano boş.")
             }
             this.slots[slotNumber] := A_Clipboard
-            this.saveSlotToFile(slotNumber, A_Clipboard)
+            this.saveSlots()
             this.showClipboardPreview()
         } catch as err {
-            this.showMessage("Kopyalama başarısız: " err.Message)
             A_Clipboard := temp
             return false
         }
@@ -50,9 +53,7 @@
     loadFromSlot(slotNumber) {
         try {
             if (!this.slots.Has(slotNumber)) {
-                if (!this.loadSlotFromFile(slotNumber)) {
-                    throw Error("Slot " slotNumber " boş!")
-                }
+                throw Error("Slot " slotNumber " boş!")
             }
             A_Clipboard := this.slots[slotNumber]
             ClipWait(1)
@@ -63,14 +64,13 @@
             Send("^v")
             return true
         } catch as err {
-            this.showMessage(err.Message)
             return false
         }
     }
 
     loadFromHistory(index) {
         try {
-            OnClipboardChange(this.clipboardWatcher.Bind(this)) ;persist
+            OnClipboardChange(this.clipboardWatcher.Bind(this))  ;persist
             actualIndex := this.history.Length - index + 1
             if (actualIndex > 0 && actualIndex <= this.history.Length) {
                 A_Clipboard := this.history[actualIndex]
@@ -82,7 +82,6 @@
                 throw Error("Geçmişte " index " numaralı kayıt yok.")
             }
         } catch as err {
-            this.showMessage(err.Message)
             return false
         } finally {
             OnClipboardChange(this.clipboardWatcher, 1)
@@ -98,7 +97,7 @@
         if (content == "") {
             return "(Boş)"
         }
-        content := StrReplace(content, "`r`n", "") ; Remove newlines from content
+        content := StrReplace(content, "`r`n", "") ;removes enter
         display := SubStr(content, 1, maxLength)
         if (StrLen(content) > maxLength) {
             display .= "..."
@@ -107,28 +106,27 @@
     }
 
     hasSlot(slotNumber) {
-        return this.slots.Has(slotNumber) || FileExist(slotNumber ".bin")
+        return this.slots.Has(slotNumber)
     }
 
     clearSlot(slotNumber) {
         try {
             if (this.slots.Has(slotNumber)) {
                 this.slots.Delete(slotNumber)
+                this.saveSlots()
+                return true
             }
-            if (FileExist(slotNumber ".bin")) {
-                FileDelete(slotNumber ".bin")
-            }
-            return true
-        } catch {
-            this.showMessage("Slot silme başarısız: " slotNumber)
+            return false
+        } catch as err {
+            errHandler.handleError("Slot silme başarısız: " err.Message)
             return false
         }
     }
 
-    ; ===== HISTORY YÖNETİMİ =====
     clipboardWatcher(Type) {
-        if (Type != 1) ; sadece text
+        if (Type != 1) {
             return
+        }
         local text := A_Clipboard
         if (StrLen(text) = 0)
             return
@@ -156,7 +154,7 @@
         return (index > 0 && index <= this.history.Length) ? this.history[index] : ""
     }
 
-    clearHistory(*) { ; Buradaki (*) fonksiyona gelen tüm parametreleri yoksaymasını sağlar
+    clearHistory(*) {    ; Buradaki (*) fonksiyona gelen tüm parametreleri yoksaymasını sağlar
         choice := MsgBox("Pano geçmişi silinsin mi?", "Onay", "YesNo")
         if (choice = "Yes") {
             this.history := []
@@ -166,42 +164,39 @@
         }
     }
 
-    ; ===== DOSYA İŞLEMLERİ =====
-    saveSlotToFile(slotNumber, content) {
-        local fileName := AppConst.FILES_DIR slotNumber ".bin"
+    saveSlots() {
         try {
-            file := FileOpen(fileName, "w", "UTF-8")
+            data := Jxon_Dump(this.slots)
+            file := FileOpen(AppConst.FILES_DIR "slots.json", "w", "UTF-8")
             if !file {
-                throw Error("Dosya açılamadı: " fileName)
+                throw Error("slots.json açılamadı")
             }
-            file.Write(content)
+            file.Write(data)
             file.Close()
             return true
-        } catch as err {
-            this.showMessage("Dosya yazma hatası: " err.Message)
+        } catch {
             return false
         }
     }
 
-    loadSlotFromFile(slotNumber) {
-        local fileName := AppConst.FILES_DIR slotNumber ".bin"
-        if !FileExist(fileName) {
+    loadSlotsFromJson() {
+        if !FileExist(AppConst.FILES_DIR "slots.json")
             return false
-        }
         try {
-            file := FileOpen(fileName, "r", "UTF-8")
+            file := FileOpen(AppConst.FILES_DIR "slots.json", "r", "UTF-8")
             if !file {
-                throw Error("Dosya açılamadı: " fileName)
+                throw Error("slots.json açılmadı")
             }
-            local data := file.Read()
+            data := file.Read()
             file.Close()
-            if (data != "") {
-                this.slots[slotNumber] := data
-                return true
+            loadedData := Jxon_Load(&data)
+            this.slots := Map()
+            for k, v in loadedData {
+                integerKey := Integer(k)  ; Key'leri integer'a çevir
+                this.slots[integerKey] := v
             }
-            return false
-        } catch as err {
-            this.showMessage("Dosya okuma hatası: " err.Message)
+            return true
+        } catch {
             return false
         }
     }
@@ -216,8 +211,7 @@
             file.Write(data)
             file.Close()
             return true
-        } catch as err {
-            this.showMessage("Geçmiş kaydetme hatası: " err.Message)
+        } catch {
             return false
         }
     }
@@ -237,19 +231,11 @@
             if (this.clipLength > 0)
                 this.lastClip := this.history[this.clipLength]
             return true
-        } catch as err {
-            this.showMessage("Geçmiş yükleme hatası: " err.Message)
+        } catch {
             return false
         }
     }
 
-    loadSlots() {
-        for slotNumber in [0, 1, 2, 3, 4, 5, 6] {
-            this.loadSlotFromFile(slotNumber)
-        }
-    }
-
-    ; ===== UI İŞLEMLERİ =====
     showClipboardPreview() {
         if (StrLen(A_Clipboard) > 8000) {
             ToolTip(SubStr(A_Clipboard, 1, 8000) . "`n[..................]")
@@ -265,13 +251,12 @@
         SetTimer(() => ToolTip(), -duration)
     }
 
-    ; ===== ÖNİZLEME METİNLERİ =====
     getHistoryPreviewText() {
         if (this.history.Length = 0) {
-            return previewText . "(Boş)"
+            return "(Boş)"
         }
-
-        Loop 9 { ; Sadece ilk 9'u göster
+        previewText := ""
+        Loop 9 {
             index := this.history.Length - A_Index + 1
             if (index <= 0)
                 break
@@ -287,22 +272,20 @@
     }
 
     getSlotsPreviewText() {
-        for slotNumber in [1, 2, 3, 4, 5, 6] {
+        previewText := ""
+        for slotNumber in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] {
             preview := StrReplace(this.getSlotPreview(slotNumber, 100), "`n", " ")
             previewText .= "Slot " slotNumber ": " preview "`n"
         }
         return Trim(previewText, "`n")
     }
 
-
-    ; ===== MENU BUILDERS =====
     buildHistoryMenu() {
         historyMenu := Menu()
         historyMenu.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
-        historyMenu.Add("Search on history", (*) => SetTimer(() => Send("#v"), -20))
+        historyMenu.Add("Search on history", (*) => this.showHistorySearch())
         historyMenu.Add()
 
-        ; En yeniden en eskiye doğru listele
         Loop this.history.Length {
             index := this.history.Length - A_Index + 1
             text := this.history[index]
@@ -317,10 +300,12 @@
 
     buildSlotMenu() {
         slotMenu := Menu()
+        slotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
+        slotMenu.Add()
         if (this.hasSlot(0)) {
             slotMenu.Add("Slot 0: [x]", (*) => this.loadFromSlot(0))
         }
-        for slotNumber in [1, 2, 3, 4, 5, 6] {
+        for slotNumber in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] {
             preview := this.getSlotPreview(slotNumber)
             if (this.hasSlot(slotNumber)) {
                 slotMenu.Add("Slot " slotNumber ": " preview,
@@ -335,11 +320,8 @@
 
     buildSaveSlotMenu() {
         saveSlotMenu := Menu()
-        for slotNumber in [0, 1, 2, 3, 4, 5, 6] {
+        for slotNumber in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] {
             preview := this.getSlotPreview(slotNumber)
-            if (preview == "(Boş)") {
-                preview := "(empty)"
-            }
             saveSlotMenu.Add("Slot " slotNumber ": " preview,
                            ((num) => (*) => this.saveToSlot(num))(slotNumber))
         }
@@ -353,7 +335,6 @@
         menu.Add(prefix . display, (*) => (A_Clipboard := text, Send("^v")))
     }
 
-    ; ===== GENERIC SENDER =====
     press(commands) {
         try {
             if (commands is Array) {
@@ -369,12 +350,33 @@
                 Send(commands)
             }
         } catch as err {
-            this.showMessage("Komut gönderme hatası: " err.Message)
         }
     }
 
-    ; ===== destructor in AHK =====
     __Delete() {
         this.saveHistory()
+        this.saveSlots()
+    }
+
+    showHistorySearch() {
+        if (this.history.Length == 0) {
+            this.showMessage("Geçmiş boş!")
+            return
+        }
+        ArrayFilter.getInstance().Show(this.history, "Clipboard History Search")
+    }
+
+    showSlotsSearch() {
+        slotsArray := []
+        for slotNumber in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] {
+            if (this.hasSlot(slotNumber)) {
+                slotsArray.Push(this.getSlotContent(slotNumber))
+            }
+        }
+        if (slotsArray.Length == 0) {
+            this.showMessage("Slotlar boş!")
+            return
+        }
+        ArrayFilter.getInstance().Show(slotsArray, "Slotlarda Arama")
     }
 }
