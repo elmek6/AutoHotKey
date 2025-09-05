@@ -78,6 +78,20 @@ class HotkeyHandler {
         comboActions := builder.comboActions
         previewFn := builder._preview
 
+        _checkCombo(comboActions) {
+            for c in comboActions {
+                if (GetKeyState(c.key, "P")) {
+                    state.setBusy(2)
+                    KeyWait c.key
+                    keyCounts.inc(c.key)
+                    c.action.Call()
+                    return true
+                }
+            }
+            return false
+        }
+
+
         if (state.getBusy() > 0) {
             return
         }
@@ -108,22 +122,29 @@ class HotkeyHandler {
             }
 
             while GetKeyState(key, "P") {
-                for c in comboActions {
-                    if (GetKeyState(c.key, "P")) {
-                        state.setBusy(2)
-                        ;Hotkey, %c.key%, Off ; Tuşu devre dışı bırak
-                        KeyWait c.key
-                        keyCounts.inc(c.key)
-                        c.action.Call()
-                        ;Hotkey, %c.key%, On bunu dene dedi ya tus consume etmek icin deneyelim sonra
-                        if (gestures.Length > 0) {
-                            this.hgsRight.Stop()
-                        }
-                        return  ; Combo çalıştı, çık (finally bloğu çalışacak)
+                if (_checkCombo(comboActions)) {
+                    if (gestures.Length > 0) {
+                        this.hgsRight.Stop()
                     }
+                    break
                 }
                 Sleep 50
             }
+            ; while GetKeyState(key, "P") {
+            ;     for c in comboActions {
+            ;         if (GetKeyState(c.key, "P")) {
+            ;             state.setBusy(2)
+            ;             KeyWait c.key
+            ;             keyCounts.inc(c.key)
+            ;             c.action.Call()
+            ;             if (gestures.Length > 0) {
+            ;                 this.hgsRight.Stop()
+            ;             }
+            ;             break(2) ; persist veya checkCombo gibi metod yap
+            ;         }
+            ;     }
+            ;     Sleep 50
+            ; }
 
             KeyWait key
 
@@ -152,7 +173,7 @@ class HotkeyHandler {
         } finally {
             if (previewFn != "" && IsObject(previewFn)) {
                 ToolTip()
-            }            
+            }
             if (gestures.Length > 0 && IsObject(this.hgsRight)) {
                 this.hgsRight.Stop()
             }

@@ -83,7 +83,7 @@ SC029:: keyHandler.handleCaret()
 
 reloadScript() {
     state.saveStats(scriptStartTime)
-    SoundBeep(500)    
+    SoundBeep(500)
     Reload
 }
 
@@ -157,7 +157,6 @@ RButton & WheelDown:: {
     }
 }
 
-
 ;Slota saklamak icin
 Tab & 1:: clipManager.saveToSlot(1)
 Tab & 2:: clipManager.saveToSlot(2)
@@ -165,7 +164,9 @@ Tab & 3:: clipManager.saveToSlot(3)
 Tab & 4:: clipManager.saveToSlot(4)
 Tab & 5:: clipManager.saveToSlot(5)
 Tab & 6:: clipManager.saveToSlot(6)
-Tab & 0:: clipManager.saveToSlot(0)
+Tab & 6:: clipManager.saveToSlot(7)
+Tab & 6:: clipManager.saveToSlot(6)
+Tab & 6:: clipManager.saveToSlot(9)
 
 
 showF13menu() {
