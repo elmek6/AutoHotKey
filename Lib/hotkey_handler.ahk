@@ -58,13 +58,6 @@ class HotkeyHandler {
         this.hgsRight := ""
     }
 
-    clicks(requiredClicks, action) {
-        Loop requiredClicks {
-            SendInput("{LButton Down}{Sleep 10}{LButton Up}{Sleep 90}")
-        }
-        action.Call()
-    }
-
     ; Not: ExecuteActions, aksiyon zincirlerini (click, send, tooltip, vb.) yÃ¶netmek iÃ§in kullanÄ±lÄ±yordu.
     ; ArtÄ±k .combo callback'leri iÃ§inde doÄŸrudan aksiyonlar tanÄ±mlanabilir. Ã–rnek:
     ; .combo("F14", () => (this.clicks(3, () => {}), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
@@ -256,7 +249,7 @@ class HotkeyHandler {
             .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
             .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}"))
             .mainGesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A"))
-            .combo("F14", () => (this.clicks(1, () => {}), clipManager.press("^v")))
+            .combo("F14", () => (Click("Left", 1), clipManager.press("^v")))
             .combo("F18", () => Send("{Delete}"))
         this.handleFKey(builder)
     }
@@ -295,10 +288,10 @@ class HotkeyHandler {
     handleF17() {
         static builder := FKeyBuilder()
             .mainDefault(() => Send("!{Right}"))
-            .combo("F14", () => (this.clicks(3, () => {}), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
+            .combo("F14", () => (Click("Left", 3), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
             .combo("F18", () => Send("{Delete}"))
-            .combo("LButton", () => (this.clicks(2, () => {}), Send("{Delete}")))
-            .combo("MButton", () => (this.clicks(3, () => {}), Send("{Delete}")))
+            .combo("LButton", () => (Click("Left", 2), Send("{Delete}")))
+            .combo("MButton", () => (Click("Left", 3), Send("{Delete}")))
         this.handleFKey(builder)
     }
 
@@ -306,6 +299,7 @@ class HotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault(() => Send("!{Left}"))
             .combo("F17", () => Send("^x"))
+            .combo("F20", () => (Click("Left", 3), clipManager.press("^c"))) ;her ikiside
             .combo("LButton", () => Send("^x"))
             .combo("MButton", () => Send("^x"))
         this.handleFKey(builder)
@@ -315,10 +309,10 @@ class HotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault(() => Send("^v"))
             .combo("F13", () => clipManager.press("^a^v"))
-            .combo("F14", () => (this.clicks(3, () => {}), clipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
+            .combo("F14", () => (Click("Left", 3), clipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
             .combo("F20", () => clipManager.press("^a^v"))
-            .combo("LButton", () => (this.clicks(1, () => {}), clipManager.press("^v")))
-            .combo("MButton", () => (this.clicks(3, () => {}), clipManager.press("^v")))
+            .combo("LButton", () => (Click("Left", 1), clipManager.press("^v")))
+            .combo("MButton", () => (Click("Left", 3), clipManager.press("^v")))
         this.handleFKey(builder)
     }
 
@@ -327,10 +321,11 @@ class HotkeyHandler {
             .mainDefault(() => Send("^c"))
             .mainEnd(() => (ClipWait, Sleep(50), clipManager.showClipboardPreview()))
             .combo("F13", () => clipManager.press("^a^c"))
-            .combo("F14", () => (this.clicks(3, () => {}), clipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
+            .combo("F14", () => (Click("Left", 3), clipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
             .combo("F19", () => clipManager.press("^a^c"))
-            .combo("LButton", () => (this.clicks(1, () => {}), clipManager.press("^c")))
-            .combo("MButton", () => (this.clicks(3, () => {}), clipManager.press("^c")))
+            .combo("F18", () => (Click("Left", 3), clipManager.press("^c")))
+            .combo("LButton", () => (Click("Left", 1), clipManager.press("^c")))
+            .combo("MButton", () => (Click("Left", 3), clipManager.press("^c")))
         this.handleFKey(builder)
     }
 }

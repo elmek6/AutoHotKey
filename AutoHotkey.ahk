@@ -1,7 +1,6 @@
 #Requires AutoHotkey v2.0
-; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
-
 #SingleInstance Force
+; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 #Include <Jxon> ;Lib klasörünün icindeyse böyle yaziliyor
 #Include <script_state>
 #Include <key_counter>
@@ -16,7 +15,6 @@ global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(20, 100000)
 global keyHandler := HotkeyHandler.getInstance() ;GROK_AI: Parametreler kaldırıldı
 global scriptStartTime := A_Now
-global pauseGui := "" ; Global GUI değişkeni
 
 class AppConst { ;GROK_AI: Const yerine AppConst kullanıldı, çakışmayı önlemek için
     static FILES_DIR := "Files\"
@@ -29,9 +27,6 @@ OnExit HandleExit
 HandleExit(ExitReason, ExitCode) {
     state.saveStats(scriptStartTime)
     clipManager.__Delete()
-    if (pauseGui != "") {
-        pauseGui.Destroy() ; Çıkışta GUI'yi temizle
-    }
 }
 
 state.loadStats()
@@ -49,31 +44,53 @@ LoadPCSettings() {
     }
 }
 
-
 #SuspendExempt ;suspend durumunda calisacak kodlar
 Pause & Home:: {
-    CreatePauseGui()
+    DialogPauseGui()
 }
 Pause & End:: {
     reloadScript()
 }
 #SuspendExempt False
 
-CreatePauseGui() {
-    global pauseGui
-    pauseGui := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Script Durduruldu")
-    pauseGui.Add("Button", "w200 h40", "Play Script").OnEvent("Click", ResumeScript)
-    pauseGui.Show("xCenter yCenter")
-    Suspend(1)
-    SoundBeep(1000)
-}
+DialogPauseGui() {
+    Suspend(1) ;Scripti durdur
 
-ResumeScript(*) {
-    global pauseGui
-    pauseGui.Destroy() ; Düğmeyi kaldır
-    pauseGui := ""
-    Suspend(0) ; Script'i devam ettir
-    SoundBeep(1000)
+    _destryoGui() {
+        pauseGui.Destroy()
+        pauseGui := ""
+    }
+
+    pauseGui := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Script Durduruldu")
+    pauseGui.Add("Button", "w200 h40", "Play Script").OnEvent("Click", (*) => (
+        _destryoGui(),
+        Suspend(0) ; Script'i devam ettir
+    ))
+    pauseGui.Add("Button", "w200 h40", "Restart without save").OnEvent("Click", (*) => (
+        _destryoGui(),
+        state.setShouldSaveOnExit(false),
+        Reload,
+        Suspend(0)
+    ))
+    pauseGui.Add("Button", "w200 h40", "Reload").OnEvent("Click", (*) => (
+        _destryoGui(),        
+        reloadScript()
+    ))
+    pauseGui.Add("Button", "w200 h40", "Exit").OnEvent("Click", (*) => (
+        _destryoGui(),
+        ExitApp
+    ))
+    pauseGui.OnEvent("Close", (*) => (
+        Suspend(0) ; pencere kapanınca script devam etsin
+    ))
+
+    ; Esc = pencereyi kapat + script devam
+    pauseGui.OnEvent("Escape", (*) => (        
+        Suspend(0)
+    ))
+
+    pauseGui.Show("xCenter yCenter")
+    SoundBeep(750)
 }
 
 ;^::^ ;tus halen islevsel SC029  vkC0
@@ -87,7 +104,6 @@ reloadScript() {
     Reload
 }
 
-
 ^ & PgUp:: ShowKeyHistoryLoop()
 ShowKeyHistoryLoop() {
     Loop {
@@ -99,33 +115,33 @@ ShowKeyHistoryLoop() {
     }
 }
 
-
-; ^ & PgDn::ShowStats()
-ShowStats() {
+ShowStats(showMsgBox := false) {
     stats := "Busy status: " state.getBusy() "`n"
+    statsArray := ["Busy status: " state.getBusy()]
 
     for key, count in keyCounts.getAll() {
         stats .= key ": " count "`n"
+        statsArray.Push(key ": " count)
     }
 
     recentErrors := errHandler.getRecentErrors(10) ;0 for all
     if (recentErrors == "") {
         stats .= "no new error (log.txt save all)"
+        statsArray.Push("no new error (log.txt save all)")
     } else {
         stats .= recentErrors
+        errors := StrSplit(recentErrors, "`n")
+        for err in errors {
+            if (Trim(err) != "" && Trim(err) != "Errors:") {
+                statsArray.Push(err)
+            }
+        }
     }
     sinceDateTime := FormatTime(scriptStartTime, "yyyy-MM-dd HH:mm:ss")
-    MsgBox(stats, state.getVersion() " - Stats and errors " sinceDateTime)
-}
-
-^ & Del:: DisableLog()
-DisableLog() {
-    choice := MsgBox("Disable Logging in this session YES?", "New error click NO", "YesNoCancel")
-    if (choice = "No") {
-        errHandler.testError("Test")
-    } else if (choice = "Yes") {
-        state.setDisableLogging(true)
+    if (showMsgBox) {
+        MsgBox(stats, state.getVersion() " - Stats and errors " sinceDateTime)
     }
+    return statsArray
 }
 
 Tab::Tab
@@ -164,10 +180,10 @@ Tab & 3:: clipManager.saveToSlot(3)
 Tab & 4:: clipManager.saveToSlot(4)
 Tab & 5:: clipManager.saveToSlot(5)
 Tab & 6:: clipManager.saveToSlot(6)
-Tab & 6:: clipManager.saveToSlot(7)
-Tab & 6:: clipManager.saveToSlot(6)
-Tab & 6:: clipManager.saveToSlot(9)
-
+Tab & 7:: clipManager.saveToSlot(7)
+Tab & 8:: clipManager.saveToSlot(8)
+Tab & 9:: clipManager.saveToSlot(9)
+Tab & 0:: clipManager.saveToSlot(0)
 
 showF13menu() {
     mySwitchMenu := Menu()
@@ -187,7 +203,6 @@ showF13menu() {
     mySwitchMenu.Show()
 }
 
-
 showF14menu() {
     mySwitchMenu := Menu()
     mySwitchMenu.Add("Paste enter", (*) => clipManager.press("^v{Enter}"))
@@ -200,21 +215,34 @@ showF14menu() {
     mySwitchMenu.Add("Save clip", clipManager.buildSaveSlotMenu())
 
     historyMenu := clipManager.buildHistoryMenu()
-
     mySwitchMenu.Add("Clipboard history", historyMenu)
     mySwitchMenu.Add()
 
     settingsMenu := Menu()
     settingsMenu.Add("Reload", (*) => reloadScript())
-    settingsMenu.Add("Disable Log", (*) => DisableLog())
+    settingsMenu.Add("Pause script", (*) => DialogPauseGui())
     settingsMenu.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
-    settingsMenu.Add("Show Stats : " state.getVersion(), (*) => ShowStats())
+
+    statsMenu := Menu()
+    statsMenu.Add("Show stats", (*) => (ShowStats(true)))
+    statsMenu.Add()
+    statsArray := ShowStats()
+    for stat in statsArray {
+        statsMenu.Add(stat, (*) => (A_Clipboard := stat))
+    }
+    statsMenu.Add()
+    latestError := ""
+    for timestamp, message in errHandler.getAllErrors() {
+        latestError := FormatTime(timestamp, "dd HH:mm:ss") ": " message
+    }
+    statsMenu.Add("Copy last error", (*) => (A_Clipboard := latestError))
+    settingsMenu.Add("Show Stats", statsMenu)
+
     settingsMenu.Add("Awake ...", (*) => InputAwake())
     mySwitchMenu.Add("Settings", settingsMenu)
 
     mySwitchMenu.Show()
 }
-
 
 InputAwake() {
     ;buraya awakei iptal et yazabilir
@@ -230,7 +258,6 @@ InputAwake() {
     }
 }
 
-
 #a:: MouseMove(-10, 0, 0, "R")
 #s:: MouseMove(0, 10, 0, "R")
 #d:: MouseMove(10, 0, 0, "R")
@@ -239,27 +266,14 @@ InputAwake() {
 #e:: Click("Right")
 #y:: Send("{Enter}")
 
-#HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 60)
+#HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
     keyCounts.inc("DoubleCount")
     errHandler.handleError("double click: " A_TimeSincePriorHotkey)
+    SoundBeep(1000, 100)
     Return
 }
 #HotIf
-#HotIf state.getBusy() > 0
-*1:: return
-*2:: return
-*3:: return
-*4:: return
-*5:: return
-*6:: return
-*7:: return
-*8:: return
-*9:: return
-*q:: return
-*RButton:: return
-#HotIf
-
 
 CheckIdle(*) {
     state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
@@ -285,13 +299,15 @@ ResetSleep(*) {
 ´:: { ;´= VKDD  SC00D
     ToolTip("
     (
+    Commands (Esc:exit)
     1: Reload
     2: Show stats
-    3: Disable log
+    3:
     4: Show KeyHistoryLoop
     5: Awake ...
-    9: Pause script
-    Esc to exit
+    7: F13 menü
+    8: F14 menü
+    9: Pause script    
     )")
     ih := InputHook("L1", "{Esc}")
     ih.Start()
@@ -300,18 +316,18 @@ ResetSleep(*) {
     key := ih.Input != "" ? ih.Input : ih.EndKey
     ToolTip()
     Switch key {
-        ; Case "´": Send(key)         Case "`n": Send("{sc00D}")
         Case "1": reloadScript()
-        Case "2": ShowStats()
-        case "3": DisableLog()
-        case "4": ShowKeyHistoryLoop()
-        case "5": InputAwake()
-        case "9": CreatePauseGui()
+        Case "2": ShowStats(true)
+        Case "3": Sleep(10)
+        Case "4": ShowKeyHistoryLoop()
+        Case "5": InputAwake()
+        Case "7": showF13menu()
+        Case "8": showF14menu()
+        Case "9": DialogPauseGui()
         Case "a": TrayTip("Başlık", "Mesaj içeriği", 1)
-        Default: SoundBeep(800) ; Default: MsgBox ("pressed scan value " key)
+        Default: SoundBeep(800)
     }
 }
-
 
 SC121:: { ;home pc?
     Run "calc.exe"
@@ -347,7 +363,6 @@ NumpadDel & NumpadIns:: Send("!+{Tab}")
 NumpadIns:: Send("J")
 NumpadDel:: Send("L")
 NumpadClear:: Send("K")
-
 
 F13:: keyHandler.handleF13()
 F14:: keyHandler.handleF14()

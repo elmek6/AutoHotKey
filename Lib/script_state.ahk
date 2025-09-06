@@ -14,7 +14,7 @@
         }
         this.version := version
         this.busy := 0
-        this.disableLogging := false
+        this.shouldSaveStats := false
         this.rightClickActive := false
         this.idleCount := 60
     }
@@ -47,12 +47,12 @@
         return this.version
     }
 
-    setDisableLogging(status) {
-        this.disableLogging := status
+    setShouldSaveOnExit(status) {
+        this.shouldSaveStats := status
     }
 
-    getDisableLogging() {
-        return this.disableLogging
+    getShouldSaveOnExit() {
+        return this.shouldSaveStats
     }
 
     loadStats() {
@@ -93,9 +93,9 @@
     }
 
     saveStats(scriptStartTime) {
-        if (this.getDisableLogging()) {
-            return
-        }
+        if (!this.shouldSaveStats)
+          return
+
         keyCounts.inc("WriteCount")
 
         local startDate := FormatTime(scriptStartTime, "yyyyMMdd")

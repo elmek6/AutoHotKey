@@ -309,10 +309,10 @@ class ClipboardManager {
             preview := this.getSlotPreview(slotNumber)
             if (this.hasSlot(slotNumber)) {
                 slotMenu.Add("Slot " slotNumber ": " preview,
-                           ((num) => (*) => this.loadFromSlot(num))(slotNumber))
+                    ((num) => (*) => this.loadFromSlot(num))(slotNumber))
             } else {
                 slotMenu.Add("Slot " slotNumber ": " preview,
-                           (*) => this.showMessage("Slot " slotNumber " boş!"))
+                    (*) => this.showMessage("Slot " slotNumber " boş!"))
             }
         }
         return slotMenu
@@ -323,7 +323,7 @@ class ClipboardManager {
         for slotNumber in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] {
             preview := this.getSlotPreview(slotNumber)
             saveSlotMenu.Add("Slot " slotNumber ": " preview,
-                           ((num) => (*) => this.saveToSlot(num))(slotNumber))
+                ((num) => (*) => this.saveToSlot(num))(slotNumber))
         }
         return saveSlotMenu
     }
@@ -354,8 +354,10 @@ class ClipboardManager {
     }
 
     __Delete() {
-        this.saveHistory()
-        this.saveSlots()
+        if (state.getShouldSaveOnExit) {
+            this.saveHistory()
+            this.saveSlots()
+        }
     }
 
     showHistorySearch() {
