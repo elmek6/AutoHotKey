@@ -192,8 +192,8 @@ class HotkeyHandler {
             .combo("6", () => clipManager.loadFromHistory(6))
             .combo("7", () => clipManager.loadFromHistory(7))
             .combo("8", () => clipManager.loadFromHistory(8))
-            .combo("9", () => clipManager.loadFromHistory(9)) ;buildHistoryMenu
-            .combo("s", () => clipManager.showHistorySearch())  ; YENİ: History search (klavye)
+            .combo("9", () => clipManager.loadFromHistory(9))
+            .combo("s", () => clipManager.showHistorySearch())
         this.handleFKey(builder)
     }
 
@@ -208,6 +208,9 @@ class HotkeyHandler {
             .combo("4", () => clipManager.loadFromSlot(4))
             .combo("5", () => clipManager.loadFromSlot(5))
             .combo("6", () => clipManager.loadFromSlot(6))
+            .combo("7", () => clipManager.loadFromSlot(7))
+            .combo("8", () => clipManager.loadFromSlot(8))
+            .combo("9", () => clipManager.loadFromSlot(9))
             .combo("0", () => clipManager.loadFromSlot(0))
             .combo("PgDn", () => ShowStats())
             .combo("s", () => clipManager.showSlotsSearch())

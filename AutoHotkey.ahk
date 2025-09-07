@@ -16,7 +16,7 @@ global clipManager := ClipboardManager.getInstance(20, 100000)
 global keyHandler := HotkeyHandler.getInstance() ;GROK_AI: Parametreler kaldırıldı
 global scriptStartTime := A_Now
 
-class AppConst { ;GROK_AI: Const yerine AppConst kullanıldı, çakışmayı önlemek için
+class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
     static FILE_LOG := "Files\log.txt"
@@ -73,7 +73,7 @@ DialogPauseGui() {
         Suspend(0)
     ))
     pauseGui.Add("Button", "w200 h40", "Reload").OnEvent("Click", (*) => (
-        _destryoGui(),        
+        _destryoGui(),
         reloadScript()
     ))
     pauseGui.Add("Button", "w200 h40", "Exit").OnEvent("Click", (*) => (
@@ -85,7 +85,8 @@ DialogPauseGui() {
     ))
 
     ; Esc = pencereyi kapat + script devam
-    pauseGui.OnEvent("Escape", (*) => (        
+    pauseGui.OnEvent("Escape", (*) => (
+        _destryoGui(),
         Suspend(0)
     ))
 
@@ -93,8 +94,7 @@ DialogPauseGui() {
     SoundBeep(750)
 }
 
-;^::^ ;tus halen islevsel SC029  vkC0
-
+;^::^ ;caret tuss halen islevsel SC029  vkC0
 CapsLock:: keyHandler.handleCapsLock()
 SC029:: keyHandler.handleCaret()
 
@@ -183,7 +183,6 @@ Tab & 6:: clipManager.saveToSlot(6)
 Tab & 7:: clipManager.saveToSlot(7)
 Tab & 8:: clipManager.saveToSlot(8)
 Tab & 9:: clipManager.saveToSlot(9)
-Tab & 0:: clipManager.saveToSlot(0)
 
 showF13menu() {
     mySwitchMenu := Menu()
@@ -266,14 +265,6 @@ InputAwake() {
 #e:: Click("Right")
 #y:: Send("{Enter}")
 
-#HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
-LButton:: {
-    keyCounts.inc("DoubleCount")
-    errHandler.handleError("double click: " A_TimeSincePriorHotkey)
-    SoundBeep(1000, 100)
-    Return
-}
-#HotIf
 
 CheckIdle(*) {
     state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
@@ -296,37 +287,36 @@ ResetSleep(*) {
     SetTimer(CheckIdle, 1000)
 }
 
-´:: { ;´= VKDD  SC00D
-    ToolTip("
-    (
-    Commands (Esc:exit)
-    1: Reload
-    2: Show stats
-    3:
-    4: Show KeyHistoryLoop
-    5: Awake ...
-    7: F13 menü
-    8: F14 menü
-    9: Pause script    
-    )")
-    ih := InputHook("L1", "{Esc}")
-    ih.Start()
-    ih.Wait()
+´:: {
+    actions := [
+        ["1", "Reload", reloadScript],
+        ["2", "Show stats", (*) => ShowStats(true)],
+        ["3", "", (*) => Sleep(10)],
+        ["4", "Show KeyHistoryLoop", ShowKeyHistoryLoop],
+        ["5", "Awake ...", InputAwake],
+        ["7", "F13 menü", showF13menu],
+        ["8", "F14 menü", showF14menu],
+        ["9", "Pause script", DialogPauseGui],
+        ["a", "TrayTip", (*) => TrayTip("Başlık", "Mesaj içeriği", 1)]
+    ]
 
+    menu := "Commands (Esc:exit)`n"
+    for item in actions
+        menu .= item[1] ": " item[2] "`n"
+    ToolTip(menu)
+
+    ih := InputHook("L1 T30", "{Esc}")
+    ih.Start(), ih.Wait()
     key := ih.Input != "" ? ih.Input : ih.EndKey
     ToolTip()
-    Switch key {
-        Case "1": reloadScript()
-        Case "2": ShowStats(true)
-        Case "3": Sleep(10)
-        Case "4": ShowKeyHistoryLoop()
-        Case "5": InputAwake()
-        Case "7": showF13menu()
-        Case "8": showF14menu()
-        Case "9": DialogPauseGui()
-        Case "a": TrayTip("Başlık", "Mesaj içeriği", 1)
-        Default: SoundBeep(800)
+
+    for item in actions {
+        if (item[1] = key) {
+            item[3]()
+            return
+        }
     }
+    SoundBeep(800)
 }
 
 SC121:: { ;home pc?
@@ -372,3 +362,26 @@ F17:: keyHandler.handleF17()
 F18:: keyHandler.handleF18()
 F19:: keyHandler.handleF19()
 F20:: keyHandler.handleF20()
+
+
+#HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
+LButton:: {
+    keyCounts.inc("DoubleCount")
+    errHandler.handleError("double click: " A_TimeSincePriorHotkey)
+    SoundBeep(1000, 100)
+    Return
+}
+#HotIf
+
+#HotIf state.getBusy() > 0 ; combo tusu supress ediyoruz
+*1:: return
+*2:: return
+*3:: return
+*4:: return
+*5:: return
+*6:: return
+*7:: return
+*8:: return
+*9:: return
+; *RButton:: return
+#HotIf

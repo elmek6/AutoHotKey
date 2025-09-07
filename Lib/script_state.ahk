@@ -10,7 +10,7 @@
 
     __New(version) {
         if (ScriptState.instance) {
-            throw Error("ScriptState zaten oluÅŸturulmuÅŸ! getInstance kullan.")
+            throw Error("ScriptState zaten oluşturulmuş! getInstance kullan.")
         }
         this.version := version
         this.busy := 0
