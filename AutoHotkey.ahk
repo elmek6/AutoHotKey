@@ -13,7 +13,7 @@ global state := ScriptState.getInstance("ver_b121")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(20, 100000)
-global keyHandler := HotkeyHandler.getInstance() ;GROK_AI: Parametreler kaldırıldı
+global keyHandler := HotkeyHandler.getInstance()
 global scriptStartTime := A_Now
 
 class AppConst {
@@ -288,21 +288,21 @@ ResetSleep(*) {
 }
 
 ´:: {
-    actions := [
-        ["1", "Reload", reloadScript],
-        ["2", "Show stats", (*) => ShowStats(true)],
-        ["3", "", (*) => Sleep(10)],
-        ["4", "Show KeyHistoryLoop", ShowKeyHistoryLoop],
-        ["5", "Awake ...", InputAwake],
-        ["7", "F13 menü", showF13menu],
-        ["8", "F14 menü", showF14menu],
-        ["9", "Pause script", DialogPauseGui],
-        ["a", "TrayTip", (*) => TrayTip("Başlık", "Mesaj içeriği", 1)]
-    ]
+    actions := Map(
+        "1", { dsc: "Reload", fn: (*) => reloadScript() },
+        "2", { dsc: "Show stats", fn: (*) => ShowStats(true) },
+        "3", { dsc: "", fn: (*) => Sleep(10) },
+        "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
+        "5", { dsc: "Awake ...", fn: (*) => InputAwake() },
+        "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
+        "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
+        "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
+        "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) }
+    )
 
     menu := "Commands (Esc:exit)`n"
-    for item in actions
-        menu .= item[1] ": " item[2] "`n"
+    for k, v in actions
+        menu .= k ": " v.dsc "`n"
     ToolTip(menu)
 
     ih := InputHook("L1 T30", "{Esc}")
@@ -310,13 +310,10 @@ ResetSleep(*) {
     key := ih.Input != "" ? ih.Input : ih.EndKey
     ToolTip()
 
-    for item in actions {
-        if (item[1] = key) {
-            item[3]()
-            return
-        }
-    }
-    SoundBeep(800)
+    if actions.Has(key)
+        actions[key].fn()
+    else
+        SoundBeep(800)
 }
 
 SC121:: { ;home pc?
