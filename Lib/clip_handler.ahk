@@ -251,24 +251,22 @@ class ClipboardManager {
         SetTimer(() => ToolTip(), -duration)
     }
 
-    getHistoryPreviewText() {
+    getHistoryPreviewList() {
         if (this.history.Length = 0) {
-            return "(Boş)"
+            return ["(Boş)"]
         }
-        previewText := ""
+        previewList := []
         Loop 9 {
             index := this.history.Length - A_Index + 1
             if (index <= 0)
                 break
-
             text := this.history[index]
             display := StrReplace(SubStr(text, 1, 100), "`n", " ")
             if (StrLen(text) > 100)
                 display .= "..."
-
-            previewText .= "Clip " A_Index ": " display "`n"
+            previewList.Push("Clip " A_Index ": " display)
         }
-        return Trim(previewText, "`n")
+        return previewList
     }
 
     getSlotsPreviewText() {
