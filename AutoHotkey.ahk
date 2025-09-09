@@ -44,7 +44,7 @@ LoadPCSettings() {
     }
 }
 
-#SuspendExempt ;suspend durumunda calisacak kodlar
+#SuspendExempt ;suspend durumunda çalışacak kodlar
 Pause & Home:: {
     DialogPauseGui()
 }
@@ -94,7 +94,7 @@ DialogPauseGui() {
     SoundBeep(750)
 }
 
-;^::^ ;caret tuss halen islevsel SC029  vkC0
+;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 CapsLock:: keyHandler.handleCapsLock()
 SC029:: keyHandler.handleCaret()
 
@@ -173,7 +173,7 @@ RButton & WheelDown:: {
     }
 }
 
-;Slota saklamak icin
+;Slota saklamak için (rakam suppress ile sindiliriliyor yan menüye alinabilir)
 Tab & 1:: clipManager.saveToSlot(1)
 Tab & 2:: clipManager.saveToSlot(2)
 Tab & 3:: clipManager.saveToSlot(3)
@@ -210,8 +210,10 @@ showF14menu() {
     mySwitchMenu.Add("Unformatted paste", (*) => clipManager.press("^+v"))
     mySwitchMenu.Add()
 
+    ;belki tüm slotlar listelenip her birinin alt menüsü olarak load, save, rename, clear gelebiliri
     mySwitchMenu.Add("Load clip", clipManager.buildSlotMenu())
     mySwitchMenu.Add("Save clip", clipManager.buildSaveSlotMenu())
+    mySwitchMenu.Add("Rename slot", clipManager.buildRenameSlotMenu())
 
     historyMenu := clipManager.buildHistoryMenu()
     mySwitchMenu.Add("Clipboard history", historyMenu)
@@ -264,7 +266,6 @@ InputAwake() {
 #q:: Click("Left")
 #e:: Click("Right")
 #y:: Send("{Enter}")
-
 
 CheckIdle(*) {
     state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
@@ -360,7 +361,6 @@ F18:: keyHandler.handleF18()
 F19:: keyHandler.handleF19()
 F20:: keyHandler.handleF20()
 
-
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
     keyCounts.inc("DoubleCount")
@@ -370,7 +370,7 @@ LButton:: {
 }
 #HotIf
 
-#HotIf state.getBusy() > 0 ; combo tusu supress ediyoruz
+#HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz
 *1:: return
 *2:: return
 *3:: return
