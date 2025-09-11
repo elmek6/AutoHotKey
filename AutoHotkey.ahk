@@ -334,7 +334,8 @@ AppsKey:: { ;bus hom ?
     }
 }
 
-^!+#Space:: Send("+{F10}")
+^!+#Space:: Send("+{F10}") ;    SendInput("{AppsKey}") suppreme edilmiyor windows engelleiyor
+
 ;{ ; bus gülen adam tusu ;    MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA }
 
 ;Pause:: { SendInput("{vk5B down}v("{vk5B up}")}
