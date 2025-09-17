@@ -1,20 +1,34 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
+; SC kodu 1 key, VK ve tus cok kez okunuyor ??
 #Include <Jxon> ;Lib klasörünün icindeyse böyle yaziliyor
 #Include <script_state>
 #Include <key_counter>
 #Include <error_handler>
 #Include <clip_handler>
 #Include <hotkey_handler>
+#Include <macro_recorder>
+; #Include <cascade_menu>
 ; #Include <array_filter>
 
-global state := ScriptState.getInstance("ver_b121")
+; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
+TraySetIcon("shell32.dll", 300) ; 177
+
+OutputDebug "Started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
+global state := ScriptState.getInstance("ver_h122")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(20, 100000)
 global keyHandler := HotkeyHandler.getInstance()
+; global cascade := CascadeMenu.getInstance(500,2000)
+global recorder := MacroRecorder.getInstance(300)
 global scriptStartTime := A_Now
+global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
+
+; Örnek: Dinamik ayar değiştirme
+; recorder.settings := ["rec2.ahk", "F2", "keyboard", 600]  ; İstersen böyle çağır
+
 
 class AppConst {
     static FILES_DIR := "Files\"
@@ -44,7 +58,7 @@ LoadPCSettings() {
     }
 }
 
-#SuspendExempt ;suspend durumunda çalışacak kodlar
+#SuspendExempt
 Pause & Home:: {
     DialogPauseGui()
 }
@@ -53,9 +67,17 @@ Pause & End:: {
 }
 #SuspendExempt False
 
-DialogPauseGui() {
-    Suspend(1) ;Scripti durdur
+A_TrayMenu.Add("Ayarlar", (*) => MsgBox("Ayarlar açıldı"))
+A_TrayMenu.Add("Çıkış", (*) => ExitApp())
 
+
+Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
+Pause & 2:: recorder.stop()  ; Kayıt durdur
+Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
+
+
+DialogPauseGui() {
+    Suspend(1)
     _destryoGui() {
         pauseGui.Destroy()
         pauseGui := ""
@@ -94,9 +116,86 @@ DialogPauseGui() {
     SoundBeep(750)
 }
 
+
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 CapsLock:: keyHandler.handleCapsLock()
-SC029:: keyHandler.handleCaret()
+; SC029:: keyHandler.handleCaret() ;caret SC029  ^ != ^
+SC029::  ;caret VKDC SC029  ^ != ^
+{
+    startTime := A_TickCount
+    KeyWait A_ThisHotkey
+    if (A_TickCount - startTime < 500) {
+        ; nothing
+    } else {
+        SoundBeep(900, 100)
+        Send("{^}")
+        return
+    }
+
+
+    loadSave(number) {
+        if (pressedTogether) {
+            clipManager.loadFromSlot(number)
+        } else {
+            clipManager.saveToSlot(number)
+        }
+    }
+
+    actions := Map(
+        "1", { dsc: "Load Slot 1", fn: (*) => loadSave(1) },
+        "2", { dsc: "Load Slot 2", fn: (*) => loadSave(2) },
+        "3", { dsc: "Load Slot 3", fn: (*) => loadSave(3) },
+        "4", { dsc: "Load Slot 4", fn: (*) => loadSave(4) },
+        "5", { dsc: "Load Slot 5", fn: (*) => loadSave(5) },
+        "7", { dsc: "Load Slot 7", fn: (*) => loadSave(7) },
+        "8", { dsc: "Load Slot 8", fn: (*) => loadSave(8) },
+        "9", { dsc: "Load Slot 9", fn: (*) => loadSave(9) },
+        "0", { dsc: "Load Slot 0", fn: (*) => loadSave(0) },
+        "s", { dsc: "Search", fn: (*) => clipManager.showSlotsSearch() },
+        "VKDC", { dsc: "^", fn: (*) => SendInput("Ö") },
+    )
+
+    local list := []
+    list := "Clipboard Slots`n"
+    list .= "s search `n"
+    list .= "----------------`n"
+    list .= clipManager.getSlotsPreviewText()
+    ToolTip(list)
+
+    ih := InputHook("L1 T30", "{Esc}")
+    ih.Start(), ih.Wait()
+    key := ih.Input != "" ? ih.Input : ih.EndKey
+    ToolTip()
+
+    pressedTogether := GetKeyState(A_ThisHotkey, "P")
+
+    if actions.Has(key)
+        actions[key].fn()
+
+}
+
+
+;Slota saklamak için (rakam suppress ile sindiliriliyor yan menüye alinabilir)
+; 1 & SC029:: clipManager.saveToSlot(1)
+; 2 & SC029:: clipManager.saveToSlot(2)
+; 3 & SC029:: clipManager.saveToSlot(3)
+; 4 & SC029:: clipManager.saveToSlot(4)
+; 5 & SC029:: clipManager.saveToSlot(5)
+; 6 & SC029:: clipManager.saveToSlot(6)
+; 7 & SC029:: clipManager.saveToSlot(7)
+; 8 & SC029:: clipManager.saveToSlot(8)
+; 9 & SC029:: clipManager.saveToSlot(9)
+
+
+; 1:: keyHandler.handleNums(1) ;command menünün calismasina engel oluyor
+; 2:: keyHandler.handleNums(2)
+; 3:: keyHandler.handleNums(3)
+; 4:: keyHandler.handleNums(4)
+; 5:: keyHandler.handleNums(5)
+; 6:: keyHandler.handleNums(6)
+; 7:: keyHandler.handleNums(7)
+; 8:: keyHandler.handleNums(8)
+; 9:: keyHandler.handleNums(9)
 
 reloadScript() {
     state.saveStats(scriptStartTime)
@@ -173,16 +272,19 @@ RButton & WheelDown:: {
     }
 }
 
-;Slota saklamak için (rakam suppress ile sindiliriliyor yan menüye alinabilir)
-Tab & 1:: clipManager.saveToSlot(1)
-Tab & 2:: clipManager.saveToSlot(2)
-Tab & 3:: clipManager.saveToSlot(3)
-Tab & 4:: clipManager.saveToSlot(4)
-Tab & 5:: clipManager.saveToSlot(5)
-Tab & 6:: clipManager.saveToSlot(6)
-Tab & 7:: clipManager.saveToSlot(7)
-Tab & 8:: clipManager.saveToSlot(8)
-Tab & 9:: clipManager.saveToSlot(9)
+;Makro oynatma
+; Tab & 1:: clipManager.saveToSlot(1)
+; Tab & 2:: clipManager.saveToSlot(2)
+; Tab & 3:: clipManager.saveToSlot(3)
+; Tab & 4:: clipManager.saveToSlot(4)
+; Tab & 5:: clipManager.saveToSlot(5)
+; Tab & 6:: clipManager.saveToSlot(6)
+; Tab & 7:: clipManager.saveToSlot(7)
+; Tab & 8:: clipManager.saveToSlot(8)
+; Tab & 9:: clipManager.saveToSlot(9)
+;Makro kaydetme
+; 1 & Tab:: clipManager.saveToSlot(9)
+
 
 showF13menu() {
     mySwitchMenu := Menu()
@@ -199,6 +301,7 @@ showF13menu() {
     mySwitchMenu.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     mySwitchMenu.Add("Delete line", (*) => Send("{Home}{Home}+{End}{Delete}{Delete}"))
     mySwitchMenu.Add("Find 'clipboard'", (*) => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
+    mySwitchMenu.Add("Always on top'", (*) => AlwaysOnTop())
     mySwitchMenu.Show()
 }
 
@@ -288,7 +391,20 @@ ResetSleep(*) {
     SetTimer(CheckIdle, 1000)
 }
 
-´:: {
+AlwaysOnTop() {
+    activeWindow := WinGetTitle("A")
+    try {
+        WinSetAlwaysOnTop -1, activeWindow
+        ToolTip "Switched 'Always-On-Top' state:`n" activeWindow
+        SetTimer () => ToolTip(), -2000
+    } catch Error as err {
+        ToolTip "Unable to set 'Always-On-Top' state:`n" err.Message
+        SetTimer () => ToolTip(), -2000
+    }
+}
+
+
+SC00D:: {    ; backtick ´ SC00D VKDD
     actions := Map(
         "1", { dsc: "Reload", fn: (*) => reloadScript() },
         "2", { dsc: "Show stats", fn: (*) => ShowStats(true) },
@@ -305,11 +421,15 @@ ResetSleep(*) {
     for k, v in actions
         menu .= k ": " v.dsc "`n"
     ToolTip(menu)
+    OutputDebug ("....")
 
     ih := InputHook("L1 T30", "{Esc}")
     ih.Start(), ih.Wait()
     key := ih.Input != "" ? ih.Input : ih.EndKey
     ToolTip()
+
+    pressedTogether := GetKeyState(A_ThisHotkey, "P")
+    OutputDebug (pressedTogether)
 
     if actions.Has(key)
         actions[key].fn()
@@ -383,3 +503,122 @@ LButton:: {
 *9:: return
 ; *RButton:: return
 #HotIf
+/*
+#::  ; Windows + # scancode değil direkt #
+{
+    startTime := A_TickCount
+
+    ih := InputHook("L1 T5", "{Esc}") ; 5 saniye boyunca 1 tuş bekler
+    ih.Start(), ih.Wait()
+    key := ih.Input != "" ? ih.Input : ih.EndKey
+
+    pressedTogether := GetKeyState(A_ThisHotkey, "P")
+    holdDuration := A_TickCount - startTime
+
+    ; --- 1 & 2: kısa/uzun basma bilgisi ---
+    if (holdDuration < 300)
+        OutputDebug "SHORT press (" holdDuration " ms)`n"
+    else
+        OutputDebug "LONG press (" holdDuration " ms)`n"
+
+    ; --- 3: basılıyken başka tuşa basma ---
+    if (pressedTogether && key != "")
+        OutputDebug "Pressed together with key: " key "`n"
+
+    ; --- 4: bırakıp sonra başka tuşa basma ---
+    if (!pressedTogether && key != "")
+        OutputDebug "Pressed after release: " key "`n"
+}
+*/
+/*
+#:: {
+    startTime := A_TickCount
+    KeyWait A_ThisHotkey ; # tuşu bırakılana kadar bekler
+    holdDuration := A_TickCount - startTime
+
+    if (holdDuration < 300) {
+        OutputDebug "SHORT press (" holdDuration " ms)`n"
+    } else {
+        OutputDebug "LONG press (" holdDuration " ms)`n"
+        return
+    }
+
+    ; Şimdi diğer tuşu bekleyelim (basılıyken veya bırakıldıktan sonra)
+    ih := InputHook("L1 T5", "{Esc}")
+    ih.Start(), ih.Wait()
+    key := ih.Input != "" ? ih.Input : ih.EndKey
+
+    if (key != "") {
+        pressedTogether := GetKeyState(A_ThisHotkey, "P")
+        if (pressedTogether)
+            OutputDebug "Pressed together with key: " key "`n"
+        else
+            OutputDebug "Pressed after release: " key "`n"
+    }
+}
+*/
+
+/*
+#::
+{
+    cascade.builder := CascadeBuilder() ;short, long
+        .shortPress(()=> ())        
+        .betweenPress(SoundBeep(1000)) ;
+        .longPress(SoundBeep(1000))
+        .exitOnPressThreshold(hold.mid) ;long press inpuhook calismasin
+        .pairs("1", "aciklama", (holdType) => ())
+    cascade.builder.setPreview([])
+    cascade.cascadeKey(builder)
+
+}
+*/
+ß:: {
+    TapOrHold(
+        () => showX(), ;ToolTip("Short F2"),
+        () => ToolTip("Medium F2"),
+        () => ToolTip("Long F2")
+    )
+    Sleep(1000)
+    ToolTip()
+}
+
+
+showX() {
+    _destryoGui() {
+        pauseGui.Destroy()
+        pauseGui := ""
+    }
+
+    pauseGui := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Script Durduruldu")
+
+    pauseGui.Add("Button", "w200 h20", "Record").OnEvent("Click", (*) => (
+        _destryoGui(),
+        Suspend(0) ; Script'i devam ettir
+    ))
+    pauseGui.Add("Button", "w200 h20", "Pause/Play").OnEvent("Click", (*) => (
+        _destryoGui(),
+        state.setShouldSaveOnExit(false),
+        Reload,
+        Suspend(0)
+    ))
+    pauseGui.Add("Button", "w200 h40", "Stop").OnEvent("Click", (*) => (
+        _destryoGui(),
+        reloadScript()
+    ))
+    pauseGui.Add("Button", "w200 h40", "Exit").OnEvent("Click", (*) => (
+        _destryoGui(),
+        ExitApp
+    ))
+
+    ;
+    pauseGui.OnEvent("Close", (*) => ( ;close from window
+        Suspend(0)
+    ))
+    pauseGui.OnEvent("Escape", (*) => ( ;close for esc key
+        _destryoGui(),
+        Suspend(0)
+    ))
+
+    pauseGui.Show("xCenter yCenter")
+    SoundBeep(750)
+}

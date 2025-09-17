@@ -1,4 +1,4 @@
-﻿class ArrayFilter {
+class ArrayFilter {
     static instance := ""
 
     static getInstance() {
@@ -15,6 +15,7 @@
     }
 
     closeGuiAndHotkeys(myGui, listBox, SelectAndClose) {
+        SetTimer this.CheckFocus, 0
         try myGui.Destroy()
         this.changeHotKeyMode(false, listBox, SelectAndClose)
     }
@@ -35,18 +36,14 @@
     changeHotKeyMode(sw, listBox, SelectAndClose) {
         mode := sw ? "On" : "Off"
         Hotkey("Enter", sw ? (*) => SelectAndClose(listBox.Value) : "", mode)
-        Hotkey("F1", sw ? (*) => SelectAndClose(1) : "", mode)
-        Hotkey("F2", sw ? (*) => SelectAndClose(2) : "", mode)
-        Hotkey("F3", sw ? (*) => SelectAndClose(3) : "", mode)
-        Hotkey("F4", sw ? (*) => SelectAndClose(4) : "", mode)
-        Hotkey("F5", sw ? (*) => SelectAndClose(5) : "", mode)
-        Hotkey("F6", sw ? (*) => SelectAndClose(6) : "", mode)
-        Hotkey("F7", sw ? (*) => SelectAndClose(7) : "", mode)
-        Hotkey("F8", sw ? (*) => SelectAndClose(8) : "", mode)
-        Hotkey("F9", sw ? (*) => SelectAndClose(9) : "", mode)
-        Hotkey("F10", sw ? (*) => SelectAndClose(10) : "", mode)
-        Hotkey("F11", sw ? (*) => SelectAndClose(11) : "", mode)
-        Hotkey("F12", sw ? (*) => SelectAndClose(12) : "", mode)
+
+        CreateHotkeyHandler(idx) {
+            return (*) => SelectAndClose(idx)
+        }
+
+        Loop 12 {
+            Hotkey("F" A_Index, sw ? CreateHotkeyHandler(A_Index) : "", mode)
+        }
     }
 
     Show(arrayData, title) {
@@ -59,7 +56,7 @@
 
         SelectAndClose(index) {
             if (index < 1 || index > results.Length)
-                return
+                MsgBox ("Gecersiz deger return kullan burda")
             local textToSend := results[index]
             this.closeGuiAndHotkeys(myGui, listBox, SelectAndClose)
             Sleep(50)
@@ -97,5 +94,10 @@
 
         UpdateList()
         myGui.Show("w400 h260")
+
+        this.CheckFocus := (*) => (
+            IsObject(myGui) && myGui.Title && !WinActive(myGui.Title) ? this.closeGuiAndHotkeys(myGui, listBox, SelectAndClose) : ""
+        )
+        SetTimer this.CheckFocus, 100
     }
 }

@@ -1,5 +1,43 @@
 #Include <HotGestures>
 
+TapOrHold(shortFn, mediumFn, longFn := "", shortTime := 400, longTime := 1400) {
+    startTime := A_TickCount
+    thisHotkey := A_ThisHotkey
+    beepCount := 2
+
+    while (GetKeyState(thisHotkey, "P")) {
+        duration := A_TickCount - startTime
+
+        if (duration < shortTime) {
+            ;     OutputDebug("short tap`n")
+        } else
+            if (duration < longTime && beepCount > 1) {
+                ; OutputDebug("mid tap`n")
+                SoundBeep(800, 70)
+                beepCount--
+            } else
+                if (duration > longTime && longFn != "" && beepCount > 0) {
+                    ; OutputDebug("long tap`n")
+                    SoundBeep(600, 100)
+                    beepCount--
+                }
+
+        Sleep(40)
+    }
+
+    duration := A_TickCount - startTime
+
+    if (duration < shortTime) {
+        shortFn.Call()
+    }
+    else if (duration < longTime || longFn == "") {
+        mediumFn.Call()
+    }
+    else if (longFn != "") {
+        longFn.Call()
+    }
+}
+
 class FKeyBuilder {
     __New() {
         this._mainStart := ""
@@ -82,6 +120,7 @@ class HotkeyHandler {
         gestures := builder.gestures
         comboActions := builder.comboActions
         previewList := builder.tips  ; Artık her zaman tips kullan
+    startTime := A_TickCount
 
         _checkCombo(comboActions) {
             for c in comboActions {
@@ -91,7 +130,7 @@ class HotkeyHandler {
                     keyCounts.inc(c.key)
                     c.action.Call()
                     return true
-                }
+                }                
             }
             return false
         }
@@ -136,8 +175,12 @@ class HotkeyHandler {
                         this.hgsRight.Stop()
                     }
                     break
-                }
-                Sleep 50
+                }                
+                ; else If (key >= "0" && key <= "9" && !combo.contains(key) startTime + 300 < A_TickCount) { ;tekrar testi icin sonuc basarisiz kendini cagiriyor!!
+                ;     ; OutputDebug ("1")
+                ;     SendInput(key)
+                ; }
+                Sleep 10
             }
 
             KeyWait key
@@ -337,4 +380,15 @@ class HotkeyHandler {
         builder.setPreview([])
         this.handleFKey(builder)
     }
+/*
+    handleNums(number) {
+        builder := FKeyBuilder()
+            .mainDefault(() => Send(number))
+            .combos("SC029", number, () => clipManager.saveToSlot(number))
+            .combos("Tab", number, () => Sleep(number * 100))
+            .combos("CapsLock", number, () => clipManager.loadFromSlot(number))
+        builder.setPreview([])
+        this.handleFKey(builder)
+    }
+*/
 }
