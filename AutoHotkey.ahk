@@ -1,4 +1,5 @@
-#Requires AutoHotkey v2.0
+; #Requires AutoHotkey v2.0
+#Requires AutoHotkey >= 2.1-alpha.10
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
@@ -9,7 +10,7 @@
 #Include <clip_handler>
 #Include <hotkey_handler>
 #Include <macro_recorder>
-; #Include <cascade_menu>
+#Include <cascade_menu>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
@@ -23,7 +24,7 @@ global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(20, 100000)
 global keyHandler := HotkeyHandler.getInstance()
-; global cascade := CascadeMenu.getInstance(500,2000)
+global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global scriptStartTime := A_Now
 global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
@@ -585,3 +586,15 @@ LButton:: {
 ;     Sleep(1000)
 ;     ToolTip()
 ; }
+
+
++:: {
+    builder := CascadeBuilder(500, 1500)
+        .mainKey((ms) => OutputDebug("Ana tuş: " ms "ms"))
+        .exitOnPressThreshold(1500)
+        .sideKey((ms) => OutputDebug("Yan tuş süresi: " ms "ms"))
+        .pairs("1", "Test 1", (ms) => OutputDebug("Slot 1: " ms "ms`n"))
+        .pairs("2", "Test 2", (ms) => OutputDebug("Slot 2: " ms " ms`n"))
+    builder.setPreview(["1: Slot 1 Yükle/Kaydet", "s: Arama Menüsü"])
+    cascade.cascadeKey(builder, A_ThisHotkey)
+}
