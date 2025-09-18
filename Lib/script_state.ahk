@@ -55,6 +55,11 @@
         return this.shouldSaveStats
     }
 
+    isActiveClass(className) {
+        activeClass := WinGetClass("A")
+        return activeClass == className
+    }
+
     loadStats() {
         if (keyCounts.get("DayCount") == "") {
             keyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
@@ -94,7 +99,7 @@
 
     saveStats(scriptStartTime) {
         if (!this.shouldSaveStats)
-          return
+            return
 
         keyCounts.inc("WriteCount")
 

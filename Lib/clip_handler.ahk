@@ -48,7 +48,7 @@ class ClipSlot {
 
     saveSlots() {
         try {
-            local jsonData := Jxon_Dump(this.slots)
+            local jsonData := Jxon_Dump(this.slots) ;&this.slots sekinde yaz v2.1 ile daha iyi hafiza yönetimi
             if !DirExist(AppConst.FILES_DIR) {
                 DirCreate(AppConst.FILES_DIR)
             }
@@ -165,8 +165,12 @@ class ClipboardManager {
             if (A_Clipboard == "") {
                 throw Error("Pano yükleme başarısız.")
             }
-            Sleep(50)
-            Send("^v")
+            Sleep(20)
+            if (state.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alinabilir
+                SendText(A_Clipboard)
+            } else {
+                SendInput("^v")
+            }
             return true
         } catch as err {
             errHandler.handleError("Slot yükleme başarısız: " err.Message)

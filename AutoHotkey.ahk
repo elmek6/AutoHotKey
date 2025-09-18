@@ -12,6 +12,8 @@
 ; #Include <cascade_menu>
 ; #Include <array_filter>
 
+; https://github.com/ahkscript/awesome-AutoHotkey
+
 ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
 TraySetIcon("shell32.dll", 300) ; 177
 
@@ -25,6 +27,7 @@ global keyHandler := HotkeyHandler.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global scriptStartTime := A_Now
 global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
+; global appProfil = auto;
 
 ; Örnek: Dinamik ayar değiştirme
 ; recorder.settings := ["rec2.ahk", "F2", "keyboard", 600]  ; İstersen böyle çağır
@@ -411,6 +414,7 @@ SC00D:: {    ; backtick ´ SC00D VKDD
         "3", { dsc: "", fn: (*) => Sleep(10) },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
         "5", { dsc: "Awake ...", fn: (*) => InputAwake() },
+        "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
@@ -562,7 +566,7 @@ LButton:: {
 #::
 {
     cascade.builder := CascadeBuilder() ;short, long
-        .shortPress(()=> ())        
+        .shortPress(()=> ())
         .betweenPress(SoundBeep(1000)) ;
         .longPress(SoundBeep(1000))
         .exitOnPressThreshold(hold.mid) ;long press inpuhook calismasin
@@ -572,53 +576,12 @@ LButton:: {
 
 }
 */
-ß:: {
-    TapOrHold(
-        () => showX(), ;ToolTip("Short F2"),
-        () => ToolTip("Medium F2"),
-        () => ToolTip("Long F2")
-    )
-    Sleep(1000)
-    ToolTip()
-}
-
-
-showX() {
-    _destryoGui() {
-        pauseGui.Destroy()
-        pauseGui := ""
-    }
-
-    pauseGui := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Script Durduruldu")
-
-    pauseGui.Add("Button", "w200 h20", "Record").OnEvent("Click", (*) => (
-        _destryoGui(),
-        Suspend(0) ; Script'i devam ettir
-    ))
-    pauseGui.Add("Button", "w200 h20", "Pause/Play").OnEvent("Click", (*) => (
-        _destryoGui(),
-        state.setShouldSaveOnExit(false),
-        Reload,
-        Suspend(0)
-    ))
-    pauseGui.Add("Button", "w200 h40", "Stop").OnEvent("Click", (*) => (
-        _destryoGui(),
-        reloadScript()
-    ))
-    pauseGui.Add("Button", "w200 h40", "Exit").OnEvent("Click", (*) => (
-        _destryoGui(),
-        ExitApp
-    ))
-
-    ;
-    pauseGui.OnEvent("Close", (*) => ( ;close from window
-        Suspend(0)
-    ))
-    pauseGui.OnEvent("Escape", (*) => ( ;close for esc key
-        _destryoGui(),
-        Suspend(0)
-    ))
-
-    pauseGui.Show("xCenter yCenter")
-    SoundBeep(750)
-}
+; ß:: {
+;     TapOrHold(
+;         () => showX(), ;ToolTip("Short F2"),
+;         () => ToolTip("Medium F2"),
+;         () => ToolTip("Long F2")
+;     )
+;     Sleep(1000)
+;     ToolTip()
+; }
