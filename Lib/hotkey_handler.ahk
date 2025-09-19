@@ -120,7 +120,7 @@ class HotkeyHandler {
         gestures := builder.gestures
         comboActions := builder.comboActions
         previewList := builder.tips  ; Artık her zaman tips kullan
-    startTime := A_TickCount
+        startTime := A_TickCount
 
         _checkCombo(comboActions) {
             for c in comboActions {
@@ -130,7 +130,7 @@ class HotkeyHandler {
                     keyCounts.inc(c.key)
                     c.action.Call()
                     return true
-                }                
+                }
             }
             return false
         }
@@ -175,7 +175,7 @@ class HotkeyHandler {
                         this.hgsRight.Stop()
                     }
                     break
-                }                
+                }
                 ; else If (key >= "0" && key <= "9" && !combo.contains(key) startTime + 300 < A_TickCount) { ;tekrar testi icin sonuc basarisiz kendini cagiriyor!!
                 ;     ; OutputDebug ("1")
                 ;     SendInput(key)
@@ -240,30 +240,40 @@ class HotkeyHandler {
         this.handleFKey(builder)
     }
 
-    handleCaret() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("{^}"))
-            .combos("q", "-", Sleep(50))
-            .combos("1", "Load Slot 1", () => clipManager.loadFromSlot(1))
-            .combos("2", "Load Slot 2", () => clipManager.loadFromSlot(2))
-            .combos("3", "Load Slot 3", () => clipManager.loadFromSlot(3))
-            .combos("4", "Load Slot 4", () => clipManager.loadFromSlot(4))
-            .combos("5", "Load Slot 5", () => clipManager.loadFromSlot(5))
-            .combos("6", "Load Slot 6", () => clipManager.loadFromSlot(6))
-            .combos("7", "Load Slot 7", () => clipManager.loadFromSlot(7))
-            .combos("8", "Load Slot 8", () => clipManager.loadFromSlot(8))
-            .combos("9", "Load Slot 9", () => clipManager.loadFromSlot(9))
-            .combos("0", "Load Slot 0", () => clipManager.loadFromSlot(0))
-            .combos("PgDn", "Show Stats", () => ShowStats())
-            .combos("s", "Show Slots Search", () => clipManager.showSlotsSearch())
-        ; builder.setPreview(["Özel 1", "Özel 2"])
-        builder.setPreview(builder.tips)
-        this.handleFKey(builder)
-    }
+    ; handleCaret() {
+    ;     static builder := FKeyBuilder()
+    ;         .mainDefault(() => Send("{^}"))
+    ;         .combos("q", "-", Sleep(50))
+    ;         .combos("1", "Load Slot 1", () => clipManager.loadFromSlot(1))
+    ;         .combos("2", "Load Slot 2", () => clipManager.loadFromSlot(2))
+    ;         .combos("3", "Load Slot 3", () => clipManager.loadFromSlot(3))
+    ;         .combos("4", "Load Slot 4", () => clipManager.loadFromSlot(4))
+    ;         .combos("5", "Load Slot 5", () => clipManager.loadFromSlot(5))
+    ;         .combos("6", "Load Slot 6", () => clipManager.loadFromSlot(6))
+    ;         .combos("7", "Load Slot 7", () => clipManager.loadFromSlot(7))
+    ;         .combos("8", "Load Slot 8", () => clipManager.loadFromSlot(8))
+    ;         .combos("9", "Load Slot 9", () => clipManager.loadFromSlot(9))
+    ;         .combos("0", "Load Slot 0", () => clipManager.loadFromSlot(0))
+    ;         .combos("PgDn", "Show Stats", () => ShowStats())
+    ;         .combos("s", "Show Slots Search", () => clipManager.showSlotsSearch())
+    ;     ; builder.setPreview(["Özel 1", "Özel 2"])
+    ;     builder.setPreview(builder.tips)
+    ;     this.handleFKey(builder)
+    ; }
 
     handleLButton() {
         static builder := FKeyBuilder()
-            .mainDefault(() => {})
+            ; .mainEnd(() => (
+            ;     ;if appProfile == auto
+            ;     Sleep(50)
+            ;     MouseGetPos(&x, &y, &hWnd),
+            ;     ; title := WinGetTitle(hWnd)
+            ;     class := WinGetClass(hWnd),
+            ;     ; text := WinGetText(hWnd)
+            ;     ; OutputDebug("Title: " title "`nClass: " class "`nText: " SubStr(text, 1, 100))
+            ;     OutputDebug("Class: " class "`n")
+            ;     ; Qt5QWindowIcon
+            ; ))
             .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
             .combos("F15", "LB+F15() => Send('L 15')", () => Send("L 15"))
             .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
@@ -380,15 +390,15 @@ class HotkeyHandler {
         builder.setPreview([])
         this.handleFKey(builder)
     }
-/*
-    handleNums(number) {
-        builder := FKeyBuilder()
-            .mainDefault(() => Send(number))
-            .combos("SC029", number, () => clipManager.saveToSlot(number))
-            .combos("Tab", number, () => Sleep(number * 100))
-            .combos("CapsLock", number, () => clipManager.loadFromSlot(number))
-        builder.setPreview([])
-        this.handleFKey(builder)
-    }
-*/
+    /*
+        handleNums(number) {
+            builder := FKeyBuilder()
+                .mainDefault(() => Send(number))
+                .combos("SC029", number, () => clipManager.saveToSlot(number))
+                .combos("Tab", number, () => Sleep(number * 100))
+                .combos("CapsLock", number, () => clipManager.loadFromSlot(number))
+            builder.setPreview([])
+            this.handleFKey(builder)
+        }
+    */
 }

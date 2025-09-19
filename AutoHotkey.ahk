@@ -16,7 +16,7 @@
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
 ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
-TraySetIcon("shell32.dll", 300) ; 177
+TraySetIcon("shell32.dll", 300) ; 177 win10 win11 ikonlari degisik! degismesi lazim
 
 OutputDebug "Started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
 global state := ScriptState.getInstance("ver_h122")
@@ -124,59 +124,7 @@ DialogPauseGui() {
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 CapsLock:: keyHandler.handleCapsLock()
 ; SC029:: keyHandler.handleCaret() ;caret SC029  ^ != ^
-SC029::  ;caret VKDC SC029  ^ != ^
-{
-    startTime := A_TickCount
-    KeyWait A_ThisHotkey
-    if (A_TickCount - startTime < 500) {
-        ; nothing
-    } else {
-        SoundBeep(900, 100)
-        Send("{^}")
-        return
-    }
-
-
-    loadSave(number) {
-        if (pressedTogether) {
-            clipManager.loadFromSlot(number)
-        } else {
-            clipManager.saveToSlot(number)
-        }
-    }
-
-    actions := Map(
-        "1", { dsc: "Load Slot 1", fn: (*) => loadSave(1) },
-        "2", { dsc: "Load Slot 2", fn: (*) => loadSave(2) },
-        "3", { dsc: "Load Slot 3", fn: (*) => loadSave(3) },
-        "4", { dsc: "Load Slot 4", fn: (*) => loadSave(4) },
-        "5", { dsc: "Load Slot 5", fn: (*) => loadSave(5) },
-        "7", { dsc: "Load Slot 7", fn: (*) => loadSave(7) },
-        "8", { dsc: "Load Slot 8", fn: (*) => loadSave(8) },
-        "9", { dsc: "Load Slot 9", fn: (*) => loadSave(9) },
-        "0", { dsc: "Load Slot 0", fn: (*) => loadSave(0) },
-        "s", { dsc: "Search", fn: (*) => clipManager.showSlotsSearch() },
-        "VKDC", { dsc: "^", fn: (*) => SendInput("Ö") },
-    )
-
-    local list := []
-    list := "Clipboard Slots`n"
-    list .= "s search `n"
-    list .= "----------------`n"
-    list .= clipManager.getSlotsPreviewText()
-    ToolTip(list)
-
-    ih := InputHook("L1 T30", "{Esc}")
-    ih.Start(), ih.Wait()
-    key := ih.Input != "" ? ih.Input : ih.EndKey
-    ToolTip()
-
-    pressedTogether := GetKeyState(A_ThisHotkey, "P")
-
-    if actions.Has(key)
-        actions[key].fn()
-
-}
+SC029:: handleCaret()  ;caret VKDC SC029  ^ != ^
 
 
 ;Slota saklamak için (rakam suppress ile sindiliriliyor yan menüye alinabilir)
@@ -506,62 +454,9 @@ LButton:: {
 *7:: return
 *8:: return
 *9:: return
+*0:: return
 ; *RButton:: return
 #HotIf
-/*
-#::  ; Windows + # scancode değil direkt #
-{
-    startTime := A_TickCount
-
-    ih := InputHook("L1 T5", "{Esc}") ; 5 saniye boyunca 1 tuş bekler
-    ih.Start(), ih.Wait()
-    key := ih.Input != "" ? ih.Input : ih.EndKey
-
-    pressedTogether := GetKeyState(A_ThisHotkey, "P")
-    holdDuration := A_TickCount - startTime
-
-    ; --- 1 & 2: kısa/uzun basma bilgisi ---
-    if (holdDuration < 300)
-        OutputDebug "SHORT press (" holdDuration " ms)`n"
-    else
-        OutputDebug "LONG press (" holdDuration " ms)`n"
-
-    ; --- 3: basılıyken başka tuşa basma ---
-    if (pressedTogether && key != "")
-        OutputDebug "Pressed together with key: " key "`n"
-
-    ; --- 4: bırakıp sonra başka tuşa basma ---
-    if (!pressedTogether && key != "")
-        OutputDebug "Pressed after release: " key "`n"
-}
-*/
-/*
-#:: {
-    startTime := A_TickCount
-    KeyWait A_ThisHotkey ; # tuşu bırakılana kadar bekler
-    holdDuration := A_TickCount - startTime
-
-    if (holdDuration < 300) {
-        OutputDebug "SHORT press (" holdDuration " ms)`n"
-    } else {
-        OutputDebug "LONG press (" holdDuration " ms)`n"
-        return
-    }
-
-    ; Şimdi diğer tuşu bekleyelim (basılıyken veya bırakıldıktan sonra)
-    ih := InputHook("L1 T5", "{Esc}")
-    ih.Start(), ih.Wait()
-    key := ih.Input != "" ? ih.Input : ih.EndKey
-
-    if (key != "") {
-        pressedTogether := GetKeyState(A_ThisHotkey, "P")
-        if (pressedTogether)
-            OutputDebug "Pressed together with key: " key "`n"
-        else
-            OutputDebug "Pressed after release: " key "`n"
-    }
-}
-*/
 
 /*
 #::
@@ -588,13 +483,58 @@ LButton:: {
 ; }
 
 
-+:: {
-    builder := CascadeBuilder(500, 1500)
-        .mainKey((ms) => OutputDebug("Ana tuş: " ms "ms"))
+handleCaret() {
+    loadSave(dt, number) {
+        if (dt = 0) {
+            clipManager.loadFromSlot(number)
+        } else {
+            clipManager.saveToSlot(number)
+        }
+    }
+
+    builder := CascadeBuilder(1500, 1500)
+        .mainKey((dt) => SendInput("^"))
         .exitOnPressThreshold(1500)
-        .sideKey((ms) => OutputDebug("Yan tuş süresi: " ms "ms"))
-        .pairs("1", "Test 1", (ms) => OutputDebug("Slot 1: " ms "ms`n"))
-        .pairs("2", "Test 2", (ms) => OutputDebug("Slot 2: " ms " ms`n"))
-    builder.setPreview(["1: Slot 1 Yükle/Kaydet", "s: Arama Menüsü"])
-    cascade.cascadeKey(builder, A_ThisHotkey)
+        ;⏸️
+        .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+        .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
+        .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
+        .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
+        .pairs("4", "Test 4", (dt) => loadSave(dt, 4))
+        .pairs("5", "Test 5", (dt) => loadSave(dt, 5))
+        .pairs("6", "Test 6", (dt) => loadSave(dt, 6))
+        .pairs("7", "Test 7", (dt) => loadSave(dt, 7))
+        .pairs("8", "Test 8", (dt) => loadSave(dt, 8))
+        .pairs("9", "Test 9", (dt) => loadSave(dt, 9))
+        .pairs("0", "Test 0", (dt) => loadSave(dt, 0))
+    ; builder.setPreview(builder.getPairsTips())
+    builder.setPreview(clipManager.getSlotsPreviewText())
+    cascade.cascadeKey(builder, "^")
 }
+
+
+/*
+    builder.setPreview((builder) {
+        return builder.getPairsTips()
+    })
+
+handleCaret_() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("{^}"))
+        .combos("q", "-", Sleep(50))
+        .combos("1", "Load Slot 1", () => clipManager.loadFromSlot(1))
+        .combos("2", "Load Slot 2", () => clipManager.loadFromSlot(2))
+        .combos("3", "Load Slot 3", () => clipManager.loadFromSlot(3))
+        .combos("4", "Load Slot 4", () => clipManager.loadFromSlot(4))
+        .combos("5", "Load Slot 5", () => clipManager.loadFromSlot(5))
+        .combos("6", "Load Slot 6", () => clipManager.loadFromSlot(6))
+        .combos("7", "Load Slot 7", () => clipManager.loadFromSlot(7))
+        .combos("8", "Load Slot 8", () => clipManager.loadFromSlot(8))
+        .combos("9", "Load Slot 9", () => clipManager.loadFromSlot(9))
+        .combos("0", "Load Slot 0", () => clipManager.loadFromSlot(0))
+        .combos("PgDn", "Show Stats", () => ShowStats())
+        .combos("s", "Show Slots Search", () => clipManager.showSlotsSearch())
+    ; builder.setPreview(["Özel 1", "Özel 2"])
+    builder.setPreview(builder.tips)
+    this.handleFKey(builder)
+}*/

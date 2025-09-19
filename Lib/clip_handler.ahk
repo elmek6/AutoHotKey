@@ -34,7 +34,7 @@ class ClipSlot {
     }
 
     getSlotPreview(pos, maxLength := 200) {
-        content := this.getContent(pos)
+        content := Trim(this.getContent(pos))
         if (content == "") {
             return "(Boş)"
         }
@@ -313,13 +313,13 @@ class ClipboardManager {
     }
 
     getSlotsPreviewText() {
-        previewText := ""
+        previews := []
         Loop 13 {
             local preview := StrReplace(this.slotManager.getSlotPreview(A_Index, 100), "`n", " ")
             local displayName := this.slotManager.getName(A_Index)
-            previewText .= displayName " (" A_Index "): " preview "`n"
+            previews.Push(displayName " (" A_Index "): " preview)
         }
-        return Trim(previewText, "`n")
+        return previews
     }
 
     buildHistoryMenu() {
