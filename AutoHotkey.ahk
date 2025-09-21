@@ -27,7 +27,7 @@ global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global scriptStartTime := A_Now
-global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
+; global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
 ; global appProfil = auto;
 
 ; Örnek: Dinamik ayar değiştirme
@@ -74,12 +74,6 @@ Pause & End:: {
 A_TrayMenu.Add("Ayarlar", (*) => MsgBox("Ayarlar açıldı"))
 A_TrayMenu.Add("Çıkış", (*) => ExitApp())
 
-
-Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
-Pause & 2:: recorder.stop()  ; Kayıt durdur
-Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
-
-
 DialogPauseGui() {
     Suspend(1)
     _destryoGui() {
@@ -125,29 +119,107 @@ DialogPauseGui() {
 CapsLock:: keyHandler.handleCapsLock()
 ; SC029:: keyHandler.handleCaret() ;caret SC029  ^ != ^
 SC029:: handleCaret()  ;caret VKDC SC029  ^ != ^
+handleCaret() {
+    loadSave(dt, number) {
+        if (dt = 2) {
+            clipManager.saveToSlot(number)
+        } else {
+            clipManager.loadFromSlot(number)
+        }
+    }
 
+    builder := CascadeBuilder(400, 2500)
+        .mainKey((dt) {
+            if (dt = 1)
+                SendInput("{SC029}" dt)
+        })
+        .setExitOnPressType(1)
+        .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+        .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
+        .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
+        .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
+        .pairs("4", "Test 4", (dt) => loadSave(dt, 4))
+        .pairs("5", "Test 5", (dt) => loadSave(dt, 5))
+        .pairs("6", "Test 6", (dt) => loadSave(dt, 6))
+        .pairs("7", "Test 7", (dt) => loadSave(dt, 7))
+        .pairs("8", "Test 8", (dt) => loadSave(dt, 8))
+        .pairs("9", "Test 9", (dt) => loadSave(dt, 9))
+        .pairs("0", "Test 0", (dt) => loadSave(dt, 13))
+        .setPreview((b, pressType) {
+            if (pressType == 0) {
+                ; return builder.getPairsTips()
+                return clipManager.getSlotsPreviewText()
+            } else if (pressType == 1) {
+                return []
+            } else {
+                result := []
+                result.Push("-------------------- SAVE --------------------")
+                result.Push("----------------------------------------------")
+                for v in clipManager.getSlotsPreviewText()
+                    result.Push(v)
+                result.Push("kisa basma (" pressType "ms): Daha fazla seçenek")
+                return result
+            }
+        })
+    cascade.cascadeKey(builder, "^")
+}
 
-;Slota saklamak için (rakam suppress ile sindiliriliyor yan menüye alinabilir)
-; 1 & SC029:: clipManager.saveToSlot(1)
-; 2 & SC029:: clipManager.saveToSlot(2)
-; 3 & SC029:: clipManager.saveToSlot(3)
-; 4 & SC029:: clipManager.saveToSlot(4)
-; 5 & SC029:: clipManager.saveToSlot(5)
-; 6 & SC029:: clipManager.saveToSlot(6)
-; 7 & SC029:: clipManager.saveToSlot(7)
-; 8 & SC029:: clipManager.saveToSlot(8)
-; 9 & SC029:: clipManager.saveToSlot(9)
+; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
+; Pause & 2:: recorder.stop()  ; Kayıt durdur
+; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
 
+; Tab::Tab
+SC00F:: handleTab() ;TAB VK09 SC00F
+handleTab() {
+    loadSaveMacro(dt, number) {
+        if (dt = 2) {
+            recorder.recordAction(number, MacroRecorder.recType.key)
+        } else {
+            recorder.playKeyAction(number, 1)
+        }
+    }
 
-; 1:: keyHandler.handleNums(1) ;command menünün calismasina engel oluyor
-; 2:: keyHandler.handleNums(2)
-; 3:: keyHandler.handleNums(3)
-; 4:: keyHandler.handleNums(4)
-; 5:: keyHandler.handleNums(5)
-; 6:: keyHandler.handleNums(6)
-; 7:: keyHandler.handleNums(7)
-; 8:: keyHandler.handleNums(8)
-; 9:: keyHandler.handleNums(9)
+    builder := CascadeBuilder(400, 2500)
+        .mainKey((dt) {
+            if (dt = 0)
+                SendInput("{Tab}")
+        })  
+        .setExitOnPressType(0)
+        .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+        .pairs("1", "rec1.ahk", (dt) => loadSaveMacro(dt, 1))
+        .pairs("2", "rec2.ahk", (dt) => loadSaveMacro(dt, 2))
+        .pairs("3", "rec3.ahk", (dt) => loadSaveMacro(dt, 3))
+        .pairs("4", "rec4.ahk", (dt) => loadSaveMacro(dt, 4))
+        .pairs("5", "rec5.ahk", (dt) => loadSaveMacro(dt, 5))
+        .pairs("6", "rec6.ahk", (dt) => loadSaveMacro(dt, 6))
+        .pairs("7", "rec7.ahk", (dt) => loadSaveMacro(dt, 7))
+        .pairs("8", "rec8.ahk", (dt) => loadSaveMacro(dt, 8))
+        .pairs("9", "rec9.ahk", (dt) => loadSaveMacro(dt, 9))
+        .pairs("0", "rec0.ahk", (dt) => loadSaveMacro(dt, 13))
+        .setPreview((b, pressType) {
+            if (pressType = 1) {
+                return clipManager.getSlotsPreviewText()
+            } else {
+                return []
+            }
+
+        })
+    cascade.cascadeKey(builder, "Tab")
+}
+
+;Makro oynatma
+; Tab & 1:: clipManager.saveToSlot(1)
+; Tab & 2:: clipManager.saveToSlot(2)
+; Tab & 3:: clipManager.saveToSlot(3)
+; Tab & 4:: clipManager.saveToSlot(4)
+; Tab & 5:: clipManager.saveToSlot(5)
+; Tab & 6:: clipManager.saveToSlot(6)
+; Tab & 7:: clipManager.saveToSlot(7)
+; Tab & 8:: clipManager.saveToSlot(8)
+; Tab & 9:: clipManager.saveToSlot(9)
+;Makro kaydetme
+; 1 & Tab:: clipManager.saveToSlot(9)
+
 
 reloadScript() {
     state.saveStats(scriptStartTime)
@@ -195,7 +267,6 @@ ShowStats(showMsgBox := false) {
     return statsArray
 }
 
-Tab::Tab
 
 ~LButton:: keyHandler.handleLButton()
 ~MButton:: keyHandler.handleMButton()
@@ -223,20 +294,6 @@ RButton & WheelDown:: {
         state.setRightClickActive(false)
     }
 }
-
-;Makro oynatma
-; Tab & 1:: clipManager.saveToSlot(1)
-; Tab & 2:: clipManager.saveToSlot(2)
-; Tab & 3:: clipManager.saveToSlot(3)
-; Tab & 4:: clipManager.saveToSlot(4)
-; Tab & 5:: clipManager.saveToSlot(5)
-; Tab & 6:: clipManager.saveToSlot(6)
-; Tab & 7:: clipManager.saveToSlot(7)
-; Tab & 8:: clipManager.saveToSlot(8)
-; Tab & 9:: clipManager.saveToSlot(9)
-;Makro kaydetme
-; 1 & Tab:: clipManager.saveToSlot(9)
-
 
 showF13menu() {
     mySwitchMenu := Menu()
@@ -284,14 +341,14 @@ showF14menu() {
     statsMenu.Add()
     statsArray := ShowStats()
     for stat in statsArray {
-        statsMenu.Add(stat, (*) => (A_Clipboard := stat))
+        statsMenu.Add(stat, (*) => A_Clipboard := stat)
     }
     statsMenu.Add()
     latestError := ""
     for timestamp, message in errHandler.getAllErrors() {
         latestError := FormatTime(timestamp, "dd HH:mm:ss") ": " message
     }
-    statsMenu.Add("Copy last error", (*) => (A_Clipboard := latestError))
+    statsMenu.Add("Copy last error", (*) => (errHandler.copyLastError()))
     settingsMenu.Add("Show Stats", statsMenu)
 
     settingsMenu.Add("Awake ...", (*) => InputAwake())
@@ -472,45 +529,16 @@ LButton:: {
 
 }
 */
-; ß:: {
+; Tab:: {
 ;     TapOrHold(
-;         () => showX(), ;ToolTip("Short F2"),
+;         () => ToolTip("Short F2"),
 ;         () => ToolTip("Medium F2"),
 ;         () => ToolTip("Long F2")
+;         :aranan tuslar 1234567890s
 ;     )
 ;     Sleep(1000)
 ;     ToolTip()
 ; }
-
-
-handleCaret() {
-    loadSave(dt, number) {
-        if (dt = 0) {
-            clipManager.loadFromSlot(number)
-        } else {
-            clipManager.saveToSlot(number)
-        }
-    }
-
-    builder := CascadeBuilder(1500, 1500)
-        .mainKey((dt) => SendInput("^"))
-        .exitOnPressThreshold(1500)
-        ;⏸️
-        .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
-        .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
-        .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
-        .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
-        .pairs("4", "Test 4", (dt) => loadSave(dt, 4))
-        .pairs("5", "Test 5", (dt) => loadSave(dt, 5))
-        .pairs("6", "Test 6", (dt) => loadSave(dt, 6))
-        .pairs("7", "Test 7", (dt) => loadSave(dt, 7))
-        .pairs("8", "Test 8", (dt) => loadSave(dt, 8))
-        .pairs("9", "Test 9", (dt) => loadSave(dt, 9))
-        .pairs("0", "Test 0", (dt) => loadSave(dt, 0))
-    ; builder.setPreview(builder.getPairsTips())
-    builder.setPreview(clipManager.getSlotsPreviewText())
-    cascade.cascadeKey(builder, "^")
-}
 
 
 /*

@@ -29,10 +29,6 @@ class ClipSlot {
         this.slots[pos]["content"] := ""
     }
 
-    hasSlot(pos) {
-        return this.slots[pos]["content"] != ""
-    }
-
     getSlotPreview(pos, maxLength := 200) {
         content := Trim(this.getContent(pos))
         if (content == "") {
@@ -69,7 +65,7 @@ class ClipSlot {
         if !FileExist(AppConst.FILES_DIR "slots.json") {
             this.slots := []
             Loop 13 {
-                this.slots.Push(Map("name", "Slot " (A_Index - 1), "content", ""))
+                this.slots.Push(Map("name", "Slot " (A_Index), "content", ""))
             }
             return false
         }
@@ -157,9 +153,6 @@ class ClipboardManager {
 
     loadFromSlot(slotNumber) {
         try {
-            if (!this.slotManager.hasSlot(slotNumber)) {
-                throw Error("Slot " slotNumber " boş!")
-            }
             A_Clipboard := this.slotManager.getContent(slotNumber)
             ClipWait(1)
             if (A_Clipboard == "") {
@@ -294,6 +287,32 @@ class ClipboardManager {
         SetTimer(() => ToolTip(), -duration)
     }
 
+    buildSlotMenu() {
+        local slotMenu := Menu()
+        slotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
+        slotMenu.Add()
+        Loop 12 {
+            local preview := this.slotManager.getSlotPreview(A_Index)
+            local displayName := this.slotManager.getName(A_Index)
+            slotMenu.Add(displayName " (" A_Index "): " preview,
+                ((num) => (*) => this.loadFromSlot(num))(A_Index))
+        }
+        slotMenu.Add(this.slotManager.getName(13) " (" 13 "): " "[x]",
+            (*) => this.loadFromSlot(13))
+        return slotMenu
+    }
+
+    getSlotsPreviewText() {
+        previews := []
+        Loop 12 {
+            local preview := StrReplace(this.slotManager.getSlotPreview(A_Index, 100), "`n", " ")
+            local displayName := this.slotManager.getName(A_Index)
+            previews.Push(displayName " (" A_Index "): " preview)
+        }
+        previews.Push(displayName " (" 0 "): " "[x]")
+        return previews
+    }
+
     getHistoryPreviewList() {
         if (this.history.Length = 0) {
             return ["(Boş)"]
@@ -312,16 +331,6 @@ class ClipboardManager {
         return previewList
     }
 
-    getSlotsPreviewText() {
-        previews := []
-        Loop 13 {
-            local preview := StrReplace(this.slotManager.getSlotPreview(A_Index, 100), "`n", " ")
-            local displayName := this.slotManager.getName(A_Index)
-            previews.Push(displayName " (" A_Index "): " preview)
-        }
-        return previews
-    }
-
     buildHistoryMenu() {
         local historyMenu := Menu()
         historyMenu.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
@@ -338,19 +347,6 @@ class ClipboardManager {
         historyMenu.Add()
         historyMenu.Add("Clear history", this.clearHistory.Bind(this))
         return historyMenu
-    }
-
-    buildSlotMenu() {
-        local slotMenu := Menu()
-        slotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
-        slotMenu.Add()
-        Loop 13 {
-            local preview := this.slotManager.getSlotPreview(A_Index)
-            local displayName := this.slotManager.getName(A_Index)
-            slotMenu.Add(displayName " (" A_Index "): " preview,
-                ((num) => (*) => this.loadFromSlot(num))(A_Index))
-        }
-        return slotMenu
     }
 
     buildSaveSlotMenu() {

@@ -1,10 +1,13 @@
 class CascadeBuilder {
     __New(shortTime := 500, longTime := 1500) {
-        this._mainKey := ""
-        this._exitOnPressThreshold := longTime
-        this.shortTime := shortTime  ; Kısa basma: <500ms
-        this.longTime := longTime    ; Uzun basma: >1500ms
+        this.shortTime := shortTime
+        this.longTime := longTime
         this.timeOut := 30000
+        this.exitOnPressType := -1
+        this.durationType := -1
+
+        this._mainKey := ""
+        this.previewCallback := ""
         this.pairsActions := []
         this.tips := []
     }
@@ -14,13 +17,14 @@ class CascadeBuilder {
         return this
     }
 
-    exitOnPressThreshold(ms) {
-        this._exitOnPressThreshold := ms
+    setExitOnPressType(ms) { ;0 hata mi?
+        this.exitOnPressType := ms
         return this
     }
 
     setTimeOut(ms) { ;no action will close popup default 30sec
         this.timeOut := ms
+        return this
     }
 
     pairs(key, desc, fn) {
@@ -28,16 +32,8 @@ class CascadeBuilder {
         this.tips.Push(key ": " desc)
         return this
     }
-    /*
-    setPreview(prelist) {
-        currentTips := []
-        for pair in this.pairsActions {
-            currentTips.Push(pair.key ": " pair.desc)
-        }
-        this.tips := currentTips
-        return this.tips
-    }
-    */
+
+    getDurationType() => this.durationType
 
     getPairsTips() {
         currentTips := []
@@ -47,9 +43,26 @@ class CascadeBuilder {
         return currentTips
     }
 
-    setPreview(prelist) {
-        this.tips := prelist
+    ; setPreview(prelist) {this.tips := prelist}
+    setPreview(callback) {
+        if (IsObject(callback)) {
+            this.previewCallback := callback ; Callback'i sakla
+            ; this.tips := callback.Call(this) ; Direkt çağır ve tips'e ata
+        } else {
+            throw Error("setPreview: Callback bir fonksiyon olmalı!")
+        }
+        return this
     }
+    /*
+        setPreview(callback) {
+            if (IsObject(callback)) {
+                this.tips := callback.Call(this) ; Fonksiyonu çağır ve builder'ı parametre olarak geçir
+            } else {
+                throw Error("setPreview: Callback bir fonksiyon olmalı!")
+            }
+            return this
+        }
+    */
 }
 
 class CascadeMenu {
@@ -68,16 +81,18 @@ class CascadeMenu {
         }
     }
 
-    ;short 500 medium 1500 long
-    ;short medium 2000 2ßßß long
+    ;short 500 medium 1500 long 0 1 2
+    ;short medium 2000 2ßßß long 0 0 2
     getPressType(duration, shortTime, longTime) {
         if (duration <= shortTime) {
-            return 0
+            result := 0
         } else if (duration > shortTime && duration < longTime) {
-            return 1
+            result := 1
         } else {
-            return 2
+            result := 2
         }
+        this.durationType := result
+        return result
     }
 
     cascadeKey(builder, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
@@ -86,13 +101,14 @@ class CascadeMenu {
         }
 
         mainKey := builder._mainKey
-        exitOnPressThreshold := builder._exitOnPressThreshold
+        exitOnPressType := builder.exitOnPressType
         pairsActions := builder.pairsActions
         previewList := builder.tips
         shortTime := builder.shortTime
         longTime := builder.longTime
         timeOut := builder.timeOut
         senderKey := key
+        durationType := -1
 
         try {
             state.setBusy(1)
@@ -126,32 +142,34 @@ class CascadeMenu {
                         return
                     }
                 }
-                Sleep(10)
+                Sleep(30)
             }
             mainHoldTime := A_TickCount - startTime
-            ; OutputDebug("Ana tuş süresi: " mainHoldTime "ms`n")
+            mainPressType := this.getPressType(mainHoldTime, shortTime, longTime)
 
             ; Ana tuş aksiyonu
             if (mainKey != "" && IsObject(mainKey)) {
-                mainKey.Call(this.getPressType(mainHoldTime, shortTime, longTime))
+                mainKey.Call(mainPressType)
             }
 
-            ; Exit threshold kontrolü
-            if (mainHoldTime >= exitOnPressThreshold) {
-                ; OutputDebug("Ana tuş süresi exitOnPressThreshold (" exitOnPressThreshold "ms) aşıldı, yan tuş dinlenmiyor`n")
+            ; Exit threshold kontrolü, yoksa -1
+            if (mainPressType = exitOnPressType) {
                 if (previewList.Length > 0) {
                     ToolTip ("")
                 }
                 return
             }
 
-            ; Menü göster
-            if (previewList.Length > 0) {
-                text := ""
-                for i, item in previewList {
-                    text .= item "`n"
+            state.setBusy(2)
+            if (IsObject(builder.previewCallback)) {
+                previewList := builder.previewCallback.Call(this, mainPressType)
+                if (previewList.Length > 0) {
+                    text := ""
+                    for i, item in previewList {
+                        text .= item "`n"
+                    }
+                    ToolTip(text)
                 }
-                ToolTip(text)
             }
 
             ; Yan tuş dinle (GetKeyState ile, 5s süre sınırı)
@@ -177,12 +195,10 @@ class CascadeMenu {
                             }
                             Sleep(10)
                         }
-                        ; OutputDebug("Yan tuş: " pressedKey " ms: " sideHoldTime "ms`n")
                         p.action.Call(this.getPressType(sideHoldTime, shortTime, longTime))
                         ToolTip("")
                         break
                     } else if GetKeyState(senderKey, "P") || GetKeyState("Esc", "P") {
-                        ; OutputDebug("Same key pressed after release, exiting`n")
                         ToolTip()
                         return
                     }
@@ -200,7 +216,7 @@ class CascadeMenu {
             }
 
         } catch Error as err {
-            errHandler.handleError(err.Message " " key)
+            errHandler.handleError(err.Message " " key, err)
         } finally {
             state.setBusy(0)
         }

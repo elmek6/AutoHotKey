@@ -132,7 +132,7 @@ class MacroRecorder {
                         this.speed := m[1]
                 }
                 s := "; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-                s .= ";Press Pause & 3 to play. Press Pause & 1 to record. Press Pause & 2 to stop.`n;Parameters: --repeat=N (default 1), --sleep=0/1 (default 0), --speed=N (default 100)`n;#####SETTINGS#####`n;MouseMode=" this.mouseMode "`n;RecordSleep=" this.recordSleep "`n"
+                s .= ";Parameters: --repeat=N (default 1), --sleep=0/1 (default 0), --speed=N (default 100)`n;#####SETTINGS#####`n;MouseMode=" this.mouseMode "`n;RecordSleep=" this.recordSleep "`n"
                 s .= "repeatCount := 1`nsleepEnabled := 0`nspeed := " this.speed "`nfor _, arg in A_Args {`n    if (RegExMatch(arg, `"(?:-r|--repeat)=(\\d+)`", &m))`n        repeatCount := m[1]`n    else if (RegExMatch(arg, `"--sleep=([0-1])`", &m))`n        sleepEnabled := m[1]`n    else if (RegExMatch(arg, `"--speed=(\\d+)`", &m))`n        speed := m[1]`n}`n"
                 s .= "#HotIf`n^C:: {`n    FileAppend('" FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - User interrupted: " A_ScriptName "', '" AppConst.FILES_DIR "errors.log')`n    ExitApp(3)`n}`n"
                 s .= "Loop(repeatCount)`n{`n`nStartingValue := 0`ni := RegRead(`"HKEY_CURRENT_USER\SOFTWARE\`" A_ScriptName, `"i`", StartingValue)`nRegWrite(i + 1, `"REG_DWORD`", `"HKEY_CURRENT_USER\SOFTWARE\`" A_ScriptName, `"i`")`n`nSetKeyDelay(30)`nSendMode(`"Event`")`nSetTitleMatchMode(2)`n"
@@ -152,7 +152,6 @@ class MacroRecorder {
                         s .= "`n" v "`n"
                     }
                 }
-                s .= "`n`n}`nExitApp()`n`nPause & 3::ExitApp()`n"
                 s := RegExReplace(s, "\R", "`n")
                 if (FileExist(this.logFile))
                     FileDelete(this.logFile)
@@ -444,26 +443,26 @@ class MacroRecorder {
         typeCombo.Value := 1  ; Varsayılan: key
 
         ; Yatay butonlar
-        recordBtn := pauseGui.Add("Button", "w80 h25 x10 y40", "Record/Pause")
+        recordBtn := pauseGui.Add("Button", "w80 h25 x10 y40", "🛑")
         recordBtn.OnEvent("Click", (*) => (
             fileNumber := SubStr(fileCombo.Text, 4, 1),
             recordType := typeCombo.Text = "key" ? MacroRecorder.recType.key : (typeCombo.Text = "mouse" ? MacroRecorder.recType.mouse : MacroRecorder.recType.hybrid),
             this.recordAction(fileNumber, recordType)
         ))
 
-        stopBtn := pauseGui.Add("Button", "w80 h25 x95 y40", "Stop")
+        stopBtn := pauseGui.Add("Button", "w80 h25 x95 y40", "⏹️")
         stopBtn.OnEvent("Click", (*) => (
             this.stop()
         ))
 
-        playBtn := pauseGui.Add("Button", "w80 h25 x180 y40", "Play")
+        playBtn := pauseGui.Add("Button", "w80 h25 x180 y40", "▶️")
         playBtn.OnEvent("Click", (*) => (
             fileNumber := SubStr(fileCombo.Text, 4, 1),
             this.playKeyAction(fileNumber, "")
             _destroyGui()
         ))
 
-        exitBtn := pauseGui.Add("Button", "w80 h25 x265 y40", "Exit")
+        exitBtn := pauseGui.Add("Button", "w80 h25 x265 y40", "🚪")
         exitBtn.OnEvent("Click", (*) => (
             this.stop(),  ; Kayıt varsa durdur
             _destroyGui(),
