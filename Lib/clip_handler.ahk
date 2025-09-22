@@ -44,7 +44,7 @@ class ClipSlot {
 
     saveSlots() {
         try {
-            local jsonData := Jxon_Dump(this.slots) ;&this.slots sekinde yaz v2.1 ile daha iyi hafiza yönetimi
+            local jsonData := Jxon_Dump(&this.slots) ;&this.slots sekinde yaz v2.1 ile daha iyi hafiza yönetimi
             if !DirExist(AppConst.FILES_DIR) {
                 DirCreate(AppConst.FILES_DIR)
             }
@@ -56,7 +56,7 @@ class ClipSlot {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("Slot kaydetme başarısız: " err.Message " (Jxon_Dump hatası?)")
+            errHandler.handleError("Slot kaydetme başarısız: " err.Message " (Jxon_Dump hatası?)", err)
             return false
         }
     }
@@ -130,26 +130,52 @@ class ClipboardManager {
         this.loadHistory()
     }
 
-    saveToSlot(slotNumber) {
+    promptAndSaveSlot(slotNumber) {
         local temp := A_Clipboard
         Send("^c")
         Sleep(50)
         try {
-            ClipWait(1)  ;1 saniye timeout
+            ClipWait(1)
             if (A_Clipboard == "") {
                 throw Error("Kopyalama başarısız: Pano boş.")
             }
-            this.slotManager.setContent(slotNumber, A_Clipboard)
-            this.slotManager.saveSlots()
-            this.showClipboardPreview()
+            local content := A_Clipboard
+            local preview := StrReplace(SubStr(content, 1, 500), "`n", " ")
+            if (StrLen(content) > 500) {
+                preview .= "............................."
+            }
+            local oldName := this.slotManager.getName(slotNumber)
+            local title := "Save slot " slotNumber
+            local input := InputBox(preview, title, , oldName)
+            if (input.Result == "OK" && input.Value != "") {
+                this.storeToSlot(slotNumber, content, input.Value)
+                this.showMessage("Slot " slotNumber " : " input.Value)
+                this.showClipboardPreview()
+                return true
+            } else {
+                this.showMessage("iptal edildi.")
+                return false
+            }
         } catch as err {
+            errHandler.handleError("Slot kaydetme/adlandırma başarısız", err)
+            return false
+        } finally {
             A_Clipboard := temp
-            errHandler.handleError("Slot kaydetme başarısız: " err.Message)
+        }
+    }
+
+    storeToSlot(slotNumber, content, name) {
+        try {
+            this.slotManager.setContent(slotNumber, content)
+            this.slotManager.setName(slotNumber, name)
+            this.slotManager.saveSlots()
+            return true
+        } catch as err {
+            errHandler.handleError("Slot kaydetme başarısız: ", err)
             return false
         }
-        A_Clipboard := temp
-        return true
     }
+
 
     loadFromSlot(slotNumber) {
         try {
@@ -235,7 +261,7 @@ class ClipboardManager {
 
     saveHistory() {
         try {
-            local jsonData := Jxon_Dump(this.history)
+            local jsonData := Jxon_Dump(&this.history)
             local file := FileOpen(AppConst.FILE_CLIPBOARD, "w", "UTF-8")
             if (!file) {
                 throw Error("clipboards.json yazılamadı")
@@ -244,7 +270,7 @@ class ClipboardManager {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("History kaydetme başarısız: " err.Message)
+            errHandler.handleError("History kaydetme başarısız: " err.Message, err)
             return false
         }
     }
@@ -355,37 +381,9 @@ class ClipboardManager {
             local preview := this.slotManager.getSlotPreview(A_Index)
             local displayName := this.slotManager.getName(A_Index)
             saveSlotMenu.Add(displayName " (" A_Index "): " preview,
-                ((num) => (*) => this.saveToSlot(num))(A_Index))
+                ((num) => (*) => this.promptAndSaveSlot(num))(A_Index))
         }
         return saveSlotMenu
-    }
-
-    buildRenameSlotMenu() {
-        local renameSlotMenu := Menu()
-        Loop 13 {
-            local preview := this.slotManager.getSlotPreview(A_Index)
-            local displayName := this.slotManager.getName(A_Index)
-            renameSlotMenu.Add(displayName " (" A_Index "): " preview,
-                ((num) => (*) => this.renameSlot(num))(A_Index))
-        }
-        return renameSlotMenu
-    }
-
-    renameSlot(slotNumber) {
-        try {
-            local oldName := this.slotManager.getName(slotNumber)
-            local input := InputBox("Yeni isim girin:", "Slot Yeniden Adlandır", , oldName)
-            if (input.Result == "OK" && input.Value != "") {
-                this.slotManager.setName(slotNumber, input.Value)
-                this.slotManager.saveSlots()
-                this.showMessage("Slot " slotNumber " yeniden adlandırıldı: " input.Value)
-                return true
-            }
-            return false
-        } catch as err {
-            errHandler.handleError("Slot yeniden adlandırma başarısız: " err.Message)
-            return false
-        }
     }
 
     _addClipToMenu(menu, prefix, text) {
@@ -429,11 +427,29 @@ class ClipboardManager {
         ArrayFilter.getInstance().Show(this.history, "Clipboard History Search")
     }
 
+    ; showSlotsSearch() {
+    ;     local slotsArray := []
+    ;     Loop 13 {
+    ;         if (StrLen(this.slotManager.getContent(A_Index)) > 0)
+    ;             slotsArray.Push(this.slotManager.getContent(A_Index))
+    ;     }
+    ;     if (slotsArray.Length == 0) {
+    ;         this.showMessage("Slotlar boş!")
+    ;         return
+    ;     }
+    ;     ArrayFilter.getInstance().Show(slotsArray, "Slotlarda Arama")
+    ; }
+
     showSlotsSearch() {
         local slotsArray := []
-        Loop 13 {
-            if (StrLen(this.slotManager.getContent(A_Index)) > 0)
-                slotsArray.Push(this.slotManager.getContent(A_Index))
+        Loop 12 {
+            if (StrLen(this.slotManager.getContent(A_Index)) > 0) {
+                slotsArray.Push(Map(
+                    "slotNumber", A_Index,
+                    "name", this.slotManager.getName(A_Index),
+                    "content", this.slotManager.getContent(A_Index)
+                ))
+            }
         }
         if (slotsArray.Length == 0) {
             this.showMessage("Slotlar boş!")

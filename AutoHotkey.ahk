@@ -1,5 +1,5 @@
 ; #Requires AutoHotkey v2.0
-#Requires AutoHotkey >= 2.1-alpha.10
+#Requires AutoHotkey >= 2.1-alpha.18
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
@@ -15,11 +15,17 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
+;Json dosyasi olusturma F14 ile basilan menü icin özel tuslar
+
 ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
-TraySetIcon("shell32.dll", 300) ; 177 win10 win11 ikonlari degisik! degismesi lazim
+; TraySetIcon("shell32.dll", 300) ; 177 win10 win11 ikonlari degisik! degismesi lazim
+TraySetIcon("arrow.ico")
+A_TrayMenu.Add("Pause script...", (*) => DialogPauseGui())
+A_TrayMenu.Add("Çıkış", (*) => ExitApp())
+
 
 OutputDebug "Started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-global state := ScriptState.getInstance("ver_h122")
+global state := ScriptState.getInstance("ver_b123")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(20, 100000)
@@ -71,9 +77,6 @@ Pause & End:: {
 }
 #SuspendExempt False
 
-A_TrayMenu.Add("Ayarlar", (*) => MsgBox("Ayarlar açıldı"))
-A_TrayMenu.Add("Çıkış", (*) => ExitApp())
-
 DialogPauseGui() {
     Suspend(1)
     _destryoGui() {
@@ -122,7 +125,7 @@ SC029:: handleCaret()  ;caret VKDC SC029  ^ != ^
 handleCaret() {
     loadSave(dt, number) {
         if (dt = 2) {
-            clipManager.saveToSlot(number)
+            clipManager.promptAndSaveSlot(number)
         } else {
             clipManager.loadFromSlot(number)
         }
@@ -183,7 +186,7 @@ handleTab() {
         .mainKey((dt) {
             if (dt = 0)
                 SendInput("{Tab}")
-        })  
+        })
         .setExitOnPressType(0)
         .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
         .pairs("1", "rec1.ahk", (dt) => loadSaveMacro(dt, 1))
@@ -325,7 +328,6 @@ showF14menu() {
     ;belki tüm slotlar listelenip her birinin alt menüsü olarak load, save, rename, clear gelebiliri
     mySwitchMenu.Add("Load clip", clipManager.buildSlotMenu())
     mySwitchMenu.Add("Save clip", clipManager.buildSaveSlotMenu())
-    mySwitchMenu.Add("Rename slot", clipManager.buildRenameSlotMenu())
 
     historyMenu := clipManager.buildHistoryMenu()
     mySwitchMenu.Add("Clipboard history", historyMenu)

@@ -55,12 +55,14 @@ class ArrayFilter {
         local listBox := myGui.AddListBox("x10 y40 w360 h200")
 
         SelectAndClose(index) {
-            if (index < 1 || index > results.Length)
-                MsgBox ("Gecersiz deger return kullan burda")
-            local textToSend := results[index]
+            if (index < 1 || index > results.Length) {
+                MsgBox("Geçersiz değer!")
+                return
+            }
+            local selectedSlot := results[index]
             this.closeGuiAndHotkeys(myGui, listBox, SelectAndClose)
             Sleep(50)
-            this.sendText(textToSend)
+            this.sendText(selectedSlot["content"])  ; Sadece içeriği gönder
         }
 
         UpdateList() {
@@ -68,13 +70,15 @@ class ArrayFilter {
             listBox.Delete()
             results := []
             local idx := 1
-            for text in arrayData {
-                if (!search || InStr(StrLower(text), StrLower(search))) {
-                    local displayText := SubStr(text, 1, 100)
-                    if (StrLen(text) > 100)
-                        displayText .= "..."
+            for slot in arrayData {
+                local displayText := "Slot " slot["slotNumber"] ": " slot["name"] " - " SubStr(slot["content"], 1, 120)
+                if (StrLen(slot["content"]) > 120) {
+                    displayText .= "...................."
+                }
+                ; Hem isim hem içerikte ara
+                if (!search || InStr(StrLower(slot["name"]), StrLower(search)) || InStr(StrLower(slot["content"]), StrLower(search))) {
                     listBox.Add(["F" idx ". " displayText])
-                    results.Push(text)
+                    results.Push(slot)
                     idx++
                 }
             }
