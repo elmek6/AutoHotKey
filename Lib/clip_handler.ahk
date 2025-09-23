@@ -223,6 +223,12 @@ class ClipboardManager {
             return
         }
         local text := A_Clipboard
+        if (StrLen(text) > 1000) {
+            ToolTip(SubStr(text, 1, 1000) "`r`n..............."), SetTimer(() => ToolTip(), -1000)
+        } else
+        {
+            ToolTip(text), SetTimer(() => ToolTip(), -1000)
+        }
         if (StrLen(text) = 0)
             return
         if (StrLen(text) > this.maxClipSize)

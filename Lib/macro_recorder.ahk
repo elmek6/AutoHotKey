@@ -43,10 +43,10 @@ class MacroRecorder {
         this.relativeX := 0
         this.relativeY := 0
         this.mouseMode := "screen"
-        this.recordSleep := "false"
-        this.speed := 100
-        this.updateSettings()
-        OutputDebug("MacroRecorder initialized, recordType: " this.recordType)
+        this.prmSleepEnabled := 0
+        this.prmSetKeyDelay := 30
+        this.prmSpeedUp := 0.0
+        ;OutputDebug("MacroRecorder initialized, recordType: " this.recordType)
     }
 
     recordAction(fileNumber, recordType) {
@@ -58,7 +58,7 @@ class MacroRecorder {
             return
         }
         this.recordScreen()
-        OutputDebug("recordAction called, file: " this.logFile ", recordType: " recordType)
+        ;OutputDebug("recordAction called, file: " this.logFile ", recordType: " recordType)
     }
 
     recordScreen() {
@@ -74,7 +74,7 @@ class MacroRecorder {
         this.relativeY := y
         this.showTip("Recording")
         SetTimer(ObjBindMethod(this, "stop"), -this.maxRecordTime * 1000)
-        OutputDebug("recordScreen started, mouse at: (" x ", " y ")")
+        ;OutputDebug("recordScreen started, mouse at: (" x ", " y ")")
     }
 
     playPause() {
@@ -84,7 +84,7 @@ class MacroRecorder {
             this.setHotkey(false)
             SetTimer(ObjBindMethod(this, "stop"), 0)
             this.showTip("Paused")
-            OutputDebug("Paused recording")
+            ;OutputDebug("Paused recording")
         } else if (this.status == MacroRecorder.macroStatusType.pause) {
             this.recording := true
             this.status := MacroRecorder.macroStatusType.record
@@ -93,76 +93,62 @@ class MacroRecorder {
             SetTimer(ObjBindMethod(this, "stop"), -this.maxRecordTime * 1000)
             this.showTip("Recording")
             ; Debug
-            OutputDebug("Resumed recording")
+            ;OutputDebug("Resumed recording")
         }
-    }
-
-    updateSettings() {
-        if (FileExist(this.logFile)) {
-            logFileObject := FileOpen(this.logFile, "r")
-            Loop 3 {
-                logFileObject.ReadLine()
-            }
-            this.mouseMode := RegExReplace(logFileObject.ReadLine(), ".*=")
-            logFileObject.ReadLine()
-            this.recordSleep := RegExReplace(logFileObject.ReadLine(), ".*=")
-            logFileObject.Close()
-        } else {
-            this.mouseMode := "screen"
-            this.recordSleep := "false"
-        }
-        if (this.mouseMode != "screen" && this.mouseMode != "window" && this.mouseMode != "relative")
-            this.mouseMode := "screen"
-        if (this.recordSleep != "true" && this.recordSleep != "false")
-            this.recordSleep := "false"
-        OutputDebug("updateSettings: mouseMode=" this.mouseMode ", recordSleep=" this.recordSleep)
     }
 
     stop() {
         if (this.recording) {
             if (this.logArr.Length > 0 && this.logArr.Length <= this.maxLines) {
-                this.updateSettings()
-                this.speed := 100
-                for _, arg in A_Args {
-                    if (RegExMatch(arg, "(?:-r|--repeat)=(\d+)", &m))
-                        repeatCount := m[1]
-                    else if (RegExMatch(arg, "--sleep=([0-1])", &m))
-                        sleepEnabled := m[1]
-                    else if (RegExMatch(arg, "--speed=(\d+)", &m))
-                        this.speed := m[1]
-                }
+                prnRepeatCount := 1
                 s := "; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-                s .= ";Parameters: --repeat=N (default 1), --sleep=0/1 (default 0), --speed=N (default 100)`n;#####SETTINGS#####`n;MouseMode=" this.mouseMode "`n;RecordSleep=" this.recordSleep "`n"
-                s .= "repeatCount := 1`nsleepEnabled := 0`nspeed := " this.speed "`nfor _, arg in A_Args {`n    if (RegExMatch(arg, `"(?:-r|--repeat)=(\\d+)`", &m))`n        repeatCount := m[1]`n    else if (RegExMatch(arg, `"--sleep=([0-1])`", &m))`n        sleepEnabled := m[1]`n    else if (RegExMatch(arg, `"--speed=(\\d+)`", &m))`n        speed := m[1]`n}`n"
-                s .= "#HotIf`n^C:: {`n    FileAppend('" FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - User interrupted: " A_ScriptName "', '" AppConst.FILES_DIR "errors.log')`n    ExitApp(3)`n}`n"
-                s .= "Loop(repeatCount)`n{`n`nStartingValue := 0`ni := RegRead(`"HKEY_CURRENT_USER\SOFTWARE\`" A_ScriptName, `"i`", StartingValue)`nRegWrite(i + 1, `"REG_DWORD`", `"HKEY_CURRENT_USER\SOFTWARE\`" A_ScriptName, `"i`")`n`nSetKeyDelay(30)`nSendMode(`"Event`")`nSetTitleMatchMode(2)`n"
+                s .= "; run sample.ahk --repeat=1{1 to n} --speedUp=0.0{sleep * n} --keyDelay=30`n"
+                s .= "#SingleInstance Force`n"
+                s .= "prnRepeatCount := " prnRepeatCount "`n"
+                s .= "prmSpeedUp := " this.prmSpeedUp "`n"
+                s .= "prmSetKeyDelay := " this.prmSetKeyDelay "`n"
+                s .= "for _, arg in A_Args {`n"
+                s .= "    if (RegExMatch(arg, `"(?:-r|--repeat)=(\\d+)`", &m))`n"
+                s .= "        prnRepeatCount := m[1]`n"
+                s .= "    else if (RegExMatch(arg, `"--keyDelay=(\d+)`", &m))`n"
+                s .= "        prmSetKeyDelay := m[1]`n"
+                s .= "    else if (RegExMatch(arg, `"--speedUp=([\d\.]+)`", &m))`n"
+                s .= "        prmSpeedUp := m[1]`n"
+                s .= "}`n`n"
+                s .= "#HotIf`n"
+                s .= "^C:: {`n"
+                s .= "    ExitApp(3)`n"
+                s .= "}`n`n"
+                s .= "Loop (prnRepeatCount) {`n"
+                s .= "SetKeyDelay(30)`n"
+                s .= "SendMode(`"Event`")`n"
+                s .= "SetTitleMatchMode(2)`n"
                 if (this.mouseMode == "window") {
-                    s .= "`n;CoordMode(`"Mouse`", `"Screen`")`nCoordMode(`"Mouse`", `"Window`")`n"
+                    s .= "CoordMode(`"Mouse`", `"Window`")`n"
                 } else {
-                    s .= "`nCoordMode(`"Mouse`", `"Screen`")`n;CoordMode(`"Mouse`", `"Window`")`n"
+                    s .= "CoordMode(`"Mouse`", `"Screen`")`n"
                 }
                 For k, v in this.logArr {
-                    if (InStr(v, "Sleep(") && this.recordSleep = "false") {
-                        s .= "`n;" v "`n"
-                    } else if (InStr(v, "Sleep(")) {
+                    if (InStr(v, "Sleep(")) {
                         sleepValue := RegExMatch(v, "Sleep\((\d+)\)", &m) ? m[1] : 0
-                        scaledSleep := Round(sleepValue * 100 / this.speed)
-                        s .= "`nSleep(" scaledSleep ")`n"
+                        s .= "    Sleep( " sleepValue "* prmSpeedUp )`n"
                     } else {
-                        s .= "`n" v "`n"
+                        s .= v "`n"
                     }
                 }
+                s .= "}`n"
+                s .= "ExitApp"
                 s := RegExReplace(s, "\R", "`n")
                 if (FileExist(this.logFile))
                     FileDelete(this.logFile)
                 FileAppend(s, this.logFile)
-                OutputDebug("stop: Wrote " this.logArr.Length " actions to " this.logFile)
+                ;OutputDebug("stop: Wrote " this.logArr.Length " actions to " this.logFile)
             }
             this.recording := false
             this.status := MacroRecorder.macroStatusType.stop
             this.logArr := []
             this.setHotkey(false)
-            OutputDebug("stop: Recording stopped, status: " this.status)
+            ;OutputDebug("stop: Recording stopped, status: " this.status)
         }
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
         this.showTip()
@@ -177,7 +163,7 @@ class MacroRecorder {
         this.logFile := AppConst.FILES_DIR . this.baseFileName
         if (!FileExist(this.logFile)) {
             this.showTip()
-            MsgBox("Dosya bulunamadı: " this.logFile ". Önce kayıt yapın!", "Hata", 4096)
+            ToolTip("Dosya bulunamadı: " this.logFile), SetTimer(() => ToolTip(), -2000)
             return
         }
         this.playing := true
@@ -191,27 +177,24 @@ class MacroRecorder {
             this.status := MacroRecorder.macroStatusType.ready
             return
         }
-        command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
-        ErrorLevel := RunWait(command)
+        ; command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
+        prnRepeatCount := 1
+        params := Format(" --repeat={} --speedUp={} --keyDelay={}", prnRepeatCount, this.prmSpeedUp, this.prmSetKeyDelay)
+        command := ahk . " `"" . this.logFile . "`" " . params
+        scriptExitCode := RunWait(command)
         this.playing := false
         this.status := MacroRecorder.macroStatusType.ready
         this.showTip()
-        if (ErrorLevel != 0) {
-            this.errorHandler(this.baseFileName, ErrorLevel)
+        if (scriptExitCode != 0) {
+            errHandler.handleError("Script Error in " this.baseFileName ": - Exit code :" scriptExitCode)
+            ;OutputDebug("errorHandler: " errorMsg)
         }
-        OutputDebug("playKeyAction: Played " this.logFile ", exitCode: " ErrorLevel)
-    }
 
-    errorHandler(fileName, exitCode) {
-        logFile := AppConst.FILES_DIR . "errors.log"
-        errorMsg := FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") . " - Error in " . fileName . ": Exit code " . exitCode . "`n"
-        OutputDebug("errorHandler: " errorMsg)
-        FileAppend(errorMsg, logFile)
     }
 
     setHotkey(f := false) {
         f := f ? "On" : "Off"
-        OutputDebug("setHotkey: Setting hotkeys " f ", recordType: " this.recordType)
+        ;OutputDebug("setHotkey: Setting hotkeys " f ", recordType: " this.recordType)
         Loop 254 {
             k := GetKeyName(vk := Format("vk{:X}", A_Index))
             if (!(k ~= "^(?i:|Control|Alt|Shift|LButton|RButton|MButton)$"))
@@ -247,7 +230,7 @@ class MacroRecorder {
             Hotkey("$~*LButton", (*) => 0, "Off")
             Hotkey("$~*RButton", (*) => 0, "Off")
             Hotkey("$~*MButton", (*) => 0, "Off")
-            OutputDebug("setHotkey: All hotkeys turned off")
+            ;OutputDebug("setHotkey: All hotkeys turned off")
         }
     }
 
@@ -255,7 +238,7 @@ class MacroRecorder {
         Critical()
         k := GetKeyName(vksc := SubStr(A_ThisHotkey, 3))
         k := StrReplace(k, "Control", "Ctrl"), r := SubStr(k, 2)
-        OutputDebug("logKey: Key detected: " k ", vksc: " vksc ", recordType: " this.recordType)
+        ;OutputDebug("logKey: Key detected: " k ", vksc: " vksc ", recordType: " this.recordType)
         if (r ~= "^(?i:Alt|Ctrl|Shift|Win)$")
             this.logKeyControl(k)
         else if (k ~= "^(?i:LButton|RButton|MButton)$") {
@@ -276,13 +259,13 @@ class MacroRecorder {
         ErrorLevel := !KeyWait(key)
         Critical()
         this.log("{" k " Up}", true)
-        OutputDebug("logKeyControl: Control key: " k)
+        ;OutputDebug("logKeyControl: Control key: " k)
     }
 
     logKeyMouse(key) {
         if (this.recordType = MacroRecorder.recType.key)
             return
-        OutputDebug("logKeyMouse: Mouse: " key ", logArr: " this.logArr.Length)
+        ;OutputDebug("logKeyMouse: Mouse: " key ", logArr: " this.logArr.Length)
         k := SubStr(key, 1, 1)
         CoordMode("Mouse", "Screen")
         MouseGetPos(&X, &Y, &id)
@@ -334,7 +317,7 @@ class MacroRecorder {
             return
         k := StrLen(k) > 1 ? "{" k "}" : k ~= "\w" ? k : "{" vksc "}"
         this.log(k, true)
-        OutputDebug("logKeyboard: Key: " k ", vksc: " vksc)
+        ;OutputDebug("logKeyboard: Key: " k ", vksc: " vksc)
     }
 
     logWindow() {
@@ -362,7 +345,7 @@ class MacroRecorder {
             this.logArr[i] := s, this.log()
         else
             this.log(s)
-        OutputDebug("logWindow: Title: " title ", id: " id)
+        ;OutputDebug("logWindow: Title: " title ", id: " id)
     }
 
     log(str := "", keyboard := false) {
@@ -382,10 +365,10 @@ class MacroRecorder {
             this.stop()
             return
         }
-        if (Delay > 200)
-            this.logArr.Push((this.recordSleep == "false" ? ";" : "") "Sleep(" (Delay // 2) ")")
-        this.logArr.Push(keyboard ? "Send `"{Blind}" str "`"" : str)
-        OutputDebug("log: Added " (keyboard ? "keyboard" : "mouse") " action: " str ", logArr: " this.logArr.Length)
+        if (Delay > 250)
+            this.logArr.Push("    Sleep(" Delay ")") ;insansi gecikmeler !!
+        this.logArr.Push(keyboard ? "    Send `"{Blind}" str "`"" : str)
+        ;OutputDebug("log: Added " (keyboard ? "keyboard" : "mouse") " action: " str ", logArr: " this.logArr.Length)
     }
 
     showTip(s := "", pos := "y35", color := "Red|00FFFF") {
@@ -407,7 +390,7 @@ class MacroRecorder {
         MacroRecorder.RecordingControl := ShowTip.Add("Text", , s)
         ShowTip.Show("NA " . pos)
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 1000)
-        OutputDebug("showTip: Displayed: " s)
+        ;OutputDebug("showTip: Displayed: " s)
     }
 
     showTipChangeColor() {

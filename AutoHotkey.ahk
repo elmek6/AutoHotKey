@@ -17,13 +17,12 @@
 
 ;Json dosyasi olusturma F14 ile basilan menü icin özel tuslar
 
+
 ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
 ; TraySetIcon("shell32.dll", 300) ; 177 win10 win11 ikonlari degisik! degismesi lazim
 TraySetIcon("arrow.ico")
 A_TrayMenu.Add("Pause script...", (*) => DialogPauseGui())
 A_TrayMenu.Add("Çıkış", (*) => ExitApp())
-
-
 OutputDebug "Started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
 global state := ScriptState.getInstance("ver_b123")
 global keyCounts := KeyCounter.getInstance()
@@ -33,26 +32,25 @@ global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global scriptStartTime := A_Now
+
+global stateConfig := { none: 0, home: 1, work: 2 }
+global currentConfig := stateConfig.none
+
 ; global RelativeX := 0, RelativeY := 0  ; Macro recorder için global
 ; global appProfil = auto;
-
 ; Örnek: Dinamik ayar değiştirme
 ; recorder.settings := ["rec2.ahk", "F2", "keyboard", 600]  ; İstersen böyle çağır
-
-
 class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
     static FILE_LOG := "Files\log.txt"
 }
-
 CoordMode("Mouse", "Screen")
 OnExit HandleExit
 HandleExit(ExitReason, ExitCode) {
     state.saveStats(scriptStartTime)
     clipManager.__Delete()
 }
-
 state.loadStats()
 LoadPCSettings()
 LoadPCSettings() {
@@ -61,13 +59,14 @@ LoadPCSettings() {
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
         ToolTip("Bus timer kuruldu")
         SetTimer(() => ToolTip(), -1000)
+        global currentConfig := stateConfig.work
     } else {
         ; ToolTip("Home")
         ; SetTimer(() => ToolTip(), -1000)
         TrayTip("AHK", "Home profile", 1)
+        global currentConfig := stateConfig.home
     }
 }
-
 #SuspendExempt
 Pause & Home:: {
     DialogPauseGui()
@@ -76,7 +75,6 @@ Pause & End:: {
     reloadScript()
 }
 #SuspendExempt False
-
 DialogPauseGui() {
     Suspend(1)
     _destryoGui() {
@@ -116,8 +114,6 @@ DialogPauseGui() {
     pauseGui.Show("xCenter yCenter")
     SoundBeep(750)
 }
-
-
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 CapsLock:: keyHandler.handleCapsLock()
 ; SC029:: keyHandler.handleCaret() ;caret SC029  ^ != ^
@@ -166,10 +162,18 @@ handleCaret() {
         })
     cascade.cascadeKey(builder, "^")
 }
-
 ; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
 ; Pause & 2:: recorder.stop()  ; Kayıt durdur
 ; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
+
+#HotIf currentConfig = stateConfig.work ; hotif olan tuslari override eder
+>#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+>#2:: recorder.playKeyAction(2, 1)
+>#3:: TapOrHold( ;belki önüne birsey gelince olabilir?
+    () => recorder.playKeyAction(3, 1),
+    () => recorder.recordAction(3, MacroRecorder.recType.key)
+)
+#HotIf
 
 ; Tab::Tab
 SC00F:: handleTab() ;TAB VK09 SC00F
@@ -209,7 +213,6 @@ handleTab() {
         })
     cascade.cascadeKey(builder, "Tab")
 }
-
 ;Makro oynatma
 ; Tab & 1:: clipManager.saveToSlot(1)
 ; Tab & 2:: clipManager.saveToSlot(2)
@@ -222,14 +225,11 @@ handleTab() {
 ; Tab & 9:: clipManager.saveToSlot(9)
 ;Makro kaydetme
 ; 1 & Tab:: clipManager.saveToSlot(9)
-
-
 reloadScript() {
     state.saveStats(scriptStartTime)
     SoundBeep(500)
     Reload
 }
-
 ^ & PgUp:: ShowKeyHistoryLoop()
 ShowKeyHistoryLoop() {
     Loop {
@@ -240,7 +240,6 @@ ShowKeyHistoryLoop() {
         }
     }
 }
-
 ShowStats(showMsgBox := false) {
     stats := "Busy status: " state.getBusy() "`n"
     statsArray := ["Busy status: " state.getBusy()]
@@ -269,17 +268,12 @@ ShowStats(showMsgBox := false) {
     }
     return statsArray
 }
-
-
 ~LButton:: keyHandler.handleLButton()
 ~MButton:: keyHandler.handleMButton()
 ~RButton:: keyCounts.inc("RButton")
-
 ;~LButton & RButton::RButton & LButton:: {}
-
 ~MButton & WheelUp:: Send("#{NumpadAdd}")
 ~MButton & WheelDown:: Send("#{NumpadSub}")
-
 ; ##### (4) Ses İşlemleri
 RButton & WheelUp:: {
     state.setRightClickActive(true)
@@ -297,9 +291,9 @@ RButton & WheelDown:: {
         state.setRightClickActive(false)
     }
 }
-
 showF13menu() {
     mySwitchMenu := Menu()
+    mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
     mySwitchMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
     mySwitchMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
     mySwitchMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
@@ -316,7 +310,6 @@ showF13menu() {
     mySwitchMenu.Add("Always on top'", (*) => AlwaysOnTop())
     mySwitchMenu.Show()
 }
-
 showF14menu() {
     mySwitchMenu := Menu()
     mySwitchMenu.Add("Paste enter", (*) => clipManager.press("^v{Enter}"))
@@ -358,7 +351,6 @@ showF14menu() {
 
     mySwitchMenu.Show()
 }
-
 InputAwake() {
     ;buraya awakei iptal et yazabilir
     input := InputBox("Dakika gir:", "Uyku Engelle")
@@ -372,7 +364,6 @@ InputAwake() {
         }
     }
 }
-
 #a:: MouseMove(-10, 0, 0, "R")
 #s:: MouseMove(0, 10, 0, "R")
 #d:: MouseMove(10, 0, 0, "R")
@@ -380,7 +371,6 @@ InputAwake() {
 #q:: Click("Left")
 #e:: Click("Right")
 #y:: Send("{Enter}")
-
 CheckIdle(*) {
     state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
     if (A_TimeIdlePhysical < 60000) {
@@ -395,13 +385,11 @@ CheckIdle(*) {
         }
     }
 }
-
 ResetSleep(*) {
     DllCall("SetThreadExecutionState", "UInt", 0x80000000) ; varsayılan
     ; 1 saat dolunca yeniden idle takibine başla
     SetTimer(CheckIdle, 1000)
 }
-
 AlwaysOnTop() {
     activeWindow := WinGetTitle("A")
     try {
@@ -413,8 +401,6 @@ AlwaysOnTop() {
         SetTimer () => ToolTip(), -2000
     }
 }
-
-
 SC00D:: {    ; backtick ´ SC00D VKDD
     actions := Map(
         "1", { dsc: "Reload", fn: (*) => reloadScript() },
@@ -448,13 +434,11 @@ SC00D:: {    ; backtick ´ SC00D VKDD
     else
         SoundBeep(800)
 }
-
 SC121:: { ;home pc?
     Run "calc.exe"
     WinWait "Calculator"
     WinActivate
 }
-
 AppsKey:: { ;bus hom ?
     id := []
     id := WinGetList("ahk_class MozillaWindowClass")
@@ -465,11 +449,8 @@ AppsKey:: { ;bus hom ?
         }
     }
 }
-
 ^!+#Space:: Send("+{F10}") ;    SendInput("{AppsKey}") suppreme edilmiyor windows engelleiyor
-
 ;{ ; bus gülen adam tusu ;    MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA }
-
 ;Pause:: { SendInput("{vk5B down}v("{vk5B up}")}
 ScrollLock:: { ;test
     global ScrollState := GetKeyState("ScrollLock", "T")
@@ -477,14 +458,12 @@ ScrollLock:: { ;test
     SetTimer(() => ToolTip(), -800)
     Send "{ScrollLock}"
 }
-
 ;hom
 NumpadIns & NumpadDel:: Send("!{Tab}")
 NumpadDel & NumpadIns:: Send("!+{Tab}")
 NumpadIns:: Send("J")
 NumpadDel:: Send("L")
 NumpadClear:: Send("K")
-
 F13:: keyHandler.handleF13()
 F14:: keyHandler.handleF14()
 F15:: keyHandler.handleF15()
@@ -493,7 +472,6 @@ F17:: keyHandler.handleF17()
 F18:: keyHandler.handleF18()
 F19:: keyHandler.handleF19()
 F20:: keyHandler.handleF20()
-
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
     keyCounts.inc("DoubleCount")
@@ -502,8 +480,7 @@ LButton:: {
     Return
 }
 #HotIf
-
-#HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz
+#HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
 *3:: return
@@ -516,6 +493,20 @@ LButton:: {
 *0:: return
 ; *RButton:: return
 #HotIf
+
+
+; #HotIf WinActive("ahk_class Chrome_WidgetWin_1")
+; RButton & WheelUp:: {
+;     state.setRightClickActive(true)
+;     Send("{Volume_Up}")
+; }
+
+; RButton & WheelDown:: {
+;     state.setRightClickActive(true)
+;     Send("{Volume_Down}")
+; }
+; #HotIf
+
 
 /*
 #::
@@ -541,8 +532,6 @@ LButton:: {
 ;     Sleep(1000)
 ;     ToolTip()
 ; }
-
-
 /*
     builder.setPreview((builder) {
         return builder.getPairsTips()
