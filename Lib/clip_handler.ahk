@@ -3,14 +3,14 @@
 class ClipSlot {
     __New() {
         this.slots := []
-        ; artik 1-13 slotlarini kullaniyoruz
+        ; artık 1-13 slotlarını kullanıyoruz
         Loop 13 {
-            this.slots.Push(Map("name", "Slot " (A_Index), "content", ""))
+            this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
         }
     }
 
     getName(pos) {
-        return this.slots[pos]["name"] ? this.slots[pos]["name"] : "Slot " pos
+        return this.slots[pos]["name"] ? this.slots[pos]["name"] : "Slot " . pos
     }
 
     setName(pos, newName) {
@@ -44,11 +44,11 @@ class ClipSlot {
 
     saveSlots() {
         try {
-            local jsonData := Jxon_Dump(&this.slots) ;&this.slots sekinde yaz v2.1 ile daha iyi hafiza yönetimi
-            if !DirExist(AppConst.FILES_DIR) {
-                DirCreate(AppConst.FILES_DIR)
-            }
-            local file := FileOpen(AppConst.FILES_DIR "slots.json", "w", "UTF-8")
+
+            ; Slots array'ini JSON formatına çevir
+            local jsonData := jsongo.Stringify(this.slots)
+
+            local file := FileOpen(AppConst.FILES_DIR . "slots.json", "w", "UTF-8")
             if (!file) {
                 throw Error("slots.json yazılamadı")
             }
@@ -56,28 +56,28 @@ class ClipSlot {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("Slot kaydetme başarısız: " err.Message " (Jxon_Dump hatası?)", err)
+            errHandler.handleError("Slot kaydetme başarısız: " . err.Message, err)
             return false
         }
     }
 
     loadSlots() {
-        if !FileExist(AppConst.FILES_DIR "slots.json") {
-            this.slots := []
-            Loop 13 {
-                this.slots.Push(Map("name", "Slot " (A_Index), "content", ""))
-            }
+        if !FileExist(AppConst.FILES_DIR . "slots.json") {
+            this.initializeEmptySlots()
             return false
         }
+
         try {
-            local file := FileOpen(AppConst.FILES_DIR "slots.json", "r", "UTF-8")
+            local file := FileOpen(AppConst.FILES_DIR . "slots.json", "r", "UTF-8")
             if (!file) {
                 throw Error("slots.json okunamadı")
             }
             local data := file.Read()
             file.Close()
-            local loadedData := Jxon_Load(&data)
+
+            local loadedData := jsongo.Parse(data)
             this.slots := []
+
             Loop 13 {
                 if (A_Index <= loadedData.Length && loadedData[A_Index].Has("name") && loadedData[A_Index].Has("content")) {
                     this.slots.Push(Map(
@@ -85,17 +85,21 @@ class ClipSlot {
                         "content", loadedData[A_Index]["content"]
                     ))
                 } else {
-                    this.slots.Push(Map("name", "Slot " (A_Index), "content", ""))
+                    this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
                 }
             }
             return true
         } catch as err {
-            errHandler.handleError("Slot yükleme başarısız: " err.Message)
-            this.slots := []
-            Loop 13 {
-                this.slots.Push(Map("name", "Slot " (A_Index), "content", ""))
-            }
+            errHandler.handleError("Slot yükleme başarısız: " . err.Message)
+            this.initializeEmptySlots()
             return false
+        }
+    }
+
+    initializeEmptySlots() { ;*
+        this.slots := []
+        Loop 13 {
+            this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
         }
     }
 }
@@ -145,11 +149,11 @@ class ClipboardManager {
                 preview .= "............................."
             }
             local oldName := this.slotManager.getName(slotNumber)
-            local title := "Save slot " slotNumber
+            local title := "Save slot " . slotNumber
             local input := InputBox(preview, title, , oldName)
             if (input.Result == "OK" && input.Value != "") {
                 this.storeToSlot(slotNumber, content, input.Value)
-                this.showMessage("Slot " slotNumber " : " input.Value)
+                this.showMessage("Slot " . slotNumber . " : " . input.Value)
                 this.showClipboardPreview()
                 return true
             } else {
@@ -176,7 +180,6 @@ class ClipboardManager {
         }
     }
 
-
     loadFromSlot(slotNumber) {
         try {
             A_Clipboard := this.slotManager.getContent(slotNumber)
@@ -185,14 +188,14 @@ class ClipboardManager {
                 throw Error("Pano yükleme başarısız.")
             }
             Sleep(20)
-            if (state.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alinabilir
+            if (state.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alınabilir
                 SendText(A_Clipboard)
             } else {
                 SendInput("^v")
             }
             return true
         } catch as err {
-            errHandler.handleError("Slot yükleme başarısız: " err.Message)
+            errHandler.handleError("Slot yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -208,10 +211,10 @@ class ClipboardManager {
                 Send("^v")
                 return true
             } else {
-                throw Error("Geçmişte " index " numaralı kayıt yok.")
+                throw Error("Geçmişte " . index . " numaralı kayıt yok.")
             }
         } catch as err {
-            errHandler.handleError("History yükleme başarısız: " err.Message)
+            errHandler.handleError("History yükleme başarısız: " . err.Message)
             return false
         } finally {
             OnClipboardChange(this.clipboardWatcher, 1)
@@ -224,9 +227,8 @@ class ClipboardManager {
         }
         local text := A_Clipboard
         if (StrLen(text) > 1000) {
-            ToolTip(SubStr(text, 1, 1000) "`r`n..............."), SetTimer(() => ToolTip(), -1000)
-        } else
-        {
+            ToolTip(SubStr(text, 1, 1000) . "`r`n..............."), SetTimer(() => ToolTip(), -1000)
+        } else {
             ToolTip(text), SetTimer(() => ToolTip(), -1000)
         }
         if (StrLen(text) = 0)
@@ -267,7 +269,7 @@ class ClipboardManager {
 
     saveHistory() {
         try {
-            local jsonData := Jxon_Dump(&this.history)
+            local jsonData := jsongo.Stringify(this.history)
             local file := FileOpen(AppConst.FILE_CLIPBOARD, "w", "UTF-8")
             if (!file) {
                 throw Error("clipboards.json yazılamadı")
@@ -276,7 +278,7 @@ class ClipboardManager {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("History kaydetme başarısız: " err.Message, err)
+            errHandler.handleError("History kaydetme başarısız: " . err.Message, err)
             return false
         }
     }
@@ -292,14 +294,15 @@ class ClipboardManager {
             }
             local data := file.Read()
             file.Close()
-            this.history := Jxon_Load(&data)
+
+            this.history := jsongo.Parse(data)
             this.clipLength := this.history.Length
             if (this.clipLength > 0) {
                 this.lastClip := this.history[this.clipLength]
             }
             return true
         } catch as err {
-            errHandler.handleError("History yükleme başarısız: " err.Message)
+            errHandler.handleError("History yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -326,10 +329,10 @@ class ClipboardManager {
         Loop 12 {
             local preview := this.slotManager.getSlotPreview(A_Index)
             local displayName := this.slotManager.getName(A_Index)
-            slotMenu.Add(displayName " (" A_Index "): " preview,
+            slotMenu.Add(displayName . " (" . A_Index . "): " . preview,
                 ((num) => (*) => this.loadFromSlot(num))(A_Index))
         }
-        slotMenu.Add(this.slotManager.getName(13) " (" 13 "): " "[x]",
+        slotMenu.Add(this.slotManager.getName(13) . " (" . 13 . "): " . "[x]",
             (*) => this.loadFromSlot(13))
         return slotMenu
     }
@@ -339,9 +342,9 @@ class ClipboardManager {
         Loop 12 {
             local preview := StrReplace(this.slotManager.getSlotPreview(A_Index, 100), "`n", " ")
             local displayName := this.slotManager.getName(A_Index)
-            previews.Push(displayName " (" A_Index "): " preview)
+            previews.Push(displayName . " (" . A_Index . "): " . preview)
         }
-        previews.Push(displayName " (" 0 "): " "[x]")
+        previews.Push(displayName . " (" . 0 . "): " . "[x]")
         return previews
     }
 
@@ -358,7 +361,7 @@ class ClipboardManager {
             local display := StrReplace(SubStr(text, 1, 100), "`n", " ")
             if (StrLen(text) > 100)
                 display .= "..."
-            previewList.Push("Clip " A_Index ": " display)
+            previewList.Push("Clip " . A_Index . ": " . display)
         }
         return previewList
     }
@@ -373,7 +376,7 @@ class ClipboardManager {
             local index := this.history.Length - A_Index + 1
             local text := this.history[index]
             local menuIndex := A_Index
-            this._addClipToMenu(historyMenu, "Clip " menuIndex ": ", text)
+            this._addClipToMenu(historyMenu, "Clip " . menuIndex . ": ", text)
         }
 
         historyMenu.Add()
@@ -386,7 +389,7 @@ class ClipboardManager {
         Loop 13 {
             local preview := this.slotManager.getSlotPreview(A_Index)
             local displayName := this.slotManager.getName(A_Index)
-            saveSlotMenu.Add(displayName " (" A_Index "): " preview,
+            saveSlotMenu.Add(displayName . " (" . A_Index . "): " . preview,
                 ((num) => (*) => this.promptAndSaveSlot(num))(A_Index))
         }
         return saveSlotMenu
@@ -414,7 +417,7 @@ class ClipboardManager {
                 Send(commands)
             }
         } catch as err {
-            errHandler.handleError("Komut çalıştırma başarısız: " err.Message)
+            errHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
         }
     }
 

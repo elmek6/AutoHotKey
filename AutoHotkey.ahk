@@ -3,7 +3,7 @@
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
-#Include <Jxon> ;Lib klasörünün icindeyse böyle yaziliyor
+#Include <jsongo.v2>  ; Jxon yerine jsongo.v2.ahk
 #Include <script_state>
 #Include <key_counter>
 #Include <error_handler>
@@ -11,6 +11,7 @@
 #Include <hotkey_handler>
 #Include <macro_recorder>
 #Include <cascade_menu>
+#Include <app_shorts>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
@@ -31,6 +32,7 @@ global clipManager := ClipboardManager.getInstance(20, 100000)
 global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
+global appShorts := ProfileManager.getInstance()
 global scriptStartTime := A_Now
 
 global stateConfig := { none: 0, home: 1, work: 2 }
@@ -44,7 +46,12 @@ class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
     static FILE_LOG := "Files\log.txt"
+    static FILE_PROFILE := "Files\profiles.json"
 }
+; if !DirExist(AppConst.FILES_DIR) {
+;     DirCreate(AppConst.FILES_DIR)
+; }
+
 CoordMode("Mouse", "Screen")
 OnExit HandleExit
 HandleExit(ExitReason, ExitCode) {
@@ -291,8 +298,31 @@ RButton & WheelDown:: {
         state.setRightClickActive(false)
     }
 }
+
 showF13menu() {
+    profile := appShorts.findProfileByWindow()
+
     mySwitchMenu := Menu()
+
+    ; Aktif pencere sınıfını kopyalama
+    mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (
+        A_Clipboard := WinGetClass("A"),
+        ToolTip("Kopyalandı: " WinGetClass("A")),
+        SetTimer(() => ToolTip(), -2000)
+    ))
+
+    ; Profil yoksa veya varsa uygun seçenekleri ekle
+    if (!profile) {
+        mySwitchMenu.Add("Yeni Profil Ekle", (*) => appShorts.createNewProfile())
+    } else {
+        mySwitchMenu.Add("Yeni Kısayol Ekle (" profile.profileName ")", (*) => appShorts.addShortCutToProfile(profile))
+        mySwitchMenu.Add(profile.profileName, (*) => Sleep)  ; Profil adı, tıklanamaz
+        mySwitchMenu.Add()
+        for sc in profile.shortCuts {
+            mySwitchMenu.Add(sc.shortCutName " (" sc.hotkey ")", (*) => sc.play())
+        }
+    }
+
     mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
     mySwitchMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
     mySwitchMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
