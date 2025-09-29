@@ -1,26 +1,27 @@
 SetTitleMatchMode(2)  ; Title'da kısmi eşleşme için
 
 class ShortCut {
-    __New(name, keyStrokes := []) {
+    __New(name, keyDescription := "", keyStrokes := []) {
         this.shortCutName := name
-        this.keyStrokes := keyStrokes  ; ["Send `{Ctrl down}`", "Send `a`", "Send `{Ctrl up}`"]
+        this.keyDescription := keyDescription  ; Serbest metin, hotkey bağlamı yok
+        this.keyStrokes := keyStrokes
     }
 
     play() {
+        Sleep(100)
         for stroke in this.keyStrokes {
             try {
-                if (InStr(stroke, "Send")) {
-                    ; Send komutlarını direkt çalıştır
-                    Send(SubStr(stroke, 7))  ; "Send `{Blind}a`" -> `{Blind}a`
-                } else if (InStr(stroke, "Sleep")) {
-                    ; Sleep komutlarını ayrıştır
-                    sleepTime := RegExReplace(stroke, ".*Sleep\((\d+)\).*", "$1")
-                    Sleep(sleepTime)
-                } else {
-                    errHandler.handleError("Geçersiz makro komutu: " stroke)
-                }
+                Send(stroke)
+                ; if (InStr(stroke, "Send")) {
+                ;     Send(SubStr(stroke, 7))  ; "Send `{Blind}a`" -> `{Blind}a`
+                ; } else if (InStr(stroke, "Sleep")) {
+                ;     sleepTime := RegExReplace(stroke, ".*Sleep\((\d+)\).*", "$1")
+                ;     Sleep(sleepTime)
+                ; } else {
+                ;     errHandler.handleError("Geçersiz makro komutu: " stroke)
+                ; }
             } catch as err {
-                errHandler.handleError("Makro çalıştırma hatası: " stroke, err)
+                errHandler.handleError("AppProfile.play! hatali satir: " stroke, err)
             }
         }
     }
@@ -50,6 +51,39 @@ class AppProfile {
     }
 }
 
+class ProfileBuilder {
+    __New(profileManager) {
+        this.profileManager := profileManager
+    }
+
+    buildMenu() {
+        menuItems := []
+        profile := this.profileManager.findProfileByWindow()
+        if (!profile) {
+            ; OutputDebug("Profil bulunamadı, sadece 'Yeni Profil Ekle' gösteriliyor.")
+            menuItems.Push({ key: "p", desc: "Yeni Profil Ekle", action: (*) => this.profileManager.createNewProfile() })
+            return menuItems
+        }
+
+        ; OutputDebug("Profil bulundu: " profile.profileName ", shortCuts ekleniyor.")
+        for shortCut in profile.shortCuts {
+            key := shortCut.keyDescription ? shortCut.keyDescription : shortCut.shortCutName
+            desc := shortCut.shortCutName . (shortCut.keyDescription ? " - " . shortCut.keyDescription : "")
+            menuItems.Push({
+                key: key,
+                desc: desc,
+                action: (*) => shortCut.play()
+            })
+        }
+        menuItems.Push({
+            key: "a",
+            desc: "Aksiyon Ekle (" . profile.profileName . ")",
+            action: (*) => this.profileManager.addShortCutToProfile(profile)
+        })
+        return menuItems
+    }
+}
+
 class ProfileManager {
     static instance := ""
 
@@ -66,20 +100,24 @@ class ProfileManager {
         }
         this.profiles := []
         this.currentProfile := ""
-        ; this.load()
+        this.load()
     }
 
     findProfileByWindow() {
+        local title := state.getActiveTitle()
+        local hwnd := state.getActiveHwnd()
+        local className := state.getActiveClassName()
         try {
-            activeWin := WinGetID("A")
-            className := WinGetClass("ahk_id " . activeWin)
-            title := WinGetTitle("ahk_id " . activeWin)
-
+            if (title == "") {
+                return
+            }
             for profile in this.profiles {
-                if (profile.className && profile.className != className)
+                if (profile.className && profile.className != className) {
                     continue
-                if (profile.title && !InStr(title, profile.title))
+                }
+                if (profile.title && !InStr(title, profile.title)) {
                     continue
+                }
                 return profile
             }
         } catch as err {
@@ -95,9 +133,9 @@ class ProfileManager {
 
     createNewProfile() {
         try {
-            activeWin := WinGetID("A")
-            className := WinGetClass("ahk_id " . activeWin)
-            title := WinGetTitle("ahk_id " . activeWin)
+            local title := state.getActiveTitle()
+            local hwnd := state.getActiveHwnd()
+            local className := state.getActiveClassName()
 
             profileGui := Gui("+AlwaysOnTop", "Yeni Profil Ekle")
             profileGui.Add("Text", , "Profil Adı:")
@@ -122,103 +160,101 @@ class ProfileManager {
 
     addShortCutToProfile(profile) {
         try {
-            ; MacroRecorder ile kayıt başlat
-            recorder := MacroRecorder.getInstance()
-            recorder.recordScreen()
-
-            while (recorder.recording || recorder.status == MacroRecorder.macroStatusType.pause) {
-                Sleep(100)
-            }
-
-            keyStrokes := recorder.stop(true)  ; logArr al
-
-            macroGui := Gui("+AlwaysOnTop", "Yeni Makro Ekle")
-            macroGui.Add("Text", , "Makro İçeriği:")
-            contentText := macroGui.Add("Edit", "w400 h200 ReadOnly Multi", keyStrokes.Join("`n"))
-            macroGui.Add("Text", , "Makro Adı:")
+            macroGui := Gui("+AlwaysOnTop", "Yeni Aksiyon Ekle")
+            macroGui.Add("Text", , "Aksiyon Adı:")
             nameEdit := macroGui.Add("Edit", "w300")
-            macroGui.Add("Text", , "Kısayol Tuşu (ör: #F1, Ctrl+F2):")
 
+            macroGui.Add("Text", , "Kısayol Açıklaması (bilgi amaçlı, örn: F1):")
+            keyDescEdit := macroGui.Add("Edit", "w300")
+
+            macroGui.Add("Text", , "Aksiyonlar (her satır bir komut, örn: Send ^f`nSleep(100)):")
+            macroGui.Add("Text", , "Makro kaydetmek için tuşlara basın, durdurmak için Esc kullanın.")
+            strokesEdit := macroGui.Add("Edit", "w400 h200 Multi")
+
+            recordBtn := macroGui.Add("Button", "w150", "Makro Kaydet")
+            recordBtn.OnEvent("Click", (*) {
+                recorder := MacroRecorder.getInstance()
+                ToolTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan")
+                SetTimer(() => ToolTip(), -3000)
+                recorder.recordScreen(true)  ; Strokes modunda kaydet
+                while (recorder.recording || recorder.status == MacroRecorder.macroStatusType.pause) {
+                    Sleep(100)
+                }
+                keyStrokes := recorder.stop(true)  ; logArr al
+                strokesEdit.Value .= (strokesEdit.Value ? "`n" : "") . keyStrokes.Join("`n")  ; Append et
+            })
 
             okBtn := macroGui.Add("Button", "Default", "OK")
             okBtn.OnEvent("Click", (*) {
-                newShortCut := ShortCut(nameEdit.Value, keyStrokes),
-                    profile.addShortCut(newShortCut)
+                strokesArr := StrSplit(strokesEdit.Value, "`n", "`r")
+                ; Boş satırları filtrele
+                filteredStrokes := []
+                for stroke in strokesArr {
+                    if (Trim(stroke) != "") {
+                        filteredStrokes.Push(stroke)
+                    }
+                }
+                newShortCut := ShortCut(nameEdit.Value, keyDescEdit.Value, filteredStrokes)
+                profile.addShortCut(newShortCut)
                 this.save()
                 macroGui.Destroy()
             })
 
             macroGui.Show()
         }
+    }
 
-        save() {
-            try {
-                jsonStruct := Map("projectName", "ProfileManager", "profiles", [])
-                for profile in this.profiles {
-                    profMap := Map("profileName", profile.profileName, "className", profile.className,
-                        "title", profile.title, "shortCuts", [])
-                    for sc in profile.shortCuts {
-                        profMap["shortCuts"].Push(Map("shortCutName", sc.shortCutName,
-                            "keyStrokes", sc.keyStrokes))
-                    }
-                    jsonStruct["profiles"].Push(profMap)
+    save() {
+        try {
+            jsonStruct := Map("projectName", "ProfileManager", "profiles", [])
+            for profile in this.profiles {
+                profMap := Map("profileName", profile.profileName, "className", profile.className,
+                    "title", profile.title, "shortCuts", [])
+                for sc in profile.shortCuts {
+                    profMap["shortCuts"].Push(Map("shortCutName", sc.shortCutName,
+                        "keyDescription", sc.keyDescription, "keyStrokes", sc.keyStrokes))
                 }
-                FileAppend(jsongo.Stringify(jsonStruct), AppConst.FILE_PROFILE, "UTF-8")
-            } catch as err {
-                errHandler.handleError("Profil kaydetme hatası: " . err.Message, err)
+                jsonStruct["profiles"].Push(profMap)
             }
+            local jsonData := jsongo.Stringify(jsonStruct)
+            local file := FileOpen(AppConst.FILE_PROFILE, "w", "UTF-8")
+            if (!file) {
+                throw Error("slots.json yazılamadı")
+            }
+            file.Write(jsonData)
+            file.Close()
+        } catch as err {
+            errHandler.handleError("Profil kaydetme hatası: " . err.Message, err)
         }
+    }
 
-        load() {
-            if (!FileExist(AppConst.FILE_PROFILE))
-                return
-            try {
-                data := FileRead(AppConst.FILE_PROFILE, "UTF-8")
-                loaded := jsongo.Parse(data)
-                this.profiles := []
-                for profData in loaded["profiles"] {
-                    shortCuts := []
+    load() {
+        if (!FileExist(AppConst.FILE_PROFILE)) {
+            return
+        }
+        try {
+            file := FileOpen(AppConst.FILE_PROFILE, "r", "UTF-8")
+            if (!file) {
+                throw Error("slots.json okunamadı")
+            }
+            local data := file.Read()
+            file.Close()
+            local loaded := jsongo.Parse(data)
+
+            this.profiles := []
+            for profData in loaded["profiles"] {
+                shortCuts := []
+                if (profData.Has("shortCuts")) {
                     for scData in profData["shortCuts"] {
-                        shortCuts.Push(ShortCut(scData["shortCutName"], Data["keyStrokes"]))
+                        shortCuts.Push(ShortCut(scData["shortCutName"], scData["keyDescription"], scData["keyStrokes"]))
                     }
-                    profile := AppProfile(profData["profileName"], profData["className"], profData["title"], shortCuts)
-                    this.profiles.Push(profile)
                 }
-
-            } catch as err {
-                errHandler.handleError("Profil yükleme hatası: " . err.Message, err)
+                profile := AppProfile(profData["profileName"], profData["className"], profData["title"], shortCuts)
+                this.profiles.Push(profile)
             }
+        } catch as err {
+            OutputDebug("Profil yükleme hatası: " err.Message)
+            this.profiles := []
         }
-
-        showProfileList() {
-            listGui := Gui("+AlwaysOnTop", "Profil Listesi")
-
-            if (this.profiles.Length == 0) {
-                listGui.Add("Text", , "Henüz profil oluşturulmamış.")
-                newBtn := listGui.Add("Button", "w100", "Yeni Profil")
-                newBtn.OnEvent("Click", (*) => (listGui.Destroy(), this.createNewProfile()))
-            } else {
-                listGui.Add("Text", , "Mevcut Profiller:")
-
-                for i, profile in this.profiles {
-                    profileText := profile.profileName . " (" . profile.shortCuts.Length . " kısayol)"
-                    listGui.Add("Text", "w300", profileText)
-
-                    addBtn := listGui.Add("Button", "w80 x+10", "Kısayol Ekle")
-                    addBtn.OnEvent("Click", ((p) => (*) => this.addShortCutToProfile(p))(profile))
-                }
-
-                listGui.Add("Text", "w300 xm", "")  ; Spacer
-                newBtn := listGui.Add("Button", "w100", "Yeni Profil")
-                newBtn.OnEvent("Click", (*) => (listGui.Destroy(), this.createNewProfile()))
-            }
-
-            closeBtn := listGui.Add("Button", "w80 x+10", "Kapat")
-            closeBtn.OnEvent("Click", (*) => listGui.Destroy())
-
-            listGui.Show("xCenter yCenter")
-        }
-
-
     }
 }

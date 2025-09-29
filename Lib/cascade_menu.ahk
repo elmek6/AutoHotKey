@@ -221,4 +221,33 @@ class CascadeMenu {
             state.setBusy(0)
         }
     }
+
+    handleCaps() { ;VK14  SC03A
+        builder := CascadeBuilder(400, 2500)
+            .mainKey((dt) {
+                if (dt = 0)
+                    SetCapsLockState(!GetKeyState("CapsLock", "T"))
+            })
+            .setExitOnPressType(0)
+            .pairs("1", "Load History 1", (dt) => clipManager.loadFromHistory(1))
+            .pairs("2", "Load History 2", (dt) => clipManager.loadFromHistory(2))
+            .pairs("3", "Load History 3", (dt) => clipManager.loadFromHistory(3))
+            .pairs("4", "Load History 4", (dt) => clipManager.loadFromHistory(4))
+            .pairs("5", "Load History 5", (dt) => clipManager.loadFromHistory(5))
+            .pairs("6", "Load History 6", (dt) => clipManager.loadFromHistory(6))
+            .pairs("7", "Load History 7", (dt) => clipManager.loadFromHistory(7))
+            .pairs("8", "Load History 8", (dt) => clipManager.loadFromHistory(8))
+            .pairs("9", "Load History 9", (dt) => clipManager.loadFromHistory(9))
+            .pairs("s", "Show History Search", (dt) => clipManager.showHistorySearch())
+            .setPreview((b, pressType) {
+                if (pressType = 1) {
+                    return clipManager.getHistoryPreviewList()
+                } else {
+                    return []
+                }
+            })
+        cascade.cascadeKey(builder, "CapsLock")
+    }
+
+
 }

@@ -119,17 +119,17 @@ class MacroRecorder {
             return returnOnly ? "" : ""
         }
 
-        ; Sadece Send ve Sleep içeren satırları filtrele
+        ;-> Sadece Send ve Sleep içeren satırları filtrele
         s := ""
         For k, v in this.logArr {
             if (InStr(v, "Sleep(") || InStr(v, "Send(")) {
-                s .= v "`n"
+                s .= v "`n" ;yalnizca tus degerlerini al
             }
         }
-
         if (returnOnly) {
             return s
         }
+        ;-> Sadece Send ve Sleep içeren satırları filtrele
 
         ; Dosyaya yaz (normal kayıt modu için)
         prnRepeatCount := 1

@@ -28,7 +28,7 @@ OutputDebug "Started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
 global state := ScriptState.getInstance("ver_b123")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
-global clipManager := ClipboardManager.getInstance(20, 100000)
+global clipManager := ClipboardManager.getInstance(100, 50000)
 global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
@@ -57,6 +57,7 @@ OnExit HandleExit
 HandleExit(ExitReason, ExitCode) {
     state.saveStats(scriptStartTime)
     clipManager.__Delete()
+    state.clearAllOnTopWindows()
 }
 state.loadStats()
 LoadPCSettings()
@@ -121,8 +122,11 @@ DialogPauseGui() {
     pauseGui.Show("xCenter yCenter")
     SoundBeep(750)
 }
+
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
-CapsLock:: keyHandler.handleCapsLock()
+; CapsLock:: keyHandler.handleCapsLock()
+SC03A:: cascade.handleCaps()
+
 ; SC029:: keyHandler.handleCaret() ;caret SC029  ^ != ^
 SC029:: handleCaret()  ;caret VKDC SC029  ^ != ^
 handleCaret() {
@@ -169,18 +173,6 @@ handleCaret() {
         })
     cascade.cascadeKey(builder, "^")
 }
-; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
-; Pause & 2:: recorder.stop()  ; Kayıt durdur
-; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
-
-#HotIf currentConfig = stateConfig.work ; hotif olan tuslari override eder
->#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
->#2:: recorder.playKeyAction(2, 1)
->#3:: TapOrHold( ;belki önüne birsey gelince olabilir?
-    () => recorder.playKeyAction(3, 1),
-    () => recorder.recordAction(3, MacroRecorder.recType.key)
-)
-#HotIf
 
 ; Tab::Tab
 SC00F:: handleTab() ;TAB VK09 SC00F
@@ -216,29 +208,19 @@ handleTab() {
             } else {
                 return []
             }
-
         })
     cascade.cascadeKey(builder, "Tab")
 }
-;Makro oynatma
-; Tab & 1:: clipManager.saveToSlot(1)
-; Tab & 2:: clipManager.saveToSlot(2)
-; Tab & 3:: clipManager.saveToSlot(3)
-; Tab & 4:: clipManager.saveToSlot(4)
-; Tab & 5:: clipManager.saveToSlot(5)
-; Tab & 6:: clipManager.saveToSlot(6)
-; Tab & 7:: clipManager.saveToSlot(7)
-; Tab & 8:: clipManager.saveToSlot(8)
-; Tab & 9:: clipManager.saveToSlot(9)
-;Makro kaydetme
-; 1 & Tab:: clipManager.saveToSlot(9)
+
 reloadScript() {
     state.saveStats(scriptStartTime)
     SoundBeep(500)
     Reload
 }
+
 ^ & PgUp:: ShowKeyHistoryLoop()
 ShowKeyHistoryLoop() {
+    KeyHistory (24)
     Loop {
         KeyHistory
         Sleep 100  ; Gözlemlenen olayları güncellemek için kısa bir bekleme
@@ -247,6 +229,7 @@ ShowKeyHistoryLoop() {
         }
     }
 }
+
 ShowStats(showMsgBox := false) {
     stats := "Busy status: " state.getBusy() "`n"
     statsArray := ["Busy status: " state.getBusy()]
@@ -275,6 +258,7 @@ ShowStats(showMsgBox := false) {
     }
     return statsArray
 }
+
 ~LButton:: keyHandler.handleLButton()
 ~MButton:: keyHandler.handleMButton()
 ~RButton:: keyCounts.inc("RButton")
@@ -290,6 +274,7 @@ RButton & WheelDown:: {
     state.setRightClickActive(true)
     Send("{Volume_Down}")
 }
+
 ~RButton Up:: {
     if (state.getRightClickActive()) {
         Sleep 50
@@ -300,30 +285,12 @@ RButton & WheelDown:: {
 }
 
 showF13menu() {
-    profile := appShorts.findProfileByWindow()
+    state.updateActiveWindow()
 
     mySwitchMenu := Menu()
-
-    ; Aktif pencere sınıfını kopyalama
-    mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (
-        A_Clipboard := WinGetClass("A"),
-        ToolTip("Kopyalandı: " WinGetClass("A")),
-        SetTimer(() => ToolTip(), -2000)
-    ))
-
-    ; Profil yoksa veya varsa uygun seçenekleri ekle
-    if (!profile) {
-        mySwitchMenu.Add("Yeni Profil Ekle", (*) => appShorts.createNewProfile())
-    } else {
-        mySwitchMenu.Add("Yeni Kısayol Ekle (" profile.profileName ")", (*) => appShorts.addShortCutToProfile(profile))
-        mySwitchMenu.Add(profile.profileName, (*) => Sleep)  ; Profil adı, tıklanamaz
-        mySwitchMenu.Add()
-        for sc in profile.shortCuts {
-            mySwitchMenu.Add(sc.shortCutName " (" sc.hotkey ")", (*) => sc.play())
-        }
-    }
-
-    mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
+    mySwitchMenu.Add("Add profile :", menuAppProfile())
+    mySwitchMenu.Add()
+    ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
     mySwitchMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
     mySwitchMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
     mySwitchMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
@@ -337,9 +304,10 @@ showF13menu() {
     mySwitchMenu.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     mySwitchMenu.Add("Delete line", (*) => Send("{Home}{Home}+{End}{Delete}{Delete}"))
     mySwitchMenu.Add("Find 'clipboard'", (*) => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
-    mySwitchMenu.Add("Always on top'", (*) => AlwaysOnTop())
+    mySwitchMenu.Add("Always on top :" state.getCountTopWindows(), menuAlwaysOnTop())
     mySwitchMenu.Show()
 }
+
 showF14menu() {
     mySwitchMenu := Menu()
     mySwitchMenu.Add("Paste enter", (*) => clipManager.press("^v{Enter}"))
@@ -381,6 +349,7 @@ showF14menu() {
 
     mySwitchMenu.Show()
 }
+
 InputAwake() {
     ;buraya awakei iptal et yazabilir
     input := InputBox("Dakika gir:", "Uyku Engelle")
@@ -401,6 +370,7 @@ InputAwake() {
 #q:: Click("Left")
 #e:: Click("Right")
 #y:: Send("{Enter}")
+
 CheckIdle(*) {
     state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
     if (A_TimeIdlePhysical < 60000) {
@@ -415,22 +385,13 @@ CheckIdle(*) {
         }
     }
 }
+
 ResetSleep(*) {
     DllCall("SetThreadExecutionState", "UInt", 0x80000000) ; varsayılan
     ; 1 saat dolunca yeniden idle takibine başla
     SetTimer(CheckIdle, 1000)
 }
-AlwaysOnTop() {
-    activeWindow := WinGetTitle("A")
-    try {
-        WinSetAlwaysOnTop -1, activeWindow
-        ToolTip "Switched 'Always-On-Top' state:`n" activeWindow
-        SetTimer () => ToolTip(), -2000
-    } catch Error as err {
-        ToolTip "Unable to set 'Always-On-Top' state:`n" err.Message
-        SetTimer () => ToolTip(), -2000
-    }
-}
+
 SC00D:: {    ; backtick ´ SC00D VKDD
     actions := Map(
         "1", { dsc: "Reload", fn: (*) => reloadScript() },
@@ -442,6 +403,7 @@ SC00D:: {    ; backtick ´ SC00D VKDD
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
+        "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
         "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) }
     )
 
@@ -464,11 +426,13 @@ SC00D:: {    ; backtick ´ SC00D VKDD
     else
         SoundBeep(800)
 }
-SC121:: { ;home pc?
+
+SC121:: { ;work
     Run "calc.exe"
     WinWait "Calculator"
     WinActivate
 }
+
 AppsKey:: { ;bus hom ?
     id := []
     id := WinGetList("ahk_class MozillaWindowClass")
@@ -479,21 +443,26 @@ AppsKey:: { ;bus hom ?
         }
     }
 }
-^!+#Space:: Send("+{F10}") ;    SendInput("{AppsKey}") suppreme edilmiyor windows engelleiyor
-;{ ; bus gülen adam tusu ;    MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA }
+
+^!+#Space:: Send("+{F10}") ;work PC smiley tusu suppreme edilmiyor windows engelleiyor
+
 ;Pause:: { SendInput("{vk5B down}v("{vk5B up}")}
-ScrollLock:: { ;test
-    global ScrollState := GetKeyState("ScrollLock", "T")
-    ToolTip(ScrollState ? "NumLock ON" : "NumLock OFF")
-    SetTimer(() => ToolTip(), -800)
-    Send "{ScrollLock}"
-}
-;hom
+
+; ScrollLock:: { ;test
+;     global ScrollState := GetKeyState("ScrollLock", "T")
+;     ToolTip(ScrollState ? "NumLock ON" : "NumLock OFF")
+;     SetTimer(() => ToolTip(), -800)
+;     Send "{ScrollLock}"
+; }
+
+;home
 NumpadIns & NumpadDel:: Send("!{Tab}")
 NumpadDel & NumpadIns:: Send("!+{Tab}")
 NumpadIns:: Send("J")
 NumpadDel:: Send("L")
 NumpadClear:: Send("K")
+
+;Fare tuslari haritasi
 F13:: keyHandler.handleF13()
 F14:: keyHandler.handleF14()
 F15:: keyHandler.handleF15()
@@ -502,6 +471,7 @@ F17:: keyHandler.handleF17()
 F18:: keyHandler.handleF18()
 F19:: keyHandler.handleF19()
 F20:: keyHandler.handleF20()
+
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
     keyCounts.inc("DoubleCount")
@@ -510,6 +480,7 @@ LButton:: {
     Return
 }
 #HotIf
+
 #HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
@@ -521,69 +492,79 @@ LButton:: {
 *8:: return
 *9:: return
 *0:: return
+*s:: return
 ; *RButton:: return
 #HotIf
 
+; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
+; Pause & 2:: recorder.stop()  ; Kayıt durdur
+; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
 
-; #HotIf WinActive("ahk_class Chrome_WidgetWin_1")
-; RButton & WheelUp:: {
-;     state.setRightClickActive(true)
-;     Send("{Volume_Up}")
-; }
-
-; RButton & WheelDown:: {
-;     state.setRightClickActive(true)
-;     Send("{Volume_Down}")
-; }
-; #HotIf
-
+#HotIf currentConfig = stateConfig.work ; hotif olan tuslari override eder
+>#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+>#2:: recorder.playKeyAction(2, 1)
+>#3:: TapOrHold( ;belki önüne birsey gelince olabilir?
+    () => recorder.playKeyAction(3, 1),
+    () => recorder.recordAction(3, MacroRecorder.recType.key)
+)
+#HotIf
+#HotIf currentConfig = stateConfig.home
+SC132:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+SC16C:: recorder.playKeyAction(2, 1)
+#HotIf
 
 /*
-#::
-{
-    cascade.builder := CascadeBuilder() ;short, long
-        .shortPress(()=> ())
-        .betweenPress(SoundBeep(1000)) ;
-        .longPress(SoundBeep(1000))
-        .exitOnPressThreshold(hold.mid) ;long press inpuhook calismasin
-        .pairs("1", "aciklama", (holdType) => ())
-    cascade.builder.setPreview([])
-    cascade.cascadeKey(builder)
-
+Tab:: {
+    TapOrHold(
+        () => ToolTip("Short F2"),
+        () => ToolTip("Medium F2"),
+        () => ToolTip("Long F2")
+        :aranan tuslar 1234567890s
+    )
+    Sleep(1000)
+    ToolTip()
 }
 */
-; Tab:: {
-;     TapOrHold(
-;         () => ToolTip("Short F2"),
-;         () => ToolTip("Medium F2"),
-;         () => ToolTip("Long F2")
-;         :aranan tuslar 1234567890s
-;     )
-;     Sleep(1000)
-;     ToolTip()
-; }
-/*
-    builder.setPreview((builder) {
-        return builder.getPairsTips()
-    })
 
-handleCaret_() {
-    static builder := FKeyBuilder()
-        .mainDefault(() => Send("{^}"))
-        .combos("q", "-", Sleep(50))
-        .combos("1", "Load Slot 1", () => clipManager.loadFromSlot(1))
-        .combos("2", "Load Slot 2", () => clipManager.loadFromSlot(2))
-        .combos("3", "Load Slot 3", () => clipManager.loadFromSlot(3))
-        .combos("4", "Load Slot 4", () => clipManager.loadFromSlot(4))
-        .combos("5", "Load Slot 5", () => clipManager.loadFromSlot(5))
-        .combos("6", "Load Slot 6", () => clipManager.loadFromSlot(6))
-        .combos("7", "Load Slot 7", () => clipManager.loadFromSlot(7))
-        .combos("8", "Load Slot 8", () => clipManager.loadFromSlot(8))
-        .combos("9", "Load Slot 9", () => clipManager.loadFromSlot(9))
-        .combos("0", "Load Slot 0", () => clipManager.loadFromSlot(0))
-        .combos("PgDn", "Show Stats", () => ShowStats())
-        .combos("s", "Show Slots Search", () => clipManager.showSlotsSearch())
-    ; builder.setPreview(["Özel 1", "Özel 2"])
-    builder.setPreview(builder.tips)
-    this.handleFKey(builder)
-}*/
+
+menuAppProfile() {
+    local mainMenu := Menu()
+    local title := state.getActiveTitle()
+    local hwnd := state.getActiveHwnd()
+    local className := state.getActiveClassName()
+
+    profile := appShorts.findProfileByWindow()
+
+    local mainMenu := Menu()
+    if (!profile) {        
+            mainMenu.Add("+Ekle (" className ")", (*) => appShorts.createNewProfile())
+    } else {
+        ; Profil adı alt menü olarak
+        for sc in profile.shortCuts {
+            local lambda := sc
+            mainMenu.Add(sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
+        }
+        mainMenu.Add()
+        mainMenu.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
+        mainMenu.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
+
+        ; mainMenu.Add(profile.profileName, mainMenu)
+    }
+    return mainMenu
+}
+
+
+menuAlwaysOnTop() {
+    local mainMenu := Menu()
+    local title := state.getActiveTitle()
+    local hwnd := state.getActiveHwnd()
+
+    for key, value in state.onTopWindowsList {
+        mainMenu.Add("- " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
+    }
+    mainMenu.Add()
+    mainMenu.Add("Add " . title, (*) => state.toggleOnTopWindow(hwnd, title))
+    mainMenu.Add("Clear all", (*) => state.clearAllOnTopWindows())
+
+    return mainMenu
+}

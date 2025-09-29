@@ -127,9 +127,6 @@ class ClipboardManager {
 
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
-        if !DirExist(AppConst.FILES_DIR) {
-            DirCreate(AppConst.FILES_DIR)
-        }
         this.slotManager.loadSlots()
         this.loadHistory()
     }
@@ -433,21 +430,18 @@ class ClipboardManager {
             this.showMessage("Geçmiş boş!")
             return
         }
-        ArrayFilter.getInstance().Show(this.history, "Clipboard History Search")
+        ; History dizisini Map formatına dönüştür
+        local historyArray := []
+        Loop this.history.Length {
+            historyArray.Push(Map(
+                "slotNumber", A_Index,
+                "name", "Clip " . A_Index,
+                "content", this.history[A_Index]
+            ))
+        }
+        ArrayFilter.getInstance().Show(historyArray, "Clipboard History Search")
+        ; ArrayFilter.getInstance().Show(this.history, "Clipboard History Search")
     }
-
-    ; showSlotsSearch() {
-    ;     local slotsArray := []
-    ;     Loop 13 {
-    ;         if (StrLen(this.slotManager.getContent(A_Index)) > 0)
-    ;             slotsArray.Push(this.slotManager.getContent(A_Index))
-    ;     }
-    ;     if (slotsArray.Length == 0) {
-    ;         this.showMessage("Slotlar boş!")
-    ;         return
-    ;     }
-    ;     ArrayFilter.getInstance().Show(slotsArray, "Slotlarda Arama")
-    ; }
 
     showSlotsSearch() {
         local slotsArray := []

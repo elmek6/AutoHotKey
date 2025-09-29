@@ -218,187 +218,166 @@ class HotkeyHandler {
         }
     }
 
-    handleCapsLock() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => SetCapsLockState(!GetKeyState("CapsLock", "T")))
-            .combos("a", "Select All & Delete", () => Send("^a{BackSpace}"))
-            .combos("x", "Cut All", () => clipManager.press("^a^x"))
-            .combos("c", "Copy All", () => clipManager.press("^a^c"))
-            .combos("v", "Paste All", () => clipManager.press("^a^v"))
-            .combos("q", "-", Sleep(50))
-            .combos("1", "Load History 1", () => clipManager.loadFromHistory(1))
-            .combos("2", "Load History 2", () => clipManager.loadFromHistory(2))
-            .combos("3", "Load History 3", () => clipManager.loadFromHistory(3))
-            .combos("4", "Load History 4", () => clipManager.loadFromHistory(4))
-            .combos("5", "Load History 5", () => clipManager.loadFromHistory(5))
-            .combos("6", "Load History 6", () => clipManager.loadFromHistory(6))
-            .combos("7", "Load History 7", () => clipManager.loadFromHistory(7))
-            .combos("8", "Load History 8", () => clipManager.loadFromHistory(8))
-            .combos("9", "Load History 9", () => clipManager.loadFromHistory(9))
-            .combos("s", "Show History Search", () => clipManager.showHistorySearch())
-        builder.setPreview(clipManager.getHistoryPreviewList())
-        this.handleFKey(builder)
-    }
+__handleCapsLock() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => SetCapsLockState(!GetKeyState("CapsLock", "T")))
+        .combos("a", "Select All & Delete", () => Send("^a{BackSpace}"))
+        .combos("x", "Cut All", () => clipManager.press("^a^x"))
+        .combos("c", "Copy All", () => clipManager.press("^a^c"))
+        .combos("v", "Paste All", () => clipManager.press("^a^v"))
+        .combos("q", "-", Sleep(50))
+        .combos("1", "Load History 1", () => clipManager.loadFromHistory(1))
+        .combos("2", "Load History 2", () => clipManager.loadFromHistory(2))
+        .combos("3", "Load History 3", () => clipManager.loadFromHistory(3))
+        .combos("4", "Load History 4", () => clipManager.loadFromHistory(4))
+        .combos("5", "Load History 5", () => clipManager.loadFromHistory(5))
+        .combos("6", "Load History 6", () => clipManager.loadFromHistory(6))
+        .combos("7", "Load History 7", () => clipManager.loadFromHistory(7))
+        .combos("8", "Load History 8", () => clipManager.loadFromHistory(8))
+        .combos("9", "Load History 9", () => clipManager.loadFromHistory(9))
+        .combos("s", "Show History Search", () => clipManager.showHistorySearch())
+    builder.setPreview(clipManager.getHistoryPreviewList())
+    this.handleFKey(builder)
+}
 
-    ; handleCaret() {
-    ;     static builder := FKeyBuilder()
-    ;         .mainDefault(() => Send("{^}"))
-    ;         .combos("q", "-", Sleep(50))
-    ;         .combos("1", "Load Slot 1", () => clipManager.loadFromSlot(1))
-    ;         .combos("2", "Load Slot 2", () => clipManager.loadFromSlot(2))
-    ;         .combos("3", "Load Slot 3", () => clipManager.loadFromSlot(3))
-    ;         .combos("4", "Load Slot 4", () => clipManager.loadFromSlot(4))
-    ;         .combos("5", "Load Slot 5", () => clipManager.loadFromSlot(5))
-    ;         .combos("6", "Load Slot 6", () => clipManager.loadFromSlot(6))
-    ;         .combos("7", "Load Slot 7", () => clipManager.loadFromSlot(7))
-    ;         .combos("8", "Load Slot 8", () => clipManager.loadFromSlot(8))
-    ;         .combos("9", "Load Slot 9", () => clipManager.loadFromSlot(9))
-    ;         .combos("0", "Load Slot 0", () => clipManager.loadFromSlot(0))
-    ;         .combos("PgDn", "Show Stats", () => ShowStats())
-    ;         .combos("s", "Show Slots Search", () => clipManager.showSlotsSearch())
-    ;     ; builder.setPreview(["Özel 1", "Özel 2"])
-    ;     builder.setPreview(builder.tips)
-    ;     this.handleFKey(builder)
-    ; }
+handleLButton() {
+    static builder := FKeyBuilder()
+        ; .mainEnd(() => (
+        ;     ;if appProfile == auto
+        ;     Sleep(50)
+        ;     MouseGetPos(&x, &y, &hWnd),
+        ;     ; title := WinGetTitle(hWnd)
+        ;     class := WinGetClass(hWnd),
+        ;     ; text := WinGetText(hWnd)
+        ;     ; OutputDebug("Title: " title "`nClass: " class "`nText: " SubStr(text, 1, 100))
+        ;     OutputDebug("Class: " class "`n")
+        ;     ; Qt5QWindowIcon
+        ; ))
+        .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
+        .combos("F15", "LB+F15() => Send('L 15')", () => Send("L 15"))
+        .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
+        .combos("F17", "LB+F17() => Send('L 17')", () => Send("L 17"))
+        .combos("F18", "LB+F18() => Send('L 18')", () => Send("L 18"))
+        .combos("F19", "All+Paste", () => clipManager.press(["^a^v", "{Enter}"]))
+        .combos("F20", "Enter", () => Send("{Enter}"))
+    builder.setPreview([])
+    this.handleFKey(builder)
+}
 
-    handleLButton() {
-        static builder := FKeyBuilder()
-            ; .mainEnd(() => (
-            ;     ;if appProfile == auto
-            ;     Sleep(50)
-            ;     MouseGetPos(&x, &y, &hWnd),
-            ;     ; title := WinGetTitle(hWnd)
-            ;     class := WinGetClass(hWnd),
-            ;     ; text := WinGetText(hWnd)
-            ;     ; OutputDebug("Title: " title "`nClass: " class "`nText: " SubStr(text, 1, 100))
-            ;     OutputDebug("Class: " class "`n")
-            ;     ; Qt5QWindowIcon
-            ; ))
-            .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
-            .combos("F15", "LB+F15() => Send('L 15')", () => Send("L 15"))
-            .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
-            .combos("F17", "LB+F17() => Send('L 17')", () => Send("L 17"))
-            .combos("F18", "LB+F18() => Send('L 18')", () => Send("L 18"))
-            .combos("F19", "All+Paste", () => clipManager.press(["^a^v", "{Enter}"]))
-            .combos("F20", "Enter", () => Send("{Enter}"))
+handleMButton() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => {})
+        .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
+        .combos("F16", "Find & Paste", () => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
+        .combos("F17", "Send F17", () => Send("F17"))
+        .combos("F18", "Send F18", () => Send("F18"))
+        .combos("F19", "Paste & Enter", () => clipManager.press(["^v", "{Enter}"]))
+        .combos("F20", "Enter", () => Send("{Enter}"))
+        .combos("F14", "Show History Search", () => clipManager.showHistorySearch())
+    builder.setPreview([])
+    this.handleFKey(builder)
+}
+
+handleF13() {
+    static builder := FKeyBuilder()
+        .mainStart(() => (ToolTip("F13 Paste Mode"), SetTimer(() => ToolTip(), -800)))
+        .mainDefault(() => showF13menu())
+        .mainGesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}"))
+        .mainGesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}"))
+        .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
+        .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}"))
+        .mainGesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A"))
+        .combos("F14", "Click & Paste", () => (Click("Left", 1), clipManager.press("^v")))
+        .combos("F18", "Delete", () => Send("{Delete}"))
+    builder.setPreview([])
+    this.handleFKey(builder)
+}
+
+handleF14() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => showF14menu())
+        .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}"))
+        .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}"))
+        .combos("F15", "Select All", () => Send("^a"))
+        .combos("F16", "Select All", () => Send("^a"))
+        .combos("F17", "Home", () => Send("{Home}"))
+        .combos("F18", "End", () => Send("{End}"))
+        .combos("F19", "Select All", () => Send("^a"))
+        .combos("F20", "Select All", () => Send("^a"))
+        .combos("RButton", "Show Slots Search", () => clipManager.showSlotsSearch())
+    builder.setPreview([])
+    this.handleFKey(builder)
+}
+
+handleF15() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("^y"))
+        .combos("F13", "Send F13", () => Send("F13 bos"))
+        .combos("LButton", "Send F15 L", () => Send("F15 L bos"))
+    this.handleFKey(builder)
+}
+
+handleF16() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("^z"))
+        .combos("F13", "Send F13", () => Send("F13 bos"))
+        .combos("LButton", "Send F16 L", () => Send("F16 L bos"))
+    this.handleFKey(builder)
+}
+
+handleF17() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("!{Right}"))
+        .combos("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
+        .combos("F18", "Delete", () => Send("{Delete}"))
+        .combos("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
+        .combos("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
+    this.handleFKey(builder)
+}
+
+handleF18() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("!{Left}"))
+        .combos("F17", "Cut", () => Send("^x"))
+        .combos("F20", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
+        .combos("LButton", "Cut", () => Send("^x"))
+        .combos("MButton", "Cut", () => Send("^x"))
+    this.handleFKey(builder)
+}
+
+handleF19() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("^v"))
+        .combos("F13", "Select All & Paste", () => clipManager.press("^a^v"))
+        .combos("F14", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
+        .combos("F20", "Select All & Paste", () => clipManager.press("^a^v"))
+        .combos("LButton", "Click & Paste", () => (Click("Left", 1), clipManager.press("^v")))
+        .combos("MButton", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v")))
+    this.handleFKey(builder)
+}
+
+handleF20() {
+    static builder := FKeyBuilder()
+        .mainDefault(() => Send("^c"))
+        .mainEnd(() => (ClipWait, Sleep(50), clipManager.showClipboardPreview()))
+        .combos("F13", "Select All & Copy", () => clipManager.press("^a^c"))
+        .combos("F14", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
+        .combos("F19", "Select All & Copy", () => clipManager.press("^a^c"))
+        .combos("F18", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
+        .combos("LButton", "Click & Copy", () => (Click("Left", 1), clipManager.press("^c")))
+        .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
+    builder.setPreview([])
+    this.handleFKey(builder)
+}
+/*
+    handleNums(number) {
+        builder := FKeyBuilder()
+            .mainDefault(() => Send(number))
+            .combos("SC029", number, () => clipManager.saveToSlot(number))
+            .combos("Tab", number, () => Sleep(number * 100))
+            .combos("CapsLock", number, () => clipManager.loadFromSlot(number))
         builder.setPreview([])
         this.handleFKey(builder)
     }
-
-    handleMButton() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => {})
-            .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
-            .combos("F16", "Find & Paste", () => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
-            .combos("F17", "Send F17", () => Send("F17"))
-            .combos("F18", "Send F18", () => Send("F18"))
-            .combos("F19", "Paste & Enter", () => clipManager.press(["^v", "{Enter}"]))
-            .combos("F20", "Enter", () => Send("{Enter}"))
-            .combos("F14", "Show History Search", () => clipManager.showHistorySearch())
-        builder.setPreview([])
-        this.handleFKey(builder)
-    }
-
-    handleF13() {
-        static builder := FKeyBuilder()
-            .mainStart(() => (ToolTip("F13 Paste Mode"), SetTimer(() => ToolTip(), -800)))
-            .mainDefault(() => showF13menu())
-            .mainGesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}"))
-            .mainGesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}"))
-            .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
-            .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}"))
-            .mainGesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A"))
-            .combos("F14", "Click & Paste", () => (Click("Left", 1), clipManager.press("^v")))
-            .combos("F18", "Delete", () => Send("{Delete}"))
-        builder.setPreview([])
-        this.handleFKey(builder)
-    }
-
-    handleF14() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => showF14menu())
-            .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}"))
-            .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}"))
-            .combos("F15", "Select All", () => Send("^a"))
-            .combos("F16", "Select All", () => Send("^a"))
-            .combos("F17", "Home", () => Send("{Home}"))
-            .combos("F18", "End", () => Send("{End}"))
-            .combos("F19", "Select All", () => Send("^a"))
-            .combos("F20", "Select All", () => Send("^a"))
-            .combos("RButton", "Show Slots Search", () => clipManager.showSlotsSearch())
-        builder.setPreview([])
-        this.handleFKey(builder)
-    }
-
-    handleF15() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("^y"))
-            .combos("F13", "Send F13", () => Send("F13 bos"))
-            .combos("LButton", "Send F15 L", () => Send("F15 L bos"))
-        this.handleFKey(builder)
-    }
-
-    handleF16() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("^z"))
-            .combos("F13", "Send F13", () => Send("F13 bos"))
-            .combos("LButton", "Send F16 L", () => Send("F16 L bos"))
-        this.handleFKey(builder)
-    }
-
-    handleF17() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("!{Right}"))
-            .combos("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
-            .combos("F18", "Delete", () => Send("{Delete}"))
-            .combos("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
-            .combos("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
-        this.handleFKey(builder)
-    }
-
-    handleF18() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("!{Left}"))
-            .combos("F17", "Cut", () => Send("^x"))
-            .combos("F20", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
-            .combos("LButton", "Cut", () => Send("^x"))
-            .combos("MButton", "Cut", () => Send("^x"))
-        this.handleFKey(builder)
-    }
-
-    handleF19() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("^v"))
-            .combos("F13", "Select All & Paste", () => clipManager.press("^a^v"))
-            .combos("F14", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
-            .combos("F20", "Select All & Paste", () => clipManager.press("^a^v"))
-            .combos("LButton", "Click & Paste", () => (Click("Left", 1), clipManager.press("^v")))
-            .combos("MButton", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v")))
-        this.handleFKey(builder)
-    }
-
-    handleF20() {
-        static builder := FKeyBuilder()
-            .mainDefault(() => Send("^c"))
-            .mainEnd(() => (ClipWait, Sleep(50), clipManager.showClipboardPreview()))
-            .combos("F13", "Select All & Copy", () => clipManager.press("^a^c"))
-            .combos("F14", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
-            .combos("F19", "Select All & Copy", () => clipManager.press("^a^c"))
-            .combos("F18", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
-            .combos("LButton", "Click & Copy", () => (Click("Left", 1), clipManager.press("^c")))
-            .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
-        builder.setPreview([])
-        this.handleFKey(builder)
-    }
-    /*
-        handleNums(number) {
-            builder := FKeyBuilder()
-                .mainDefault(() => Send(number))
-                .combos("SC029", number, () => clipManager.saveToSlot(number))
-                .combos("Tab", number, () => Sleep(number * 100))
-                .combos("CapsLock", number, () => clipManager.loadFromSlot(number))
-            builder.setPreview([])
-            this.handleFKey(builder)
-        }
-    */
+*/
 }
