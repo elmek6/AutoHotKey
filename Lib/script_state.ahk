@@ -21,27 +21,32 @@
         this.activeHwnd := ""
         this.activeTitle := ""
         this.activeClassName := ""
+        this.lastWheelTime := 0
+        this._wheelcount := 0
     }
 
-    setBusy(status) {
-        this.busy := status
+    setBusy(status) => this.busy := status
+    getBusy() => this.busy
+
+    getLastWheelTime() {
+        diff := A_TickCount - this.lastWheelTime
+        if (diff > 200) {  ; 100ms'den fazla geçtiyse resetle (yeni tekerlek serisi)
+            this.lastWheelTime := A_TickCount
+            this._wheelcount := 0
+            return false
+        }
+        this._wheelcount++
+        this.lastWheelTime := A_TickCount
+        if (Mod(this._wheelcount, 2) = 0) {
+            return true
+        } else {
+            return false
+        }
     }
 
-    getBusy() {
-        return this.busy
-    }
-
-    setRightClickActive(status) {
-        this.rightClickActive := status
-    }
-
-    getRightClickActive() {
-        return this.rightClickActive
-    }
-
-    setIdleCount(count) {
-        this.idleCount := count
-    }
+    setRightClickActive(status) => this.rightClickActive := status
+    getRightClickActive() => this.rightClickActive
+    setIdleCount(count) => this.idleCount := count
 
     updateActiveWindow() {
         try {
@@ -58,22 +63,14 @@
     getActiveHwnd() => this.activeHwnd
     getActiveTitle() => this.activeTitle
     getActiveClassName() => this.activeClassName
-
-    getIdleCount() {
-        return this.idleCount
-    }
-
-    getVersion() {
-        return this.version
-    }
+    getIdleCount() => this.idleCount
+    getVersion() => this.version
+    getShouldSaveOnExit() => this.shouldSaveStats
 
     setShouldSaveOnExit(status) {
         this.shouldSaveStats := status
     }
 
-    getShouldSaveOnExit() {
-        return this.shouldSaveStats
-    }
 
     isActiveClass(className) {
         activeClass := WinGetClass("A")

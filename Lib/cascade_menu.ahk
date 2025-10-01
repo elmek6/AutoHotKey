@@ -222,11 +222,56 @@ class CascadeMenu {
         }
     }
 
-    handleCaps() { ;VK14  SC03A
+    cascadeCaret() {
+        loadSave(dt, number) {
+            if (dt = 2) {
+                clipManager.promptAndSaveSlot(number)
+            } else {
+                clipManager.loadFromSlot(number)
+            }
+        }
+
         builder := CascadeBuilder(400, 2500)
             .mainKey((dt) {
                 if (dt = 0)
-                    SetCapsLockState(!GetKeyState("CapsLock", "T"))
+                    SendInput("{SC029}")
+            })
+            .setExitOnPressType(0)
+            .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+            .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
+            .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
+            .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
+            .pairs("4", "Test 4", (dt) => loadSave(dt, 4))
+            .pairs("5", "Test 5", (dt) => loadSave(dt, 5))
+            .pairs("6", "Test 6", (dt) => loadSave(dt, 6))
+            .pairs("7", "Test 7", (dt) => loadSave(dt, 7))
+            .pairs("8", "Test 8", (dt) => loadSave(dt, 8))
+            .pairs("9", "Test 9", (dt) => loadSave(dt, 9))
+            .pairs("0", "Test 0", (dt) => loadSave(dt, 13))
+            .setPreview((b, pressType) {
+                if (pressType == 0) {
+                    return []
+                } else if (pressType == 1) {
+                    ; return builder.getPairsTips()
+                    return clipManager.getSlotsPreviewText()
+                } else {
+                    result := []
+                    result.Push("-------------------- SAVE --------------------")
+                    result.Push("----------------------------------------------")
+                    for v in clipManager.getSlotsPreviewText()
+                        result.Push(v)
+                    result.Push("kisa basma (" pressType "ms): Daha fazla seçenek")
+                    return result
+                }
+            })
+        cascade.cascadeKey(builder, "^")
+    }
+
+    cascadeTab() {
+        builder := CascadeBuilder(400, 2500)
+            .mainKey((dt) {
+                if (dt = 0)
+                    SendInput("{Tab}")
             })
             .setExitOnPressType(0)
             .pairs("1", "Load History 1", (dt) => clipManager.loadFromHistory(1))
@@ -246,8 +291,43 @@ class CascadeMenu {
                     return []
                 }
             })
-        cascade.cascadeKey(builder, "CapsLock")
+        cascade.cascadeKey(builder, "Tab")
     }
-
-
+    /*
+        cascadeCaps() {
+            loadSaveMacro(dt, number) {
+                if (dt = 2) {
+                    recorder.recordAction(number, MacroRecorder.recType.key)
+                } else {
+                    recorder.playKeyAction(number, 1)
+                }
+            }
+    
+            builder := CascadeBuilder(400, 2500)
+                .mainKey((dt) {
+                    if (dt = 0)
+                        SetCapsLockState(!GetKeyState("CapsLock", "T"))
+                })
+                .setExitOnPressType(0)
+                ; .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+                .pairs("1", "rec1.ahk", (dt) => loadSaveMacro(dt, 1))
+                .pairs("2", "rec2.ahk", (dt) => loadSaveMacro(dt, 2))
+                .pairs("3", "rec3.ahk", (dt) => loadSaveMacro(dt, 3))
+                .pairs("4", "rec4.ahk", (dt) => loadSaveMacro(dt, 4))
+                .pairs("5", "rec5.ahk", (dt) => loadSaveMacro(dt, 5))
+                .pairs("6", "rec6.ahk", (dt) => loadSaveMacro(dt, 6))
+                .pairs("7", "rec7.ahk", (dt) => loadSaveMacro(dt, 7))
+                .pairs("8", "rec8.ahk", (dt) => loadSaveMacro(dt, 8))
+                .pairs("9", "rec9.ahk", (dt) => loadSaveMacro(dt, 9))
+                .pairs("0", "rec0.ahk", (dt) => loadSaveMacro(dt, 13))
+                .setPreview((b, pressType) {
+                    if (pressType = 1) {
+                        return clipManager.getSlotsPreviewText()
+                    } else {
+                        return []
+                    }
+                })
+            cascade.cascadeKey(builder, "CapsLock")
+        }
+    */
 }

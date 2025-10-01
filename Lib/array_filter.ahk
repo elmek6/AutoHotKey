@@ -90,7 +90,7 @@ class ArrayFilter {
                     contentPreview .= "..." ; Uzun içerik için kes
                 }
                 if (!search || InStr(StrLower(slot["name"]), StrLower(search)) || InStr(StrLower(slot["content"]), StrLower(search))) {
-                    local fKey := idx <= 12 ? "F" . idx . " #" . slot["slotNumber"] : "#" . slot["slotNumber"]
+                    fKey := idx <= 12 ? "F" . idx : ""
                     listView.Add("", fKey, slot["name"], contentPreview)
                     results.Push(slot)
                     idx++
@@ -110,12 +110,12 @@ class ArrayFilter {
 
         ; Fareyle gezinirken previewBox'ı güncelle
         static lastRowIndex := 0
-        
+
         ; Fare mesajı handler'ını tanımla ve sakla
         ArrayFilter.mouseMessageHandler := (wParam, lParam, msg, hwnd) => (
             hwnd = listView.Hwnd ? (
                 MouseGetPos(&mouseX, &mouseY),
-                WinGetPos(&winX, &winY,,, "ahk_id " . listView.Hwnd),
+                WinGetPos(&winX, &winY, , , "ahk_id " . listView.Hwnd),
                 rowHeight := 20,
                 headerHeight := 30,
                 relativeY := mouseY - winY - headerHeight - 40,
@@ -129,7 +129,7 @@ class ArrayFilter {
                 ) : "")
             ) : ""
         )
-        
+
         ; Fare mesajını kaydet
         OnMessage(0x200, ArrayFilter.mouseMessageHandler)
 
