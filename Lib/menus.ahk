@@ -31,7 +31,8 @@ showF13menu() {
     state.updateActiveWindow()
 
     menuF13 := Menu()
-    menuF13.Add("Add profile :", menuAppProfile())
+    ; menuF13.Add("Add profile :", menuAppProfile())
+    menuAppProfile(menuF13)
     menuF13.Add()
     ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
     menuF13.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
@@ -150,26 +151,27 @@ menuStats() {
     return menuStats
 }
 
-menuAppProfile() {
-    menuApp := Menu()
+menuAppProfile(targetMenu) {
+    profile := appShorts.findProfileByWindow()
     title := state.getActiveTitle()
     hwnd := state.getActiveHwnd()
     className := state.getActiveClassName()
     profile := appShorts.findProfileByWindow()
 
-    menuApp := Menu()
-    if (!profile) {
-        menuApp.Add("+Ekle (" className ")", (*) => appShorts.createNewProfile())
-    } else {
+
+    if (profile) {
+        local subMenu := Menu()
         for sc in profile.shortCuts {
             local lambda := sc
-            menuApp.Add(sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
+            subMenu.Add(sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
         }
-        menuApp.Add()
-        menuApp.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
-        menuApp.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
+        subMenu.Add()
+        subMenu.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
+        subMenu.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
+        targetMenu.Add("App> " . profile.profileName, subMenu)
+    } else {
+        targetMenu.Add("+Ekle (" className ")", (*) => appShorts.createNewProfile())
     }
-    return menuApp
 }
 
 menuAlwaysOnTop() {

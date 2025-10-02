@@ -430,17 +430,18 @@ class ClipboardManager {
             this.showMessage("Geçmiş boş!")
             return
         }
-        ; History dizisini Map formatına dönüştür
+        ; History dizisini ters sırada Map formatına dönüştür
+        ; (en yeni en üstte görünsün)
         local historyArray := []
         Loop this.history.Length {
+            local reverseIndex := this.history.Length - A_Index + 1
             historyArray.Push(Map(
                 "slotNumber", A_Index,
                 "name", "Clip " . A_Index,
-                "content", this.history[A_Index]
+                "content", this.history[reverseIndex]
             ))
         }
         ArrayFilter.getInstance().Show(historyArray, "Clipboard History Search")
-        ; ArrayFilter.getInstance().Show(this.history, "Clipboard History Search")
     }
 
     showSlotsSearch() {
