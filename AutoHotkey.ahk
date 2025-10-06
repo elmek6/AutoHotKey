@@ -104,20 +104,20 @@ LButton:: {
 }
 #HotIf
 
-#HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
-*1:: return
-*2:: return
-*3:: return
-*4:: return
-*5:: return
-*6:: return
-*7:: return
-*8:: return
-*9:: return
-*0:: return
-*s:: return
-; *RButton:: return
-#HotIf
+; #HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
+; *1:: return
+; *2:: return
+; *3:: return
+; *4:: return
+; *5:: return
+; *6:: return
+; *7:: return
+; *8:: return
+; *9:: return
+; *0:: return
+; *s:: return
+; ; *RButton:: return
+; #HotIf
 
 ; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
 ; Pause & 2:: recorder.stop()  ; Kayıt durdur
