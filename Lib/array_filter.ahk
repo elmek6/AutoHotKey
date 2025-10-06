@@ -27,16 +27,12 @@ class ArrayFilter {
     }
 
     sendText(text) {
-        if (StrLen(text) > 200) {
-            local prevClip := A_Clipboard
-            A_Clipboard := text
-            Sleep(50)
-            SendInput("^v")
-            Sleep(50)
-            A_Clipboard := prevClip
-        } else {
-            SendInput(text)
-        }
+        ; local prevClip := A_Clipboard
+        A_Clipboard := text
+        Sleep(50)
+        SendInput("^v")
+        ; Sleep(50)
+        ; A_Clipboard := prevClip
     }
 
     changeHotKeyMode(sw, listView, SelectAndClose) {

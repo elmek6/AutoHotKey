@@ -12,6 +12,7 @@
 #Include <cascade_menu>
 #Include <app_shorts>
 #Include <menus>
+#Include <chrome_positions>
 ; #Include <array_filter>
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
@@ -23,6 +24,8 @@ global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global appShorts := ProfileManager.getInstance()
+global chromePos := ChromePositions.getInstance()
+
 global scriptStartTime := A_Now
 global stateConfig := { none: 0, home: 1, work: 2 }
 global currentConfig := stateConfig.none
@@ -37,6 +40,7 @@ class AppConst {
     static FILE_CLIPBOARD := "Files\clipboards.json"
     static FILE_LOG := "Files\log.txt"
     static FILE_PROFILE := "Files\profiles.json"
+    static FILE_POS := "Files\positions.json"
     static initDirectory() {
         if !DirExist(AppConst.FILES_DIR) {
             DirCreate(AppConst.FILES_DIR)
@@ -80,6 +84,7 @@ ExitSettings(ExitReason, ExitCode) {
     state.saveStats(scriptStartTime)
     clipManager.__Delete()
     state.clearAllOnTopWindows()
+    chromePos.saveState()
 }
 
 reloadScript() {
@@ -212,6 +217,7 @@ NumpadDel:: Send("L")
 NumpadClear:: Send("K")
 
 ^!+#Space:: return OutputDebug(":-)") ; Send("+{F10}") ;work suppreme edilemiyor (#hotif de olmadı)
+^<:: SendInput ("^+k") ;satir sil vscode
 
 AppsKey:: { ;work
     id := []

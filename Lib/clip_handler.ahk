@@ -269,7 +269,7 @@ class ClipboardManager {
             local jsonData := jsongo.Stringify(this.history)
             local file := FileOpen(AppConst.FILE_CLIPBOARD, "w", "UTF-8")
             if (!file) {
-                throw Error("clipboards.json yazılamadı")
+                throw Error(AppConst.FILE_CLIPBOARD . " yazılamadı")
             }
             file.Write(jsonData)
             file.Close()

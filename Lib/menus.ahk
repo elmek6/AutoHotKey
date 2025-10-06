@@ -92,7 +92,7 @@ hookCommands() {
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
         "3", { dsc: "", fn: (*) => Sleep(10) },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        ; "5", { dsc: "Awake ...", fn: (*) => InputAwake() },
+        "5", { dsc: "Restore chrome position", fn: (*) => chromePos.restore() },
         "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
