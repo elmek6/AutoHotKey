@@ -67,7 +67,7 @@ showF14menu() {
     menuF14.Add()
 
     menuF14.Add("Settings", menuSettings())
-    menuF14.Add("Statistics", menuStats())
+    menuF14.Add("Statistics " . state.getVersion(), menuStats())
     menuF14.Show()
 }
 

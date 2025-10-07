@@ -173,11 +173,11 @@ class CascadeMenu {
                 }
             }
 
-            ih := InputHook("L1 T60", "{Esc}")
+            ih := InputHook("L1 T60", senderKey)
             ih.Start(), ih.Wait()
             inputKey := ih.Input != "" ? ih.Input : ih.EndKey
 
-            if (inputKey = "Esc") {
+            if (inputKey = "Escape") {
                 ToolTip()
                 return
             }
@@ -185,61 +185,16 @@ class CascadeMenu {
             ; pressedTogether := GetKeyState(A_ThisHotkey, "P")
             ; OutputDebug (pressedTogether)
 
-            found := false
             for p in pairsActions {
                 if (p.key = inputKey) {
-                    p.action.Call(mainPressType)  ; Ana pressType'ı geçir
+                    p.action.Call(mainPressType)
                     ToolTip("")
-                    found := true
-                    break
+                    return
                 }
             }
-            if (!found) {
-                SoundBeep(800)
-            }
 
-            ; Yan tuş dinle (GetKeyState ile, 5s süre sınırı)
-            ; sideStartTime := A_TickCount
-            ; sideHoldTime := 0
-            ; pressedKey := ""
-            ; beepCount := 2
-            ; while (A_TickCount - sideStartTime < 5000) { ; 5s bekle
-            ;     for p in pairsActions {
-            ;         if (GetKeyState(p.key, "P")) {
-            ;             pressedKey := p.key
-            ;             ; Yan tuş süresi ölç
-            ;             sideStartTime := A_TickCount
-            ;             while (GetKeyState(pressedKey, "P")) {
-            ;                 sideHoldTime := A_TickCount - sideStartTime
-            ;                 if (sideHoldTime >= shortTime && beepCount == 2) {
-            ;                     SoundBeep(800, 50)
-            ;                     beepCount--
-            ;                 }
-            ;                 if (sideHoldTime >= longTime && beepCount == 1) {
-            ;                     SoundBeep(800, 50)
-            ;                     beepCount--
-            ;                 }
-            ;                 Sleep(10)
-            ;             }
-            ;             p.action.Call(this.getPressType(sideHoldTime, shortTime, longTime))
-            ;             ToolTip("")
-            ;             break
-            ;         } else if GetKeyState(senderKey, "P") || GetKeyState("Esc", "P") {
-            ;             ToolTip()
-            ;             return
-            ;         }
-            ;     }
-            ;     if (pressedKey != "") {
-            ;         break
-            ;     }
-            ;     Sleep(10)
-            ; }
-
-            ; Süre aşımı: 5s sonunda menü kapanır
-            ; if (A_TickCount - sideStartTime >= timeOut && previewList.Length > 0) {
-            ;     ; OutputDebug("Menü süre aşımı (5000ms), kapanıyor`n")
-            ;     ToolTip()
-            ; }
+            SoundBeep(800)
+            ToolTip("")
 
         } catch Error as err {
             errHandler.handleError(err.Message " " key, err)
