@@ -2,10 +2,8 @@ class CascadeBuilder {
     __New(shortTime := 500, longTime := 1500) {
         this.shortTime := shortTime
         this.longTime := longTime
-        this.timeOut := 30000
         this.exitOnPressType := -1
         this.durationType := -1
-
         this._mainKey := ""
         this.previewCallback := ""
         this.pairsActions := []
@@ -19,11 +17,6 @@ class CascadeBuilder {
 
     setExitOnPressType(ms) { ;0 hata mi?
         this.exitOnPressType := ms
-        return this
-    }
-
-    setTimeOut(ms) { ;no action will close popup default 30sec
-        this.timeOut := ms
         return this
     }
 
@@ -43,26 +36,15 @@ class CascadeBuilder {
         return currentTips
     }
 
-    ; setPreview(prelist) {this.tips := prelist}
     setPreview(callback) {
         if (IsObject(callback)) {
             this.previewCallback := callback ; Callback'i sakla
-            ; this.tips := callback.Call(this) ; Direkt çağır ve tips'e ata
         } else {
             throw Error("setPreview: Callback bir fonksiyon olmalı!")
         }
         return this
     }
-    /*
-        setPreview(callback) {
-            if (IsObject(callback)) {
-                this.tips := callback.Call(this) ; Fonksiyonu çağır ve builder'ı parametre olarak geçir
-            } else {
-                throw Error("setPreview: Callback bir fonksiyon olmalı!")
-            }
-            return this
-        }
-    */
+
 }
 
 class CascadeMenu {
@@ -106,7 +88,6 @@ class CascadeMenu {
         previewList := builder.tips
         shortTime := builder.shortTime
         longTime := builder.longTime
-        timeOut := builder.timeOut
         senderKey := key
         durationType := -1
 
@@ -136,7 +117,6 @@ class CascadeMenu {
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
                 for p in pairsActions {
                     if (GetKeyState(p.key, "P")) {
-                        ; OutputDebug("Pressed together with key: " key "_" p.key "`n")
                         KeyWait p.key
                         p.action.Call(this.getPressType(A_TickCount - startTime, shortTime, longTime))
                         ToolTip()
@@ -274,6 +254,7 @@ class CascadeMenu {
             })
         cascade.cascadeKey(builder, "Tab")
     }
+    ;esc ile tuslar veya caps ile tuslar aktif platformdaki aksiyonu cagirabilir
     /*
         cascadeCaps() {
             loadSaveMacro(dt, number) {

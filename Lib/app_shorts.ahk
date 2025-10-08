@@ -131,31 +131,52 @@ class ProfileManager {
         this.save()
     }
 
-    createNewProfile() {
+    createNewProfile(profile := "") {  ; Optional profile parametresi eklendi
         try {
             local title := state.getActiveTitle()
             local hwnd := state.getActiveHwnd()
             local className := state.getActiveClassName()
 
-            profileGui := Gui("+AlwaysOnTop", "Yeni Profil Ekle")
+            profileGui := Gui("+AlwaysOnTop", profile ? "Profil Düzenle" : "Yeni Profil Ekle")
             profileGui.Add("Text", , "Profil Adı:")
-            nameEdit := profileGui.Add("Edit", "w300 vProfileName")
+            nameEdit := profileGui.Add("Edit", "w300 vProfileName", profile ? profile.profileName : "")
 
             profileGui.Add("Text", , "Class Adı (boş bırakılabilir):")
-            classEdit := profileGui.Add("Edit", "w300 vClassName", className)
+            classEdit := profileGui.Add("Edit", "w300 vClassName", profile ? profile.className : className)
 
             profileGui.Add("Text", , "Title (kısmi eşleşme, boş bırakılabilir):")
-            titleEdit := profileGui.Add("Edit", "w300", title)
+            titleEdit := profileGui.Add("Edit", "w300", profile ? profile.title : title)
 
             okBtn := profileGui.Add("Button", "Default", "OK")
             okBtn.OnEvent("Click", (*) {
-                newProfile := AppProfile(nameEdit.Value, classEdit.Value ? classEdit.Value : "", titleEdit.Value ? titleEdit.Value : "")
-                this.addProfile(newProfile)
+                newName := nameEdit.Value
+                newClass := classEdit.Value ? classEdit.Value : ""
+                newTitle := titleEdit.Value ? titleEdit.Value : ""
+                if (profile) {  ; Edit modu
+                    profile.profileName := newName
+                    profile.className := newClass
+                    profile.title := newTitle
+                    ; Shortcuts aynı kalır, sadece profil bilgileri güncellenir
+                } else {  ; Yeni ekleme
+                    newProfile := AppProfile(newName, newClass, newTitle)
+                    this.addProfile(newProfile)
+                }
+                this.save()
                 profileGui.Destroy()
             })
 
             profileGui.Show()
+        } catch as err {
+            errHandler.handleError("Profil GUI hatası", err)
         }
+    }
+
+    editProfile(profile) {  ; Yeni metod: createNewProfile'ı çağırır
+        if (!profile) {
+            errHandler.handleError("Düzenlenecek profil yok")
+            return
+        }
+        this.createNewProfile(profile)
     }
 
     addShortCutToProfile(profile) {
@@ -253,8 +274,9 @@ class ProfileManager {
                 this.profiles.Push(profile)
             }
         } catch as err {
-            OutputDebug("Profil yükleme hatası: " err.Message)
             this.profiles := []
+            errHandler.backupOnError(AppConst.FILE_PROFILE)
+            ; OutputDebug("Profil yükleme hatası: " err.Message)
         }
     }
 }

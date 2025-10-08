@@ -33,7 +33,7 @@ class ErrorHandler {
         }
 
         this.errorMap[A_Now] := errorMessage ; Yeni hatayı ekle
-        
+
         ; Eğer err nesnesi varsa, full detayları hazırla ve sakla
         if (IsSet(err) && IsObject(err)) {
             this.lastFullError := this._formatFullError(err, errorMessage)
@@ -108,7 +108,7 @@ class ErrorHandler {
     }
 
     _cleanOldErrors() {
-        ; En eski hatayÄ± bul ve sil
+        ; En eski hatayı bul ve sil
         oldest := ""
         for timestamp, _ in this.errorMap {
             if (!oldest || timestamp < oldest) {
@@ -120,9 +120,23 @@ class ErrorHandler {
         }
     }
 
-    ; Test iÃ§in hata olustur
+    ; Test için hata oluştur
     testError(message := "Test Error") {
         this.handleError(message)
     }
 
+    backupOnError(filePath) {
+        errorMsg := filePath . ": dosyada okuma hatası oldu, baska isimle yedeklendi "
+        try {
+            timestamp := FormatTime(A_Now, "dd-MM_HHmmss")
+            backupPath := filePath . "." . timestamp
+            FileMove(filePath, backupPath, 1)
+            this.handleError("Dosya yedeklendi (" . backupPath . ")")
+            OutputDebug(errorMsg)
+            MsgBox(errorMsg, "Hata", "OK Iconi")
+        } catch as err {
+            MsgBox(errorMsg, "Dosya yedekleme sistemi yedeklemeyi beceremedi!", "OK Iconi")
+            this.handleError("Yedekleme başarısız: " . err.Message, err)
+        }
+    }
 }
