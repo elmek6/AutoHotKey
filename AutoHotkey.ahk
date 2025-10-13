@@ -13,6 +13,8 @@
 #Include <app_shorts>
 #Include <menus>
 #Include <chrome_positions>
+#Include <memory_slots>
+
 ; #Include <array_filter>
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
@@ -25,6 +27,7 @@ global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global appShorts := ProfileManager.getInstance()
 global chromePos := ChromePositions.getInstance()
+global memSlots := MemorySlotsManager.getInstance()
 
 global scriptStartTime := A_Now
 global stateConfig := { none: 0, home: 1, work: 2 }
@@ -264,3 +267,5 @@ Tab:: {
     ToolTip()
 }
 */
+
+ß:: memSlots := MemorySlotsManager.getInstance()
