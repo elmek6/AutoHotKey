@@ -17,7 +17,7 @@
 ; #Include <array_filter>
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_b129")
+global state := ScriptState.getInstance("ver_130_h")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)

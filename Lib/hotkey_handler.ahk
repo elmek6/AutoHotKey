@@ -108,7 +108,7 @@ class HotkeyHandler {
         this.hgsRight := ""
     }
 
-    _getPressType(duration, shortTime := 400, longTime := 1400) {
+    _getPressType(duration, shortTime := 300, longTime := 1000) {
         if (duration < shortTime) {
             return 0  ; short
         } else if (duration < longTime) {
@@ -222,41 +222,31 @@ class HotkeyHandler {
         }
     }
 
-    __handleCapsLock() {
-        static builder := FKeyBuilder()
-            .mainDefault((pressType) => SetCapsLockState(!GetKeyState("CapsLock", "T")))
-            .combos("a", "Select All & Delete", () => Send("^a{BackSpace}"))
-            .combos("x", "Cut All", () => clipManager.press("^a^x"))
-            .combos("c", "Copy All", () => clipManager.press("^a^c"))
-            .combos("v", "Paste All", () => clipManager.press("^a^v"))
-            .combos("q", "-", Sleep(50))
-            .combos("1", "Load History 1", () => clipManager.loadFromHistory(1))
-            .combos("2", "Load History 2", () => clipManager.loadFromHistory(2))
-            .combos("3", "Load History 3", () => clipManager.loadFromHistory(3))
-            .combos("4", "Load History 4", () => clipManager.loadFromHistory(4))
-            .combos("5", "Load History 5", () => clipManager.loadFromHistory(5))
-            .combos("6", "Load History 6", () => clipManager.loadFromHistory(6))
-            .combos("7", "Load History 7", () => clipManager.loadFromHistory(7))
-            .combos("8", "Load History 8", () => clipManager.loadFromHistory(8))
-            .combos("9", "Load History 9", () => clipManager.loadFromHistory(9))
-            .combos("s", "Show History Search", () => clipManager.showHistorySearch())
-        builder.setPreview(clipManager.getHistoryPreviewList())
-        this.handleFKey(builder)
-    }
-
+    /*
+        __handleCapsLock() {
+            static builder := FKeyBuilder()
+                .mainDefault((pressType) => SetCapsLockState(!GetKeyState("CapsLock", "T")))
+                .combos("a", "Select All & Delete", () => Send("^a{BackSpace}"))
+                .combos("x", "Cut All", () => clipManager.press("^a^x"))
+                .combos("c", "Copy All", () => clipManager.press("^a^c"))
+                .combos("v", "Paste All", () => clipManager.press("^a^v"))
+                .combos("q", "-", Sleep(50))
+                .combos("1", "Load History 1", () => clipManager.loadFromHistory(1))
+                .combos("2", "Load History 2", () => clipManager.loadFromHistory(2))
+                .combos("3", "Load History 3", () => clipManager.loadFromHistory(3))
+                .combos("4", "Load History 4", () => clipManager.loadFromHistory(4))
+                .combos("5", "Load History 5", () => clipManager.loadFromHistory(5))
+                .combos("6", "Load History 6", () => clipManager.loadFromHistory(6))
+                .combos("7", "Load History 7", () => clipManager.loadFromHistory(7))
+                .combos("8", "Load History 8", () => clipManager.loadFromHistory(8))
+                .combos("9", "Load History 9", () => clipManager.loadFromHistory(9))
+                .combos("s", "Show History Search", () => clipManager.showHistorySearch())
+            builder.setPreview(clipManager.getHistoryPreviewList())
+            this.handleFKey(builder)
+        }
+    */
     handleLButton() {
         static builder := FKeyBuilder()
-            ; .mainEnd(() => (
-            ;     ;if appProfile == auto
-            ;     Sleep(50)
-            ;     MouseGetPos(&x, &y, &hWnd),
-            ;     ; title := WinGetTitle(hWnd)
-            ;     class := WinGetClass(hWnd),
-            ;     ; text := WinGetText(hWnd)
-            ;     ; OutputDebug("Title: " title "`nClass: " class "`nText: " SubStr(text, 1, 100))
-            ;     OutputDebug("Class: " class "`n")
-            ;     ; Qt5QWindowIcon
-            ; ))
             .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
             .combos("F15", "LB+F15() => Send('L 15')", () => Send("L 15"))
             .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
@@ -284,9 +274,12 @@ class HotkeyHandler {
 
     handleF13() {
         static builder := FKeyBuilder()
-            .mainStart(() => (ToolTip("F13 Paste Mode"), SetTimer(() => ToolTip(), -800)))
-            .mainDefault((ds) => showF13menu())
-            .mainLongPress(() => (ToolTip("Long presseed"), SetTimer(() => ToolTip(), -800)))
+            ; .mainStart(() => (ToolTip("F13 Paste Mode"), SetTimer(() => ToolTip(), -800)))
+            .mainDefault((pressType) {
+                pressType == 0
+                    ? showF13menu()
+                    : Send("abc")
+            })
             .mainGesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}"))
             .mainGesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}"))
             .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
@@ -316,7 +309,11 @@ class HotkeyHandler {
 
     handleF15() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => Send("^y"))
+            .mainDefault((pressType) {
+                pressType == 0
+                    ? Send("^y")
+                    : Send("{Escape}")
+            })            
             .combos("F13", "Send F13", () => Send("F13 bos"))
             .combos("LButton", "Send F15 L", () => Send("F15 L bos"))
         this.handleFKey(builder)
@@ -324,7 +321,11 @@ class HotkeyHandler {
 
     handleF16() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => Send("^z"))
+            .mainDefault((pressType) {
+                pressType == 0
+                    ? Send("^z")
+                    : Send("{Enter}")
+            })
             .combos("F13", "Send F13", () => Send("F13 bos"))
             .combos("LButton", "Send F16 L", () => Send("F16 L bos"))
         this.handleFKey(builder)
@@ -332,7 +333,11 @@ class HotkeyHandler {
 
     handleF17() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => Send("!{Right}"))
+            .mainDefault((pressType) {
+                pressType == 0
+                    ? Send("!{Right}")
+                    : Send("{Home}")
+            })
             .combos("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
             .combos("F18", "Delete", () => Send("{Delete}"))
             .combos("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
@@ -342,7 +347,11 @@ class HotkeyHandler {
 
     handleF18() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => Send("!{Left}"))
+            .mainDefault((pressType) {
+                pressType == 0
+                    ? Send("!{Left}")
+                    : Send("{End}")
+            })
             .combos("F17", "Cut", () => Send("^x"))
             .combos("F20", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
             .combos("LButton", "Cut", () => Send("^x"))
