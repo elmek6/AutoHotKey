@@ -12,13 +12,12 @@
 #Include <cascade_menu>
 #Include <app_shorts>
 #Include <menus>
-#Include <chrome_positions>
 #Include <memory_slots>
 
 ; #Include <array_filter>
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_b127")
+global state := ScriptState.getInstance("ver_b129")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)
@@ -26,7 +25,6 @@ global keyHandler := HotkeyHandler.getInstance()
 global cascade := CascadeMenu.getInstance()
 global recorder := MacroRecorder.getInstance(300)
 global appShorts := ProfileManager.getInstance()
-global chromePos := ChromePositions.getInstance()
 global memSlots := MemorySlotsManager.getInstance()
 
 global scriptStartTime := A_Now
@@ -87,7 +85,6 @@ ExitSettings(ExitReason, ExitCode) {
     state.saveStats(scriptStartTime)
     clipManager.__Delete()
     state.clearAllOnTopWindows()
-    chromePos.saveState()
 }
 
 reloadScript() {
@@ -221,6 +218,10 @@ NumpadClear:: Send("K")
 
 ^!+#Space:: return OutputDebug(":-)") ; Send("+{F10}") ;work suppreme edilemiyor (#hotif de olmadı)
 ^<:: SendInput ("^+k") ;satir sil vscode
+!v:: {
+    SetKeyDelay (520, 560)
+    SendText (A_Clipboard)
+}
 
 AppsKey:: { ;work
     id := []
@@ -258,7 +259,7 @@ AppsKey:: { ;work
 /*
 Tab:: {
     TapOrHold(
-        () => ToolTip("Short F2"),
+        () => ToolTip("Short F2"),s
         () => ToolTip("Medium F2"),
         () => ToolTip("Long F2")
         :aranan tuslar 1234567890s
@@ -267,5 +268,3 @@ Tab:: {
     ToolTip()
 }
 */
-
-ß:: memSlots := MemorySlotsManager.getInstance()

@@ -92,13 +92,14 @@ hookCommands() {
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
         "3", { dsc: "", fn: (*) => Sleep(10) },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        "5", { dsc: "Restore chrome position", fn: (*) => chromePos.restore() },
+        "5", { dsc: "Memory slot swap", fn: (*) => memSlots.start() },
         "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
         "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
-        "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) }
+        "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
+        ; "s", { dsc: "Save chrome position", fn: (*) => chromePos.saveState() }
     )
 
     menu := "Commands (Esc:exit)`n"
