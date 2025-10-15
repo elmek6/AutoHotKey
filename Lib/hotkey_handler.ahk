@@ -1,42 +1,142 @@
 #Include <HotGestures>
 
-TapOrHold(shortFn, mediumFn, longFn := "", shortTime := 400, longTime := 1400) {
+getPressType(fn, key := "", shortTime := 300, longTime := 3000) {
+    key := A_ThisHotkey
     startTime := A_TickCount
-    thisHotkey := A_ThisHotkey
     beepCount := 2
 
-    while (GetKeyState(thisHotkey, "P")) {
+    while (GetKeyState(key, "P")) {
         duration := A_TickCount - startTime
-
-        if (duration < shortTime) {
-            ;     OutputDebug("short tap`n")
-        } else
-            if (duration < longTime && beepCount > 1) {
-                ; OutputDebug("mid tap`n")
-                SoundBeep(800, 70)
-                beepCount--
-            } else
-                if (duration > longTime && longFn != "" && beepCount > 0) {
-                    ; OutputDebug("long tap`n")
-                    SoundBeep(600, 100)
-                    beepCount--
-                }
-
-        Sleep(40)
+        if (duration > shortTime && duration < longTime && beepCount > 1) {
+            SoundBeep(800, 70)
+            beepCount--
+        } else if (duration >= longTime && beepCount > 0) {
+            SoundBeep(600, 100)
+            beepCount--
+        }
+        Sleep(20)
     }
-
-    duration := A_TickCount - startTime
 
     if (duration < shortTime) {
-        shortFn.Call()
-    }
-    else if (duration < longTime || longFn == "") {
-        mediumFn.Call()
-    }
-    else if (longFn != "") {
-        longFn.Call()
+        fn.Call(0)
+    } else if (duration < longTime) {
+        fn.Call(1)
+    } else {
+        fn.Call(2)
     }
 }
+
+
+; getPressType(shortFn, mediumFn, longFn := "", shortTime := 400, longTime := 1400) {
+;     startTime := A_TickCount
+;     thisHotkey := A_ThisHotkey
+;     beepCount := 2
+
+;     while (GetKeyState(thisHotkey, "P")) {
+;         duration := A_TickCount - startTime
+
+;         if (duration < shortTime) {
+;             ;     OutputDebug("short tap`n")
+;         } else
+;             if (duration < longTime && beepCount > 1) {
+;                 ; OutputDebug("mid tap`n")
+;                 SoundBeep(800, 70)
+;                 beepCount--
+;             } else
+;                 if (duration > longTime && longFn != "" && beepCount > 0) {
+;                     ; OutputDebug("long tap`n")
+;                     SoundBeep(600, 100)
+;                     beepCount--
+;                 }
+
+;         Sleep(40)
+;     }
+
+;     duration := A_TickCount - startTime
+
+;     if (duration < shortTime) {
+;         shortFn.Call()
+;     }
+;     else if (duration < longTime || longFn == "") {
+;         mediumFn.Call()
+;     }
+;     else if (longFn != "") {
+;         longFn.Call()
+;     }
+; }
+
+
+; detectPressType((pressType) => OutputDebug("Press type: " pressType "`n"))
+; short press: 0, medium press: 1, long press: 2, double press: -1
+detectPressType(fn, key := "", short := 300, long := 1000, gap := 100) {
+    if (key = "") {
+        key := SubStr(A_ThisHotkey, -1) ; sondan kesiyor diyor ama ?
+    }
+    result := KeyWait(key, "T" (short / 1000))
+
+    if (result) {
+        ; Short süre içinde bırakıldı -> Kısa basım, double kontrolü yap
+        result := KeyWait(key, "D T" (gap / 1000))
+
+        if (result) {
+            KeyWait(key)
+            fn.Call(-1)
+        } else {
+            fn.Call(0)
+        }
+        return
+    }
+
+
+    ; Medium timeout oldu, long süre bekle
+    result := KeyWait(key, "T" ((long) / 1000))
+
+    if (result) {
+        ; Long süre içinde bırakıldı -> Uzun basım
+        SoundBeep(800, 70)
+        fn.Call(1)
+    } else {
+        ; Long timeout da oldu -> Çok uzun basım (yine de 2 döndür)
+        KeyWait(key)
+        SoundBeep(600, 100)
+
+        fn.Call(2)
+    }
+}
+
+
+/*
+ß:: getPressType((pressType) =>
+    OutputDebug("Press type: " pressType "`n")
+, "ß")
+
+getPressType(cbFn, key, short := 300, medium := 800, long := 1500) {
+    ; Tuşun bırakılmasını bekle (short süresi kadar timeout)
+    result := KeyWait(key, "T" (short/1000))
+
+    if (result) {
+        ; Short süre içinde bırakıldı -> Kısa basım
+        cbFn.Call(0)
+        return
+    }
+
+    ; Short timeout oldu, medium süre bekle
+    result := KeyWait(key, "T" ((medium - short)/1000))
+
+    if (result) {
+        ; Medium süre içinde bırakıldı -> Orta basım
+        cbFn.Call(1)
+        return
+    }
+
+    ; Medium timeout oldu, long'a kadar bekle veya bırakılana kadar
+    KeyWait(key, "T" ((long - medium)/1000))
+
+    ; Her halükarda artık uzun basım
+    KeyWait(key)  ; Bırakılmasını bekle
+    cbFn.Call(2)
+}
+*/
 
 class FKeyBuilder {
     __New() {
@@ -222,29 +322,6 @@ class HotkeyHandler {
         }
     }
 
-    /*
-        __handleCapsLock() {
-            static builder := FKeyBuilder()
-                .mainDefault((pressType) => SetCapsLockState(!GetKeyState("CapsLock", "T")))
-                .combos("a", "Select All & Delete", () => Send("^a{BackSpace}"))
-                .combos("x", "Cut All", () => clipManager.press("^a^x"))
-                .combos("c", "Copy All", () => clipManager.press("^a^c"))
-                .combos("v", "Paste All", () => clipManager.press("^a^v"))
-                .combos("q", "-", Sleep(50))
-                .combos("1", "Load History 1", () => clipManager.loadFromHistory(1))
-                .combos("2", "Load History 2", () => clipManager.loadFromHistory(2))
-                .combos("3", "Load History 3", () => clipManager.loadFromHistory(3))
-                .combos("4", "Load History 4", () => clipManager.loadFromHistory(4))
-                .combos("5", "Load History 5", () => clipManager.loadFromHistory(5))
-                .combos("6", "Load History 6", () => clipManager.loadFromHistory(6))
-                .combos("7", "Load History 7", () => clipManager.loadFromHistory(7))
-                .combos("8", "Load History 8", () => clipManager.loadFromHistory(8))
-                .combos("9", "Load History 9", () => clipManager.loadFromHistory(9))
-                .combos("s", "Show History Search", () => clipManager.showHistorySearch())
-            builder.setPreview(clipManager.getHistoryPreviewList())
-            this.handleFKey(builder)
-        }
-    */
     handleLButton() {
         static builder := FKeyBuilder()
             .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
@@ -313,7 +390,7 @@ class HotkeyHandler {
                 pressType == 0
                     ? Send("^y")
                     : Send("{Escape}")
-            })            
+            })
             .combos("F13", "Send F13", () => Send("F13 bos"))
             .combos("LButton", "Send F15 L", () => Send("F15 L bos"))
         this.handleFKey(builder)

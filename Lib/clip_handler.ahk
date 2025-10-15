@@ -3,7 +3,6 @@
 class ClipSlot {
     __New() {
         this.slots := []
-        ; artık 1-13 slotlarını kullanıyoruz
         Loop 13 {
             this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
         }
@@ -44,13 +43,10 @@ class ClipSlot {
 
     saveSlots() {
         try {
-
-            ; Slots array'ini JSON formatına çevir
             local jsonData := jsongo.Stringify(this.slots)
-
             local file := FileOpen(AppConst.FILES_DIR . "slots.json", "w", "UTF-8")
             if (!file) {
-                throw Error("slots.json yazılamadı")
+                throw
             }
             file.Write(jsonData)
             file.Close()
@@ -70,7 +66,7 @@ class ClipSlot {
         try {
             local file := FileOpen(AppConst.FILES_DIR . "slots.json", "r", "UTF-8")
             if (!file) {
-                throw Error("slots.json okunamadı")
+                throw
             }
             local data := file.Read()
             file.Close()
@@ -138,7 +134,7 @@ class ClipboardManager {
         try {
             ClipWait(1)
             if (A_Clipboard == "") {
-                throw Error("Kopyalama başarısız: Pano boş.")
+                throw
             }
             local content := A_Clipboard
             local preview := StrReplace(SubStr(content, 1, 500), "`n", " ")
@@ -172,7 +168,7 @@ class ClipboardManager {
             this.slotManager.saveSlots()
             return true
         } catch as err {
-            errHandler.handleError("Slot kaydetme başarısız: ", err)
+            errHandler.handleError("storeToSlot! Slot kaydetme başarısız: ", err)
             return false
         }
     }
@@ -182,7 +178,7 @@ class ClipboardManager {
             A_Clipboard := this.slotManager.getContent(slotNumber)
             ClipWait(1)
             if (A_Clipboard == "") {
-                throw Error("Pano yükleme başarısız.")
+                throw
             }
             Sleep(20)
             if (state.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alınabilir
@@ -192,7 +188,7 @@ class ClipboardManager {
             }
             return true
         } catch as err {
-            errHandler.handleError("Slot yükleme başarısız: " . err.Message)
+            errHandler.handleError("loadFromSlot! Slot yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -211,7 +207,7 @@ class ClipboardManager {
                 throw Error("Geçmişte " . index . " numaralı kayıt yok.")
             }
         } catch as err {
-            errHandler.handleError("History yükleme başarısız: " . err.Message)
+            errHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
             return false
         } finally {
             OnClipboardChange(this.clipboardWatcher, 1)
