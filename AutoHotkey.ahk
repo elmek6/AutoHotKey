@@ -17,7 +17,7 @@
 ; #Include <array_filter>
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_130_h")
+global state := ScriptState.getInstance("ver_131_h")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)
@@ -126,7 +126,7 @@ LButton:: {
 #HotIf currentConfig = stateConfig.work ; hotif olan tuslari override eder
 >#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 >#2:: recorder.playKeyAction(2, 1)
->#3:: TapOrHold( ;belki önüne birsey gelince olabilir?
+>#3:: getPressType( ;belki önüne birsey gelince olabilir?
     () => recorder.playKeyAction(3, 1),
     () => recorder.recordAction(3, MacroRecorder.recType.key)
 )

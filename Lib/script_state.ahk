@@ -153,23 +153,7 @@
         }
     }
 
-    clearAllOnTopWindows() {
-        try {
-            for k, v in this.onTopWindowsList {
-                if (WinExist(v)) {
-                    this.toggleOnTopWindow(k, v)
-                }
-            }
-            this.onTopWindowsList.Clear()
-        } catch as err {
-            errHandler.handleError("Tüm always on top kaldırma hatası", err)
-        }
-    }
-
-    getCountTopWindows() {
-        return this.onTopWindowsList.Count
-    }
-
+    ; hic kullanmadim !!!
     cleanClosedOnTopWindows() {
         try {
             for hwnd, _ in this.onTopWindowsList.Clone() {  ; Clone ile döngüde silme güvenli

@@ -28,6 +28,7 @@ getStatsArray(showMsgBox := false) {
 }
 
 showF13menu() {
+    Click("Middle", 1)
     state.updateActiveWindow()
 
     menuF13 := Menu()
@@ -48,7 +49,9 @@ showF13menu() {
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     menuF13.Add("Delete line", (*) => Send("{Home}{Home}+{End}{Delete}{Delete}"))
     menuF13.Add("Find 'clipboard'", (*) => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
-    menuF13.Add("Always on top :" state.getCountTopWindows(), menuAlwaysOnTop())
+    menuF13.Add()
+    menuAlwaysOnTop(menuF13)
+
     menuF13.Show()
 }
 
@@ -175,19 +178,20 @@ menuAppProfile(targetMenu) {
     }
 }
 
-menuAlwaysOnTop() {
-    menuTops := Menu()
+menuAlwaysOnTop(targetMenu) {
+    ; menuTops := Menu()
     title := state.getActiveTitle()
     hwnd := state.getActiveHwnd()
 
-    for key, value in state.onTopWindowsList {
-        menuTops.Add("- " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
+    if (!state.onTopWindowsList.Has(hwnd)) {
+        targetMenu.Add("+ Top " . title, (*) => state.toggleOnTopWindow(hwnd, title))
     }
-    menuTops.Add()
-    menuTops.Add("Add " . title, (*) => state.toggleOnTopWindow(hwnd, title))
-    menuTops.Add("Clear all", (*) => state.clearAllOnTopWindows())
 
-    return menuTops
+    for key, value in state.onTopWindowsList {
+        targetMenu.Add("- Top " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
+    }
+
+    return targetMenu
 }
 
 DialogPauseGui() {
