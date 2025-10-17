@@ -115,6 +115,7 @@ class CascadeMenu {
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
+                state.setBusy(2)
                 for p in pairsActions {
                     if (GetKeyState(p.key, "P")) {
                         KeyWait p.key
@@ -141,7 +142,7 @@ class CascadeMenu {
                 return
             }
 
-            state.setBusy(2)
+            state.setBusy(1)
             if (IsObject(builder.previewCallback)) {
                 previewList := builder.previewCallback.Call(this, mainPressType)
                 if (previewList.Length > 0) {
@@ -153,20 +154,25 @@ class CascadeMenu {
                 }
             }
 
-            ih := InputHook("L1 T60", senderKey)
-            ih.Start(), ih.Wait()
-            inputKey := ih.Input != "" ? ih.Input : ih.EndKey
+            ; state.setBusy(1)
+            Hotkey("SC001", "Off")
 
-            if (inputKey = "Escape") {
-                ToolTip()
-                return
-            }
+            ih := InputHook()
+            ih.VisibleNonText := false
+            ih.KeyOpt("{All}", "E") ; 
+            ih.Start()
+            ih.Wait()
 
+            ; if (ih.EndKey = "Escape") { ; Escape
+            ;     ToolTip()
+            ;     return
+            ; }
+            Hotkey("SC001", "On")
             ; pressedTogether := GetKeyState(A_ThisHotkey, "P")
             ; OutputDebug (pressedTogether)
 
             for p in pairsActions {
-                if (p.key = inputKey) {
+                if (p.key = ih.EndKey) {
                     p.action.Call(mainPressType)
                     ToolTip("")
                     return
@@ -180,6 +186,8 @@ class CascadeMenu {
             errHandler.handleError(err.Message " " key, err)
         } finally {
             state.setBusy(0)
+            OutputDebug "0`r"
+
         }
     }
 
@@ -228,6 +236,7 @@ class CascadeMenu {
         cascade.cascadeKey(builder, "^")
     }
 
+
     cascadeTab() {
         builder := CascadeBuilder(400, 2500)
             .mainKey((dt) {
@@ -254,42 +263,49 @@ class CascadeMenu {
             })
         cascade.cascadeKey(builder, "Tab")
     }
-    ;esc ile tuslar veya caps ile tuslar aktif platformdaki aksiyonu cagirabilir
-    /*
-        cascadeCaps() {
-            loadSaveMacro(dt, number) {
-                if (dt = 2) {
-                    recorder.recordAction(number, MacroRecorder.recType.key)
-                } else {
-                    recorder.playKeyAction(number, 1)
-                }
-            }
-    
-            builder := CascadeBuilder(400, 2500)
-                .mainKey((dt) {
-                    if (dt = 0)
-                        SetCapsLockState(!GetKeyState("CapsLock", "T"))
-                })
-                .setExitOnPressType(0)
-                ; .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
-                .pairs("1", "rec1.ahk", (dt) => loadSaveMacro(dt, 1))
-                .pairs("2", "rec2.ahk", (dt) => loadSaveMacro(dt, 2))
-                .pairs("3", "rec3.ahk", (dt) => loadSaveMacro(dt, 3))
-                .pairs("4", "rec4.ahk", (dt) => loadSaveMacro(dt, 4))
-                .pairs("5", "rec5.ahk", (dt) => loadSaveMacro(dt, 5))
-                .pairs("6", "rec6.ahk", (dt) => loadSaveMacro(dt, 6))
-                .pairs("7", "rec7.ahk", (dt) => loadSaveMacro(dt, 7))
-                .pairs("8", "rec8.ahk", (dt) => loadSaveMacro(dt, 8))
-                .pairs("9", "rec9.ahk", (dt) => loadSaveMacro(dt, 9))
-                .pairs("0", "rec0.ahk", (dt) => loadSaveMacro(dt, 13))
-                .setPreview((b, pressType) {
-                    if (pressType = 1) {
-                        return clipManager.getSlotsPreviewText()
-                    } else {
-                        return []
-                    }
-                })
-            cascade.cascadeKey(builder, "CapsLock")
+
+
+    cascadeEsc() {
+        state.updateActiveWindow()
+        profile := appShorts.findProfileByWindow()
+        if (!profile || profile.shortCuts.Length == 0) {
+            ToolTip("yok yok yok"), SetTimer(() => ToolTip(), -1000)
+            return
         }
-    */
+        loadSaveMacro(number) {
+            if (number > profile.shortCuts.Length) {
+                ToolTip("yok yok"), SetTimer(() => ToolTip(), -1000)
+                return
+            }
+            ; profile.shortCuts.play
+            profile.playAt(number)
+        }
+
+        builder := CascadeBuilder(400, 2000)
+            .mainKey((dt) {
+                if (dt = 0)
+                    SendInput("{Esc}")
+            })
+            .setExitOnPressType(0)
+            ; .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+            ; .pairs("Esc", "Cancel", (dt) => SendInput("{Esc}"))
+            .pairs("1", profile.shortCuts[1].shortCutName, (dt) => loadSaveMacro(1))
+            .pairs("2", "rec2.ahk", (dt) => loadSaveMacro(2))
+            .pairs("3", "rec3.ahk", (dt) => loadSaveMacro(3))
+            .pairs("4", "rec4.ahk", (dt) => loadSaveMacro(4))
+            .pairs("5", "rec5.ahk", (dt) => loadSaveMacro(5))
+            .pairs("6", "rec6.ahk", (dt) => loadSaveMacro(6))
+            .pairs("7", "rec7.ahk", (dt) => loadSaveMacro(7))
+            .pairs("8", "rec8.ahk", (dt) => loadSaveMacro(8))
+            .pairs("9", "rec9.ahk", (dt) => loadSaveMacro(9))
+            .setPreview((b, pressType) {
+                ; Profile shortCuts preview'larını döndür (ad + kısa açıklama)
+                if (pressType = 1) {
+                    return profile.getShortCutsPreview()
+                } else {
+                    return []
+                }
+            })
+        cascade.cascadeKey(builder, "Esc")
+    }
 }

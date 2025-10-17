@@ -47,8 +47,6 @@ showF13menu() {
     menuF13.Add()
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
-    menuF13.Add("Delete line", (*) => Send("{Home}{Home}+{End}{Delete}{Delete}"))
-    menuF13.Add("Find 'clipboard'", (*) => clipManager.press(["^f", "{Sleep 100}", "^a^v"]))
     menuF13.Add()
     menuAlwaysOnTop(menuF13)
 
@@ -67,6 +65,7 @@ showF14menu() {
     menuF14.Add("Load clip", clipManager.buildSlotMenu())
     menuF14.Add("Save clip", clipManager.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", clipManager.buildHistoryMenu())
+    menuF14.Add("Memory clip", (*) => memSlots.start(true))
     menuF14.Add()
 
     menuF14.Add("Settings", menuSettings())
@@ -95,7 +94,7 @@ hookCommands() {
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
         "3", { dsc: "", fn: (*) => Sleep(10) },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        "5", { dsc: "Memory slot swap", fn: (*) => memSlots.start() },
+        "5", { dsc: "Memory slot swap", fn: (*) => memSlots.start(false) },
         "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
@@ -164,17 +163,16 @@ menuAppProfile(targetMenu) {
 
 
     if (profile) {
-        local subMenu := Menu()
         for sc in profile.shortCuts {
             local lambda := sc
-            subMenu.Add(sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
+            targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
         }
-        subMenu.Add()
-        subMenu.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
-        subMenu.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
-        targetMenu.Add("App> " . profile.profileName, subMenu)
+        targetMenu.Add()
+        targetMenu.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
+        targetMenu.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
+        ; targetMenu.Add("App> " . profile.profileName, subMenu)
     } else {
-        targetMenu.Add("+Ekle (" className ")", (*) => appShorts.createNewProfile())
+        targetMenu.Add("▸ Ekle (" className ")", (*) => appShorts.createNewProfile())
     }
 }
 
@@ -184,11 +182,11 @@ menuAlwaysOnTop(targetMenu) {
     hwnd := state.getActiveHwnd()
 
     if (!state.onTopWindowsList.Has(hwnd)) {
-        targetMenu.Add("+ Top " . title, (*) => state.toggleOnTopWindow(hwnd, title))
+        targetMenu.Add("📍 Add " . title, (*) => state.toggleOnTopWindow(hwnd, title))
     }
 
     for key, value in state.onTopWindowsList {
-        targetMenu.Add("- Top " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
+        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
     }
 
     return targetMenu

@@ -120,7 +120,7 @@ class ClipboardManager {
         this.maxClipSize := maxClipSize
         this.lastClip := ""
         this.clipLength := 0
-
+        this.ignoreNextChange := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
         this.slotManager.loadSlots()
@@ -195,9 +195,9 @@ class ClipboardManager {
 
     loadFromHistory(index) {
         try {
-            OnClipboardChange(this.clipboardWatcher.Bind(this))  ;persist
             actualIndex := this.history.Length - index + 1
             if (actualIndex > 0 && actualIndex <= this.history.Length) {
+                this.ignoreNextChange := true
                 A_Clipboard := this.history[actualIndex]
                 ClipWait(1)
                 Sleep(50)
@@ -209,12 +209,14 @@ class ClipboardManager {
         } catch as err {
             errHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
             return false
-        } finally {
-            OnClipboardChange(this.clipboardWatcher, 1)
         }
     }
 
     clipboardWatcher(Type) {
+        if (this.ignoreNextChange) {
+            this.ignoreNextChange := false
+            return
+        }
         if (Type != 1) {
             return
         }

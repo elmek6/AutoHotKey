@@ -145,7 +145,7 @@ class FKeyBuilder {
         this._mainEnd := ""
         this.gestures := []
         this.comboActions := []
-        this.tips := []
+        this.tips := [A_ThisHotkey]
     }
 
     mainStart(fn) {
@@ -237,7 +237,7 @@ class HotkeyHandler {
                     KeyWait c.key
                     keyCounts.inc(c.key)
                     c.action.Call()
-                    return true
+                    ; return true yanci basildigi sürece tekrar calissin
                 }
             }
             return false
@@ -431,8 +431,7 @@ class HotkeyHandler {
             })
             .combos("F17", "Cut", () => Send("^x"))
             .combos("F20", "3x Click + Copy", () => (Click("Left", 3), clipManager.press("^c")))
-            .combos("LButton", "Cut", () => Send("^x"))
-            .combos("MButton", "Cut", () => Send("^x"))
+            .combos("LButton", "Del line VSCode", () => SendInput("^+k"))
         this.handleFKey(builder)
     }
 

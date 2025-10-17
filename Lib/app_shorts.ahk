@@ -49,6 +49,40 @@ class AppProfile {
         }
         return condition
     }
+
+    playAt(index) {
+        if (index < 1 || index > this.shortCuts.Length) {
+            errHandler.handleError("Geçersiz shortCut index: " . index)
+            SoundBeep(800)  ; Uyarı sesi
+            return false
+        }
+        shortCut := this.shortCuts[index]
+        shortCut.play()
+        return true
+    }
+
+    getShortCutsPreview(maxLen := 100) {
+        result := []
+        title := "ESC Profile menu : " . this.profileName
+        result.Push(title)
+        Loop this.shortCuts.Length {
+            sc := this.shortCuts[A_Index]
+            preview := A_Index . ": " . sc.shortCutName
+
+            if (sc.keyStrokes.Length > 0) {
+                strokesSummary := sc.keyStrokes[1]
+                Loop sc.keyStrokes.Length - 1 {
+                    strokesSummary .= ", " . sc.keyStrokes[A_Index + 1]
+                }
+            }
+            preview .= " [" . (strokesSummary != "" ? strokesSummary : "") . "]"
+            if (StrLen(preview) > maxLen) {
+                preview := SubStr(preview, 1, maxLen - 3) . "..."
+            }
+            result.Push(preview)
+        }
+        return result
+    }
 }
 
 class ProfileBuilder {
@@ -240,12 +274,12 @@ class ProfileManager {
             local jsonData := jsongo.Stringify(jsonStruct)
             local file := FileOpen(AppConst.FILE_PROFILE, "w", "UTF-8")
             if (!file) {
-                throw Error("slots.json yazılamadı")
+                throw
             }
             file.Write(jsonData)
             file.Close()
         } catch as err {
-            errHandler.handleError("Profil kaydetme hatası: " . err.Message, err)
+            errHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
         }
     }
 
@@ -256,7 +290,7 @@ class ProfileManager {
         try {
             file := FileOpen(AppConst.FILE_PROFILE, "r", "UTF-8")
             if (!file) {
-                throw Error("slots.json okunamadı")
+                throw
             }
             local data := file.Read()
             file.Close()
@@ -275,8 +309,7 @@ class ProfileManager {
             }
         } catch as err {
             this.profiles := []
-            errHandler.backupOnError(AppConst.FILE_PROFILE)
-            ; OutputDebug("Profil yükleme hatası: " err.Message)
+            errHandler.backupOnError("load!" . AppConst.FILE_PROFILE)
         }
     }
 }

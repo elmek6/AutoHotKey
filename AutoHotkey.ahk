@@ -3,21 +3,21 @@
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
 #Include <jsongo.v2>
-#Include <script_state>
-#Include <key_counter>
 #Include <error_handler>
-#Include <clip_handler>
-#Include <hotkey_handler>
-#Include <macro_recorder>
-#Include <cascade_menu>
-#Include <app_shorts>
+#Include <script_state>
 #Include <menus>
+#Include <key_counter>
+#Include <hotkey_handler>
+#Include <clip_handler>
 #Include <memory_slots>
-
+#Include <cascade_menu>
+#Include <macro_recorder>
+#Include <app_shorts>
 ; #Include <array_filter>
+
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_131_h")
+global state := ScriptState.getInstance("ver_133_b")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)
@@ -104,7 +104,7 @@ LButton:: {
 }
 #HotIf
 
-#HotIf state.getBusy() > 0 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
+#HotIf state.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
 *3:: return
@@ -127,15 +127,16 @@ LButton:: {
 >#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 >#2:: recorder.playKeyAction(2, 1)
 >#3:: getPressType( ;belki önüne birsey gelince olabilir?
-    () => recorder.playKeyAction(3, 1),
-    () => recorder.recordAction(3, MacroRecorder.recType.key)
+    (pressType) => pressType == 0
+        ? recorder.playKeyAction(3, 1)
+        : recorder.recordAction(3, MacroRecorder.recType.key)
 )
 #HotIf
+
 #HotIf currentConfig = stateConfig.home
 SC132:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 SC16C:: recorder.playKeyAction(2, 1)
 #HotIf
-
 
 ;Fare tuslari haritasi
 F13:: keyHandler.handleF13()
@@ -151,9 +152,9 @@ F20:: keyHandler.handleF20()
 
 SC029:: cascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
 SC00F:: cascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
-; SC03A:: cascade.cascadeCaps()  ; CapsLock:: keyHandler.handleCapsLock()
-; cascade escape
+SC001:: cascade.cascadeEsc() ; Esc SC001 VK1B
 SC00D:: hookCommands() ; ´ backtick SC00D VKDD
+; SC03A:: cascade.cascadeCaps()  ; CapsLock:: keyHandler.handleCapsLock()
 
 ~LButton:: keyHandler.handleLButton()
 ~MButton:: keyHandler.handleMButton()
@@ -184,7 +185,7 @@ RButton & WheelDown:: {
 ~RButton Up:: {
     if (state.getRightClickActive()) {
         Sleep 50
-        Send ("{ESC}")        ; PostMessage(0x001F, 0, 0, , "A")     ;context i kapaiyor
+        Send ("{ESC}")
         state.setRightClickActive(false)
     }
 }
@@ -194,7 +195,7 @@ ShowKeyHistoryLoop() {
     KeyHistory (24)
     Loop {
         KeyHistory
-        Sleep 100  ; Gözlemlenen olayları güncellemek için kısa bir bekleme
+        Sleep 100
         if GetKeyState("Escape", "P") {
             Return
         }
@@ -235,13 +236,6 @@ AppsKey:: { ;work
 }
 
 
-; SC121:: { ;work win 11 ile sorun cözüldü
-;     Run "calc.exe"
-;     WinWait "Calculator"
-;     WinActivate
-; }
-
-
 ;Pause:: { SendInput("{vk5B down}v("{vk5B up}")}
 
 ; ScrollLock:: { ;test
@@ -254,17 +248,6 @@ AppsKey:: { ;work
 ; ß # #1 #2 #3 #F1 #F2 ^F1
 ; esc & 1 esc & 2
 ; esc & f1 esc & f2
-
-
-/*
-Tab:: {
-    TapOrHold(
-        () => ToolTip("Short F2"),s
-        () => ToolTip("Medium F2"),
-        () => ToolTip("Long F2")
-        :aranan tuslar 1234567890s
-    )
-    Sleep(1000)
-    ToolTip()
-}
-*/
+; ß:: detectPressType((pressType) =>
+;     OutputDebug("Press type: " pressType "`n")
+; )

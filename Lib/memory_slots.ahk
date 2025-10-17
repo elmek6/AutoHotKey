@@ -13,7 +13,7 @@ class MemorySlotsManager {
             throw Error("MemorySlotsManager zaten oluşturulmuş! getInstance kullan.")
         }
 
-        ; Slot verilerini başlat
+        this.autoFillFromHistory := false  ; Clipboard değişikliklerinde otomatik slot doldurma
         this.slots := []
         Loop 10 {
             this.slots.Push("")
@@ -23,6 +23,7 @@ class MemorySlotsManager {
         this.slotControls := []
         this.gui := ""
         this.listBox := ""
+        this.toggleBtn := ""  ; Yeni: Toggle butonu referansı için
 
         ; Clipboard history
         this.clipHistory := []
@@ -31,9 +32,11 @@ class MemorySlotsManager {
 
         this.isDestroyed := false
         this.savedHwnd := 0  ; HWND'yi sakla, GUI yokken kullan
+        this.ignoreNextClipChange := false  ; Yeni: Paste sırasında listener'ı blokla
     }
-    start() {
-        ; TODO belkide F1 kisa basic bossa copy doluysa paste, F1 uzun basic slotu bosalt??
+
+    start(autoFill) {
+        this.autoFillFromHistory := autoFill
         this._createGui()
         this._setupHotkeys()
         this.gui.Show("x10 y10 w420 h520")
@@ -48,7 +51,12 @@ class MemorySlotsManager {
             this.gui.SetFont("s9", "Segoe UI")
 
             this.gui.Add("Text", "x10 y10 w400 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste 🔹")
-            copyBtn := this.gui.Add("Button", "x10 y25 w400 h30", "💾 Slot'a Kopyala")
+
+            ; Yeni: Auto-Fill toggle butonu, copy butonunun yanına
+            this.toggleBtn := this.gui.Add("Button", "x10 y25 w200 h30", this.autoFillFromHistory ? "🟢 Auto-Fill: Aktif" : "🔴 Auto-Fill: Pasif")
+            this.toggleBtn.OnEvent("Click", (*) => this._toggleAutoFill())
+
+            copyBtn := this.gui.Add("Button", "x220 y25 w190 h30", "💾 Slot'a Kopyala")
             copyBtn.OnEvent("Click", (*) => this._copyToSlotPrompt())
 
             Loop 10 {
@@ -75,6 +83,16 @@ class MemorySlotsManager {
         }
     }
 
+    ; Yeni: Auto-Fill toggle butonu tıklama olayı
+    _toggleAutoFill() {
+        this.autoFillFromHistory := !this.autoFillFromHistory
+        statusText := this.autoFillFromHistory ? "🟢 Auto-Fill: Aktif" : "🔴 Auto-Fill: Pasif"
+        if (this.toggleBtn) {
+            this.toggleBtn.Text := statusText  ; Buton metnini güncelle
+        }
+        this._showTooltip(this.autoFillFromHistory ? "🟢 Auto-Fill aktif" : "🔴 Auto-Fill pasif", 800)
+    }
+
     _setupHotkeys() {
         Loop 10 {
             num := A_Index
@@ -90,6 +108,9 @@ class MemorySlotsManager {
             return
         }
 
+        ; Yeni: Tuş basımı sırasında listener'ı bir kez blokla (paste için)
+        this.ignoreNextClipChange := true
+
         this._tapOrHold(
             () => this._pasteSlot(slotNum),        ; Kısa: Slot yapıştır
             () => this._copyToSlot(slotNum),       ; Orta: Slot'a kopyala (prompt'suz)
@@ -98,6 +119,9 @@ class MemorySlotsManager {
             800,   ; Medium threshold (ms)
             1500   ; Long threshold (ms)
         )
+
+        ; İşlem sonrası flag'i reset et (serbest bırak)
+        this.ignoreNextClipChange := false
     }
 
     ; Kısa basma: Slottan yapıştır
@@ -142,74 +166,53 @@ class MemorySlotsManager {
             Send("^v")
             this._showTooltip("✅ History " . slotNum . " yapıştırıldı", 1000)
             ; Çakışma önleme: Ana script için kısa ignore set et
-            ignoreUntil := A_TickCount + 200  ; 200ms ignore
         } else {
-            this._showTooltip("❌ History paste başarısız!")
+            this._showTooltip("❌ History yapıştırma başarısız!")
         }
         Sleep(100)
         A_Clipboard := savedClip
     }
 
-    ; Eski copyToSlot'u buton için ayırdım (prompt ile slot seç)
-    _copyToSlotPrompt() {
-        input := InputBox("Hangi slota kopyala? (1-10)", "Slot Seç", , "1")
-        if (input.Result != "OK" || !IsInteger(input.Value) || input.Value < 1 || input.Value > 10) {
-            this._showTooltip("❌ Geçersiz slot!")
-            return
-        }
-        slotNum := input.Value
-        this._copyToSlot(slotNum)  ; Prompt'suz, varsayılan isim
-    }
-
-    ; Uzun basma için eski copy (şimdi butonla)
+    ; Orta basma: Slot'a kopyala (prompt'suz)
     _copyToSlot(slotNum) {
-        ; Orta basma: Seçili text'i kopyala
+        savedClip := A_Clipboard
         Send("^c")
-        ClipWait(0.5)  ; Clipboard bekle
-        Sleep(50)      ; Stabilite için
-
-        if (A_Clipboard == "") {
-            this._showTooltip("⚠️ Clipboard boş!")
-            return
+        ClipWait(0.5)
+        if (A_Clipboard != "") {
+            this.slots[slotNum] := A_Clipboard
+            this._updateSlotPreview(slotNum, A_Clipboard)
+            this._showTooltip("✅ Slot " . slotNum . " kopyalandı", 1000)
+        } else {
+            this._showTooltip("❌ Kopyalama başarısız!")
         }
-
-        content := A_Clipboard
-        fKey := "F" . slotNum
-
-        ; İsim prompt'unu atla (varsayılan kullan)
-        slotName := "Slot " . slotNum
-
-        this.slots[slotNum] := content
-
-        ; Preview oluştur
-        preview := content
-        preview := StrReplace(StrReplace(preview, "`r`n", " "), "`n", " ")
-        preview := StrReplace(preview, "`t", " ")
-        preview := RegExReplace(preview, "\s+", " ")
-        preview := Trim(preview)
-
-        if (StrLen(preview) > 45) {
-            preview := SubStr(preview, 1, 45) . "..."
-        }
-
-        this.slotControls[slotNum].Text := fKey . " [Slot " . slotNum . "]: " . preview
-        this._showTooltip("✅ Slot " . slotNum . " kaydedildi: " . slotName, 1000)
+        Sleep(100)
+        A_Clipboard := savedClip
     }
 
-    ; Slot görünümünü güncelle
-    _updateSlotDisplay(slotNum) {
-        content := this.slots[slotNum]
-        fKey := "F" . slotNum
+    ; Prompt'lu kopyala (manuel buton için) – v2 syntax düzeltildi
+    _copyToSlotPrompt() {
+        local slotNumInput := ""  ; Local tanımla ve başlat
+        InputBox(&slotNumInput, "Hangi slota kopyala? (1-10)", "Slot Numarası")
+        if (slotNumInput == "" || !IsInteger(slotNumInput) || slotNumInput < 1 || slotNumInput > 10) {
+            this._showTooltip("❌ Geçersiz slot numarası!")
+            return
+        }
+        slotNum := Integer(slotNumInput)
+        this._copyToSlot(slotNum)
+    }
 
+    ; Slot preview'ini güncelle
+    _updateSlotPreview(slotNum, content) {
+        if (slotNum < 1 || slotNum > 10) {
+            return
+        }
+        fKey := "F" . slotNum
         if (content == "") {
             preview := "(Boş)"
         } else {
-            ; Tek satır yap ve kısalt
-            preview := StrReplace(StrReplace(content, "`r`n", " "), "`n", " ")
-            preview := StrReplace(preview, "`t", " ")
+            preview := StrReplace(SubStr(content, 1, 45), "`n", " ")
             preview := RegExReplace(preview, "\s+", " ")  ; Çoklu boşlukları tek yap
             preview := Trim(preview)
-
             if (StrLen(preview) > 45) {
                 preview := SubStr(preview, 1, 45) . "..."
             }
@@ -237,6 +240,12 @@ class MemorySlotsManager {
             return
         }
 
+        ; Yeni: Tuş basımı sırasında ignore flag'i kontrol et
+        if (this.ignoreNextClipChange) {
+            this.ignoreNextClipChange := false  ; Flag'i tüket ve reset et
+            return
+        }
+
         ; Çakışma guard'ı (F20 vb. için)
         if (clipType != 1 || !WinExist("ahk_id " . (this.savedHwnd ? this.savedHwnd : this.gui.hwnd))) {
             return
@@ -259,7 +268,31 @@ class MemorySlotsManager {
             this.clipHistory.RemoveAt(1)
         }
 
+        ; Yeni: autoFillFromHistory aktifse, boş slotu otomatik doldur
+        if (this.autoFillFromHistory) {
+            this._autoFillEmptySlot(newClip)
+        }
+
         this._refreshHistoryList()  ; Listbox güncelle
+    }
+
+    ; Yeni metod: Boş slotu otomatik doldur (sırayla 1'den başlayarak)
+    _autoFillEmptySlot(newClip) {
+        foundEmpty := false
+        Loop 10 {
+            if (this.slots[A_Index] == "") {
+                this.slots[A_Index] := newClip
+                this._updateSlotPreview(A_Index, newClip)  ; GUI'yi güncelle
+                this._showTooltip("✅ Slot " . A_Index . " otomatik dolduruldu (" . StrLen(newClip) . " karakter)", 1000)
+                foundEmpty := true
+                break
+            }
+        }
+        if (!foundEmpty) {
+            ; Opsiyonel: Tüm slotlar doluysa en eskisini overwrite et (veya uyarı ver)
+            this._showTooltip("⚠️ Tüm slotlar dolu, overwrite yapılmadı.", 800)
+            ; Alternatif: this.slots[1] := newClip  ; En eskini ez
+        }
     }
 
     ; History listesini yenile
