@@ -443,11 +443,13 @@ class HotkeyHandler {
                     case 1: Send("^a^v")
                 }
             })
+            .mainEnd(() => clipManager.showClipboardPreview())
             .combos("F13", "Select All & Paste", () => clipManager.press("^a^v"))
             .combos("F14", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
             .combos("F20", "Select All & Paste", () => clipManager.press("^a^v"))
             .combos("LButton", "Click & Paste", () => (Click("Left", 1), clipManager.press("^v")))
             .combos("MButton", "3x Click + Paste", () => (Click("Left", 3), clipManager.press("^v")))
+        builder.setPreview([])
         this.handleFKey(builder)
     }
 
