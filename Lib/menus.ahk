@@ -54,6 +54,8 @@ showF13menu() {
 }
 
 showF14menu() {
+    Click("Middle", 1)
+
     menuF14 := Menu()
     menuF14.Add("Paste enter", (*) => clipManager.press("^v{Enter}"))
     menuF14.Add("Cut", (*) => clipManager.press("^x"))
@@ -61,7 +63,7 @@ showF14menu() {
     menuF14.Add("Unformatted paste", (*) => clipManager.press("^+v"))
     menuF14.Add()
 
-    ;fikir; move, rename, clear gelebilir
+    ;fikir; move, rename, clear gelebiLlir
     menuF14.Add("Load clip", clipManager.buildSlotMenu())
     menuF14.Add("Save clip", clipManager.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", clipManager.buildHistoryMenu())
@@ -92,7 +94,7 @@ hookCommands() {
     actions := Map(
         "1", { dsc: "Reload", fn: (*) => reloadScript() },
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
-        "3", { dsc: "", fn: (*) => Sleep(10) },
+        "3", { dsc: "Profil manager", fn: (*) => appShorts.showManagerGui() },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
         "5", { dsc: "Memory slot swap", fn: (*) => memSlots.start(false) },
         "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
@@ -101,6 +103,7 @@ hookCommands() {
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
         "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
         "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
+        "q", { dsc: "", fn: (*) => Sleep(10) },
         ; "s", { dsc: "Save chrome position", fn: (*) => chromePos.saveState() }
     )
 
@@ -167,12 +170,11 @@ menuAppProfile(targetMenu) {
             local lambda := sc
             targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
         }
-        targetMenu.Add()
-        targetMenu.Add("Aksiyon ekle", (*) => appShorts.addShortCutToProfile(profile))
-        targetMenu.Add("Profil düzenle", (*) => appShorts.editProfile(profile))
+        targetMenu.Add("Profili düzenle", (*) => appShorts.showManagerGui(profile))
         ; targetMenu.Add("App> " . profile.profileName, subMenu)
     } else {
-        targetMenu.Add("▸ Ekle (" className ")", (*) => appShorts.createNewProfile())
+        targetMenu.Add("▸ Ekle (" className ")", (*) => appShorts.editProfileForActiveWindow())
+        targetMenu.Add("Profiller", (*) => appShorts.showManagerGui())
     }
 }
 

@@ -17,7 +17,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_133_b")
+global state := ScriptState.getInstance("ver_134_b")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)
@@ -152,9 +152,8 @@ F20:: keyHandler.handleF20()
 
 SC029:: cascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
 SC00F:: cascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
-SC001:: cascade.cascadeEsc() ; Esc SC001 VK1B
+SC001:: cascade.cascadeCapslock() ; SC03A:: cascade.cascadeCaps()
 SC00D:: hookCommands() ; ´ backtick SC00D VKDD
-; SC03A:: cascade.cascadeCaps()  ; CapsLock:: keyHandler.handleCapsLock()
 
 ~LButton:: keyHandler.handleLButton()
 ~MButton:: keyHandler.handleMButton()
@@ -224,15 +223,17 @@ NumpadClear:: Send("K")
     SendText (A_Clipboard)
 }
 
-AppsKey:: { ;work
-    id := []
-    id := WinGetList("ahk_class MozillaWindowClass")
-    for index, this_id in id {
-        title := WinGetTitle("ahk_id " this_id)
-        if InStr(title, "Hekim") {
-            WinMinimize("ahk_id " this_id)
-        }
-    }
+AppsKey & a:: { ;work
+    SetTimer(() => ToolTip("AppsKey + A basıldı"), -80)
+    ; id := []
+    ; id := WinGetList("ahk_class MozillaWindowClass")
+    ; for index, this_id in id {
+    ;     title := WinGetTitle("ahk_id " this_id)
+    ;     if InStr(title, "Hekim") {
+    ;         WinMinimize("ahk_id " this_id)
+    ;     }
+
+    ; }
 }
 
 

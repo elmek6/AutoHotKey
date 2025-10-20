@@ -265,13 +265,13 @@ class CascadeMenu {
     }
 
 
-    cascadeEsc() {
+    cascadeCapslock() {
         state.updateActiveWindow()
         profile := appShorts.findProfileByWindow()
-        if (!profile || profile.shortCuts.Length == 0) {
-            ToolTip("yok yok yok"), SetTimer(() => ToolTip(), -1000)
-            return
-        }
+        ; if (!profile || profile.shortCuts.Length == 0) {
+        ;     ToolTip("yok yok yok"), SetTimer(() => ToolTip(), -1000)
+        ;     return
+        ; }
         loadSaveMacro(number) {
             if (number > profile.shortCuts.Length) {
                 ToolTip("yok yok"), SetTimer(() => ToolTip(), -1000)
