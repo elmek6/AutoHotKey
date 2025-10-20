@@ -32,19 +32,13 @@ showF13menu() {
     state.updateActiveWindow()
 
     menuF13 := Menu()
-    ; menuF13.Add("Add profile :", menuAppProfile())
     menuAppProfile(menuF13)
     menuF13.Add()
     ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
     menuF13.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
     menuF13.Add("⌫ Backspace", (*) => Send("{Backspace}"))
     menuF13.Add("⌦ Delete", (*) => SendInput("{Delete}"))
-    menuF13.Add("␣ Space", (*) => Send("{Space}"))
     menuF13.Add("⎋ Esc", (*) => Send("{Esc}"))
-    menuF13.Add("⇱ Home", (*) => Send("{Home}"))
-    menuF13.Add("␣ Space", (*) => Send("{Space}"))
-    menuF13.Add("⇲ End", (*) => Send("{End}"))
-    menuF13.Add()
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     menuF13.Add()
@@ -63,7 +57,6 @@ showF14menu() {
     menuF14.Add("Unformatted paste", (*) => clipManager.press("^+v"))
     menuF14.Add()
 
-    ;fikir; move, rename, clear gelebiLlir
     menuF14.Add("Load clip", clipManager.buildSlotMenu())
     menuF14.Add("Save clip", clipManager.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", clipManager.buildHistoryMenu())
@@ -104,7 +97,6 @@ hookCommands() {
         "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
         "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
         "q", { dsc: "", fn: (*) => Sleep(10) },
-        ; "s", { dsc: "Save chrome position", fn: (*) => chromePos.saveState() }
     )
 
     menu := "Commands (Esc:exit)`n"
@@ -164,14 +156,12 @@ menuAppProfile(targetMenu) {
     className := state.getActiveClassName()
     profile := appShorts.findProfileByWindow()
 
-
     if (profile) {
         for sc in profile.shortCuts {
             local lambda := sc
             targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
         }
         targetMenu.Add("Profili düzenle", (*) => appShorts.showManagerGui(profile))
-        ; targetMenu.Add("App> " . profile.profileName, subMenu)
     } else {
         targetMenu.Add("▸ Ekle (" className ")", (*) => appShorts.editProfileForActiveWindow())
         targetMenu.Add("Profiller", (*) => appShorts.showManagerGui())
@@ -179,7 +169,6 @@ menuAppProfile(targetMenu) {
 }
 
 menuAlwaysOnTop(targetMenu) {
-    ; menuTops := Menu()
     title := state.getActiveTitle()
     hwnd := state.getActiveHwnd()
 
@@ -224,7 +213,6 @@ DialogPauseGui() {
         Suspend(0) ; pencere kapanınca script devam etsin
     ))
 
-    ; Esc = pencereyi kapat + script devam
     pauseGui.OnEvent("Escape", (*) => (
         _destryoGui(),
         Suspend(0)

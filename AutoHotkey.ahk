@@ -17,7 +17,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_134_b")
+global state := ScriptState.getInstance("ver_135_b")
 global keyCounts := KeyCounter.getInstance()
 global errHandler := ErrorHandler.getInstance()
 global clipManager := ClipboardManager.getInstance(200, 30000)
@@ -34,8 +34,7 @@ global currentConfig := stateConfig.none
 
 CoordMode("Mouse", "Screen")
 TraySetIcon("arrow.ico")
-A_TrayMenu.Add("SCRIPT...", (*) => DialogPauseGui())
-A_TrayMenu.Add("EXIT", (*) => ExitApp())
+A_TrayMenu.Add("Control menu" . state.getVersion(), (*) => DialogPauseGui())
 class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
@@ -152,7 +151,7 @@ F20:: keyHandler.handleF20()
 
 SC029:: cascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
 SC00F:: cascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
-SC001:: cascade.cascadeCapslock() ; SC03A:: cascade.cascadeCaps()
+SC03A:: cascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
 SC00D:: hookCommands() ; ´ backtick SC00D VKDD
 
 ~LButton:: keyHandler.handleLButton()

@@ -265,7 +265,7 @@ class CascadeMenu {
     }
 
 
-    cascadeCapslock() {
+    cascadeCaps() {
         state.updateActiveWindow()
         profile := appShorts.findProfileByWindow()
         ; if (!profile || profile.shortCuts.Length == 0) {
@@ -284,7 +284,7 @@ class CascadeMenu {
         builder := CascadeBuilder(400, 2000)
             .mainKey((dt) {
                 if (dt = 0)
-                    SendInput("{Esc}")
+                    SetCapsLockState(!GetKeyState("CapsLock", "T"))
             })
             .setExitOnPressType(0)
             ; .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
