@@ -47,18 +47,18 @@ class CascadeBuilder {
 
 }
 
-class CascadeMenu {
+class singleCascadeHandler {
     static instance := ""
 
     static getInstance() {
-        if (!CascadeMenu.instance) {
-            CascadeMenu.instance := CascadeMenu()
+        if (!singleCascadeHandler.instance) {
+            singleCascadeHandler.instance := singleCascadeHandler()
         }
-        return CascadeMenu.instance
+        return singleCascadeHandler.instance
     }
 
     __New() {
-        if (CascadeMenu.instance) {
+        if (singleCascadeHandler.instance) {
             throw Error("CascadeMenu zaten oluşturulmuş! getInstance kullan.")
         }
     }
@@ -78,7 +78,7 @@ class CascadeMenu {
     }
 
     cascadeKey(builder, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
-        if (state.getBusy() > 0) {
+        if (gState.getBusy() > 0) {
             return
         }
 
@@ -92,7 +92,7 @@ class CascadeMenu {
         durationType := -1
 
         try {
-            state.setBusy(1)
+            gState.setBusy(1)
             startTime := A_TickCount
             beepCount := 2
             mediumTriggered := false
@@ -115,7 +115,7 @@ class CascadeMenu {
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
-                state.setBusy(2)
+                gState.setBusy(2)
                 for p in pairsActions {
                     if (GetKeyState(p.key, "P")) {
                         KeyWait p.key
@@ -142,7 +142,7 @@ class CascadeMenu {
                 return
             }
 
-            state.setBusy(1)
+            gState.setBusy(1)
             if (IsObject(builder.previewCallback)) {
                 previewList := builder.previewCallback.Call(this, mainPressType)
                 if (previewList.Length > 0) {
@@ -183,9 +183,9 @@ class CascadeMenu {
             ToolTip("")
 
         } catch Error as err {
-            errHandler.handleError(err.Message " " key, err)
+            gErrHandler.handleError(err.Message " " key, err)
         } finally {
-            state.setBusy(0)
+            gState.setBusy(0)
             OutputDebug "0`r"
 
         }
@@ -194,9 +194,9 @@ class CascadeMenu {
     cascadeCaret() {
         loadSave(dt, number) {
             if (dt = 2) {
-                clipManager.promptAndSaveSlot(number)
+                gClipManager.promptAndSaveSlot(number)
             } else {
-                clipManager.loadFromSlot(number)
+                gClipManager.loadFromSlot(number)
             }
         }
 
@@ -206,7 +206,7 @@ class CascadeMenu {
                     SendInput("{SC029}")
             })
             .setExitOnPressType(0)
-            .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
+            .pairs("s", "Search...", (dt) => gClipManager.showSlotsSearch())
             .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
             .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
             .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
@@ -222,18 +222,18 @@ class CascadeMenu {
                     return []
                 } else if (pressType == 1) {
                     ; return builder.getPairsTips()
-                    return clipManager.getSlotsPreviewText()
+                    return gClipManager.getSlotsPreviewText()
                 } else {
                     result := []
                     result.Push("-------------------- SAVE --------------------")
                     result.Push("----------------------------------------------")
-                    for v in clipManager.getSlotsPreviewText()
+                    for v in gClipManager.getSlotsPreviewText()
                         result.Push(v)
                     result.Push("kisa basma (" pressType "ms): Daha fazla seçenek")
                     return result
                 }
             })
-        cascade.cascadeKey(builder, "^")
+        gCascade.cascadeKey(builder, "^")
     }
 
 
@@ -244,30 +244,30 @@ class CascadeMenu {
                     SendInput("{Tab}")
             })
             .setExitOnPressType(0)
-            .pairs("1", "Load History 1", (dt) => clipManager.loadFromHistory(1))
-            .pairs("2", "Load History 2", (dt) => clipManager.loadFromHistory(2))
-            .pairs("3", "Load History 3", (dt) => clipManager.loadFromHistory(3))
-            .pairs("4", "Load History 4", (dt) => clipManager.loadFromHistory(4))
-            .pairs("5", "Load History 5", (dt) => clipManager.loadFromHistory(5))
-            .pairs("6", "Load History 6", (dt) => clipManager.loadFromHistory(6))
-            .pairs("7", "Load History 7", (dt) => clipManager.loadFromHistory(7))
-            .pairs("8", "Load History 8", (dt) => clipManager.loadFromHistory(8))
-            .pairs("9", "Load History 9", (dt) => clipManager.loadFromHistory(9))
-            .pairs("s", "Show History Search", (dt) => clipManager.showHistorySearch())
+            .pairs("1", "Load History 1", (dt) => gClipManager.loadFromHistory(1))
+            .pairs("2", "Load History 2", (dt) => gClipManager.loadFromHistory(2))
+            .pairs("3", "Load History 3", (dt) => gClipManager.loadFromHistory(3))
+            .pairs("4", "Load History 4", (dt) => gClipManager.loadFromHistory(4))
+            .pairs("5", "Load History 5", (dt) => gClipManager.loadFromHistory(5))
+            .pairs("6", "Load History 6", (dt) => gClipManager.loadFromHistory(6))
+            .pairs("7", "Load History 7", (dt) => gClipManager.loadFromHistory(7))
+            .pairs("8", "Load History 8", (dt) => gClipManager.loadFromHistory(8))
+            .pairs("9", "Load History 9", (dt) => gClipManager.loadFromHistory(9))
+            .pairs("s", "Show History Search", (dt) => gClipManager.showHistorySearch())
             .setPreview((b, pressType) {
                 if (pressType = 1) {
-                    return clipManager.getHistoryPreviewList()
+                    return gClipManager.getHistoryPreviewList()
                 } else {
                     return []
                 }
             })
-        cascade.cascadeKey(builder, "Tab")
+        gCascade.cascadeKey(builder, "Tab")
     }
 
 
     cascadeCaps() {
-        state.updateActiveWindow()
-        profile := appShorts.findProfileByWindow()
+        gState.updateActiveWindow()
+        profile := gAppShorts.findProfileByWindow()
         ; if (!profile || profile.shortCuts.Length == 0) {
         ;     ToolTip("yok yok yok"), SetTimer(() => ToolTip(), -1000)
         ;     return
@@ -306,6 +306,6 @@ class CascadeMenu {
                     return []
                 }
             })
-        cascade.cascadeKey(builder, "Esc")
+        gCascade.cascadeKey(builder, "Esc")
     }
 }

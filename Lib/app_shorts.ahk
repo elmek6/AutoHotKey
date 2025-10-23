@@ -11,7 +11,7 @@ class ShortCut {
             try {
                 Send(stroke)
             } catch as err {
-                errHandler.handleError("AppProfile.play! hatali satir: " stroke, err)
+                gErrHandler.handleError("AppProfile.play! hatali satir: " stroke, err)
             }
         }
     }
@@ -38,7 +38,7 @@ class AppProfile {
     }
     playAt(index) {
         if (index < 1 || index > this.shortCuts.Length) {
-            errHandler.handleError("Geçersiz shortCut index: " . index)
+            gErrHandler.handleError("Geçersiz shortCut index: " . index)
             SoundBeep(800)  ; Uyarı sesi
             return false
         }
@@ -69,16 +69,16 @@ class AppProfile {
         return result
     }
 }
-class ProfileManager {
+class singleProfile {
     static instance := ""
     static getInstance() {
-        if (!ProfileManager.instance) {
-            ProfileManager.instance := ProfileManager()
+        if (!singleProfile.instance) {
+            singleProfile.instance := singleProfile()
         }
-        return ProfileManager.instance
+        return singleProfile.instance
     }
     __New() {
-        if (ProfileManager.instance) {
+        if (singleProfile.instance) {
             throw Error("ProfileManager zaten oluşturulmuş! getInstance kullan.")
         }
         this.profiles := []
@@ -161,8 +161,8 @@ class ProfileManager {
             this.showManagerGui()
             ; Aktif pencere bilgilerini otomatik doldur
             try {
-                local title := state.getActiveTitle()
-                local className := state.getActiveClassName()
+                local title := gState.getActiveTitle()
+                local className := gState.getActiveClassName()
                 this._classNameEdit.Value := className
                 this._titleEdit.Value := title
                 this._profileNameEdit.Value := "New Profile"
@@ -354,11 +354,11 @@ class ProfileManager {
     }
     ; Makro kaydet
     _recordMacro() {
-        recorder := MacroRecorder.getInstance()
+        recorder := singleMacroRecorder.getInstance()
         ToolTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan")
         SetTimer(() => ToolTip(), -3000)
         recorder.recordScreen(true)  ; Strokes modunda kaydet
-        while (recorder.recording || recorder.status == MacroRecorder.macroStatusType.pause) {
+        while (recorder.recording || recorder.status == singleMacroRecorder.macroStatusType.pause) {
             Sleep(100)
         }
         keyStrokes := recorder.stop(true)  ; logArr al
@@ -409,9 +409,9 @@ class ProfileManager {
     }
     ; Mevcut metodlar (değişmedi)
     findProfileByWindow() {
-        local title := state.getActiveTitle()
-        local hwnd := state.getActiveHwnd()
-        local className := state.getActiveClassName()
+        local title := gState.getActiveTitle()
+        local hwnd := gState.getActiveHwnd()
+        local className := gState.getActiveClassName()
         try {
             if (title == "") {
                 return
@@ -426,7 +426,7 @@ class ProfileManager {
                 return profile
             }
         } catch as err {
-            errHandler.handleError("Pencere bilgisi alınamadı", err)
+            gErrHandler.handleError("Pencere bilgisi alınamadı", err)
         }
         return false
     }
@@ -454,7 +454,7 @@ class ProfileManager {
             file.Write(jsonData)
             file.Close()
         } catch as err {
-            errHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
+            gErrHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
         }
     }
     load() {
@@ -482,7 +482,7 @@ class ProfileManager {
             }
         } catch as err {
             this.profiles := []
-            errHandler.backupOnError("load!" . AppConst.FILE_PROFILE)
+            gErrHandler.backupOnError("load!" . AppConst.FILE_PROFILE)
         }
     }
     ; Garbage için

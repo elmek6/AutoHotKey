@@ -52,7 +52,7 @@ class ClipSlot {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("Slot kaydetme başarısız: " . err.Message, err)
+            gErrHandler.handleError("Slot kaydetme başarısız: " . err.Message, err)
             return false
         }
     }
@@ -86,7 +86,7 @@ class ClipSlot {
             }
             return true
         } catch as err {
-            errHandler.handleError("Slot yükleme başarısız: " . err.Message)
+            gErrHandler.handleError("Slot yükleme başarısız: " . err.Message)
             this.initializeEmptySlots()
             return false
         }
@@ -100,18 +100,18 @@ class ClipSlot {
     }
 }
 
-class ClipboardManager {
+class singleClipboard {
     static instance := ""
 
     static getInstance(maxHistory := 20, maxClipSize := 100000) {
-        if (!ClipboardManager.instance) {
-            ClipboardManager.instance := ClipboardManager(maxHistory, maxClipSize)
+        if (!singleClipboard.instance) {
+            singleClipboard.instance := singleClipboard(maxHistory, maxClipSize)
         }
-        return ClipboardManager.instance
+        return singleClipboard.instance
     }
 
     __New(maxHistory, maxClipSize) {
-        if (ClipboardManager.instance) {
+        if (singleClipboard.instance) {
             throw Error("ClipboardManager zaten oluşturulmuş! getInstance kullan.")
         }
         this.slotManager := ClipSlot()
@@ -154,7 +154,7 @@ class ClipboardManager {
                 return false
             }
         } catch as err {
-            errHandler.handleError("Slot kaydetme/adlandırma başarısız", err)
+            gErrHandler.handleError("Slot kaydetme/adlandırma başarısız", err)
             return false
         } finally {
             A_Clipboard := temp
@@ -168,7 +168,7 @@ class ClipboardManager {
             this.slotManager.saveSlots()
             return true
         } catch as err {
-            errHandler.handleError("storeToSlot! Slot kaydetme başarısız: ", err)
+            gErrHandler.handleError("storeToSlot! Slot kaydetme başarısız: ", err)
             return false
         }
     }
@@ -181,14 +181,14 @@ class ClipboardManager {
                 throw
             }
             Sleep(20)
-            if (state.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alınabilir
+            if (gState.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alınabilir
                 SendText(A_Clipboard)
             } else {
                 SendInput("^v")
             }
             return true
         } catch as err {
-            errHandler.handleError("loadFromSlot! Slot yükleme başarısız: " . err.Message)
+            gErrHandler.handleError("loadFromSlot! Slot yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -207,7 +207,7 @@ class ClipboardManager {
                 throw Error("Geçmişte " . index . " numaralı kayıt yok.")
             }
         } catch as err {
-            errHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
+            gErrHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -273,7 +273,7 @@ class ClipboardManager {
             file.Close()
             return true
         } catch as err {
-            errHandler.handleError("History kaydetme başarısız: " . err.Message, err)
+            gErrHandler.handleError("History kaydetme başarısız: " . err.Message, err)
             return false
         }
     }
@@ -297,7 +297,7 @@ class ClipboardManager {
             }
             return true
         } catch as err {
-            errHandler.handleError("History yükleme başarısız: " . err.Message)
+            gErrHandler.handleError("History yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -412,12 +412,12 @@ class ClipboardManager {
                 Send(commands)
             }
         } catch as err {
-            errHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
+            gErrHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
         }
     }
 
     __Delete() {
-        if (state.getShouldSaveOnExit) {
+        if (gState.getShouldSaveOnExit) {
             this.saveHistory()
             this.slotManager.saveSlots()
         }

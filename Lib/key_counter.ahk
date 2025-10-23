@@ -1,36 +1,36 @@
-﻿class KeyCounter {
+﻿class singleKeyCounter {
     static instance := ""
 
     static getInstance() {
-        if (!KeyCounter.instance) {
-            KeyCounter.instance := KeyCounter()
+        if (!singleKeyCounter.instance) {
+            singleKeyCounter.instance := singleKeyCounter()
         }
-        return KeyCounter.instance
+        return singleKeyCounter.instance
     }
 
     __New() {
-        if (KeyCounter.instance) {
+        if (singleKeyCounter.instance) {
             throw Error("KeyCounter zaten oluÅŸturulmuÅŸ! getInstance kullan.")
         }
         this.counts := Map(
-            "WriteCount",  0,
+            "WriteCount", 0,
             "DoubleCount", 0,
-            "LButton",     0,
-            "RButton",     0,
-            "MButton",     0,
-            "F13",         0,
-            "F14",         0,
-            "F15",         0,
-            "F16",         0,
-            "F17",         0,
-            "F18",         0,
-            "F19",         0,
-            "F20",         0,
-            "CapsLock",    0,
-            "Tab",         0,
-            "^",           0,
-            "ErrorCount",  0,
-            "DayCount",    0
+            "LButton", 0,
+            "RButton", 0,
+            "MButton", 0,
+            "F13", 0,
+            "F14", 0,
+            "F15", 0,
+            "F16", 0,
+            "F17", 0,
+            "F18", 0,
+            "F19", 0,
+            "F20", 0,
+            "CapsLock", 0,
+            "Tab", 0,
+            "^", 0,
+            "ErrorCount", 0,
+            "DayCount", 0
         )
     }
 

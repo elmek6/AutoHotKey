@@ -1,15 +1,15 @@
-class MemorySlotsManager {
+class singleMemorySlots {
     static instance := ""
 
     static getInstance() {
-        if (!MemorySlotsManager.instance) {
-            MemorySlotsManager.instance := MemorySlotsManager()
+        if (!singleMemorySlots.instance) {
+            singleMemorySlots.instance := singleMemorySlots()
         }
-        return MemorySlotsManager.instance
+        return singleMemorySlots.instance
     }
 
     __New() {
-        if (MemorySlotsManager.instance) {
+        if (singleMemorySlots.instance) {
             throw Error("MemorySlotsManager zaten oluşturulmuş! getInstance kullan.")
         }
 
@@ -79,7 +79,7 @@ class MemorySlotsManager {
             ; Transparan ayarı             ; WinSetTransparent(220, this.gui.hwnd)
 
         } catch as err {
-            errHandler.handleError("GUI oluşturma hatası", err)
+            gErrHandler.handleError("GUI oluşturma hatası", err)
         }
     }
 
@@ -413,6 +413,6 @@ class MemorySlotsManager {
         }
 
         ; Singleton'ı sıfırla
-        MemorySlotsManager.instance := ""
+        singleMemorySlots.instance := ""
     }
 }

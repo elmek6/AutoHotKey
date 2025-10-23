@@ -1,15 +1,15 @@
-﻿class ScriptState {
+﻿class singleState {
     static instance := ""
 
     static getInstance(version) {
-        if (!ScriptState.instance) {
-            ScriptState.instance := ScriptState(version)
+        if (!singleState.instance) {
+            singleState.instance := singleState(version)
         }
-        return ScriptState.instance
+        return singleState.instance
     }
 
     __New(version) {
-        if (ScriptState.instance) {
+        if (singleState.instance) {
             throw Error("ScriptState zaten oluşturulmuş! getInstance kullan.")
         }
         this.version := version
@@ -78,9 +78,9 @@
     }
 
     loadStats() {
-        if (keyCounts.get("DayCount") == "") {
-            keyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
-            ToolTip(keyCounts.get("DayCount"))
+        if (gKeyCounts.get("DayCount") == "") {
+            gKeyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
+            ToolTip(gKeyCounts.get("DayCount"))
             SetTimer(() => ToolTip(), -3800)
         }
 
@@ -97,8 +97,8 @@
             parts := StrSplit(line, "=")
             key := Trim(parts[1])
             val := Trim(parts[2])
-            if (keyCounts.has(key)) {
-                keyCounts.set(key, val)
+            if (gKeyCounts.has(key)) {
+                gKeyCounts.set(key, val)
             }
         }
 
@@ -109,7 +109,7 @@
                 continue
             timestamp := Trim(parts[1])
             errorMessage := Trim(parts[2])
-            errHandler.errorMap[timestamp] := errorMessage
+            gErrHandler.errorMap[timestamp] := errorMessage
         }
         file.Close()
     }
@@ -118,20 +118,20 @@
         if (!this.shouldSaveStats)
             return
 
-        keyCounts.inc("WriteCount")
+        gKeyCounts.inc("WriteCount")
 
         local startDate := FormatTime(scriptStartTime, "yyyyMMdd")
         local currentSince := FormatTime(A_Now, "yyyyMMdd")
-        keyCounts.set("DayCount", keyCounts.get("DayCount") + DateDiff(currentSince, startDate, "Days"))
+        gKeyCounts.set("DayCount", gKeyCounts.get("DayCount") + DateDiff(currentSince, startDate, "Days"))
 
         file := FileOpen(AppConst.FILE_LOG, "w")
         if !file
             return
-        for k, v in keyCounts.getAll() {
+        for k, v in gKeyCounts.getAll() {
             file.WriteLine(k "=" v)
         }
         file.WriteLine("*")
-        for timestamp, errorMessage in errHandler.errorMap {
+        for timestamp, errorMessage in gErrHandler.errorMap {
             file.WriteLine(timestamp "=" errorMessage)
         }
         file.Close()
@@ -149,7 +149,7 @@
                 WinSetAlwaysOnTop 1, title ;prantez kullanma
             }
         } catch as err {
-            errHandler.handleError("Always on top toggle hatası", err)
+            gErrHandler.handleError("Always on top toggle hatası", err)
         }
     }
 
@@ -162,7 +162,7 @@
                 }
             }
         } catch as err {
-            errHandler.handleError("Kapalı always on top temizleme hatası", err)
+            gErrHandler.handleError("Kapalı always on top temizleme hatası", err)
         }
     }
 }

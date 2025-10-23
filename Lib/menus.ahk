@@ -1,13 +1,13 @@
 getStatsArray(showMsgBox := false) {
-    stats := "Busy status: " state.getBusy() "`n"
-    statsArray := ["Busy status: " state.getBusy()]
+    stats := "Busy status: " gState.getBusy() "`n"
+    statsArray := ["Busy status: " gState.getBusy()]
 
-    for key, count in keyCounts.getAll() {
+    for key, count in gKeyCounts.getAll() {
         stats .= key ": " count "`n"
         statsArray.Push(key ": " count)
     }
 
-    recentErrors := errHandler.getRecentErrors(10) ;0 for all
+    recentErrors := gErrHandler.getRecentErrors(10) ;0 for all
     if (recentErrors == "") {
         stats .= "no new error (log.txt save all)"
         statsArray.Push("no new error (log.txt save all)")
@@ -20,16 +20,16 @@ getStatsArray(showMsgBox := false) {
             }
         }
     }
-    sinceDateTime := FormatTime(scriptStartTime, "yyyy-MM-dd HH:mm:ss")
+    sinceDateTime := FormatTime(gScriptStartTime, "yyyy-MM-dd HH:mm:ss")
     if (showMsgBox) {
-        MsgBox(stats, state.getVersion() " - Stats and errors " sinceDateTime)
+        MsgBox(stats, gState.getVersion() " - Stats and errors " sinceDateTime)
     }
     return statsArray
 }
 
 showF13menu() {
     Click("Middle", 1)
-    state.updateActiveWindow()
+    gState.updateActiveWindow()
 
     menuF13 := Menu()
     menuAppProfile(menuF13)
@@ -51,30 +51,30 @@ showF14menu() {
     Click("Middle", 1)
 
     menuF14 := Menu()
-    menuF14.Add("Paste enter", (*) => clipManager.press("^v{Enter}"))
-    menuF14.Add("Cut", (*) => clipManager.press("^x"))
-    menuF14.Add("Select All + Cut", (*) => clipManager.press("^a^x"))
-    menuF14.Add("Unformatted paste", (*) => clipManager.press("^+v"))
+    menuF14.Add("Paste enter", (*) => gClipManager.press("^v{Enter}"))
+    menuF14.Add("Cut", (*) => gClipManager.press("^x"))
+    menuF14.Add("Select All + Cut", (*) => gClipManager.press("^a^x"))
+    menuF14.Add("Unformatted paste", (*) => gClipManager.press("^+v"))
     menuF14.Add()
 
-    menuF14.Add("Load clip", clipManager.buildSlotMenu())
-    menuF14.Add("Save clip", clipManager.buildSaveSlotMenu())
-    menuF14.Add("Clipboard history", clipManager.buildHistoryMenu())
-    menuF14.Add("Memory clip", (*) => memSlots.start(true))
+    menuF14.Add("Load clip", gClipManager.buildSlotMenu())
+    menuF14.Add("Save clip", gClipManager.buildSaveSlotMenu())
+    menuF14.Add("Clipboard history", gClipManager.buildHistoryMenu())
+    menuF14.Add("Memory clip", (*) => gMemSlots.start(true))
     menuF14.Add()
 
     menuF14.Add("Settings", menuSettings())
-    menuF14.Add("Statistics " . state.getVersion(), menuStats())
+    menuF14.Add("Statistics " . gState.getVersion(), menuStats())
     menuF14.Show()
 }
 
 CheckIdle(*) {
-    state.setIdleCount(state.getIdleCount() > 0 ? state.getIdleCount() : 60)
+    gState.setIdleCount(gState.getIdleCount() > 0 ? gState.getIdleCount() : 60)
     if (A_TimeIdlePhysical < 60000) {
-        state.setIdleCount(60)
+        gState.setIdleCount(60)
     } else {
-        state.setIdleCount(state.getIdleCount() - 1)
-        if (state.getIdleCount() > 0) {
+        gState.setIdleCount(gState.getIdleCount() - 1)
+        if (gState.getIdleCount() > 0) {
             MouseMove(-1, -1, 0, "R") ;5 dakikada bir 1 piksel yukarı ve sola hareket
             SetTimer(CheckIdle, 5 * 60 * 1000) ;5 dakikada bir kontrol
         } else {
@@ -87,10 +87,10 @@ hookCommands() {
     actions := Map(
         "1", { dsc: "Reload", fn: (*) => reloadScript() },
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
-        "3", { dsc: "Profil manager", fn: (*) => appShorts.showManagerGui() },
+        "3", { dsc: "Profil manager", fn: (*) => gAppShorts.showManagerGui() },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        "5", { dsc: "Memory slot swap", fn: (*) => memSlots.start(false) },
-        "6", { dsc: "Makro...", fn: (*) => recorder.showButtons() },
+        "5", { dsc: "Memory slot swap", fn: (*) => gMemSlots.start(false) },
+        "6", { dsc: "Makro...", fn: (*) => gRecorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
@@ -141,43 +141,43 @@ menuStats() {
     menuStats.Add()
 
     latestError := ""
-    for timestamp, message in errHandler.getAllErrors() {
+    for timestamp, message in gErrHandler.getAllErrors() {
         latestError := FormatTime(timestamp, "dd HH:mm:ss") ": " message
     }
-    menuStats.Add("Copy last error", (*) => (errHandler.copyLastError()))
+    menuStats.Add("Copy last error", (*) => (gErrHandler.copyLastError()))
 
     return menuStats
 }
 
 menuAppProfile(targetMenu) {
-    profile := appShorts.findProfileByWindow()
-    title := state.getActiveTitle()
-    hwnd := state.getActiveHwnd()
-    className := state.getActiveClassName()
-    profile := appShorts.findProfileByWindow()
+    profile := gAppShorts.findProfileByWindow()
+    title := gState.getActiveTitle()
+    hwnd := gState.getActiveHwnd()
+    className := gState.getActiveClassName()
+    profile := gAppShorts.findProfileByWindow()
 
     if (profile) {
         for sc in profile.shortCuts {
             local lambda := sc
             targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
         }
-        targetMenu.Add("Profili düzenle", (*) => appShorts.showManagerGui(profile))
+        targetMenu.Add("Profili düzenle", (*) => gAppShorts.showManagerGui(profile))
     } else {
-        targetMenu.Add("▸ Ekle (" className ")", (*) => appShorts.editProfileForActiveWindow())
-        targetMenu.Add("Profiller", (*) => appShorts.showManagerGui())
+        targetMenu.Add("▸ Ekle (" className ")", (*) => gAppShorts.editProfileForActiveWindow())
+        targetMenu.Add("Profiller", (*) => gAppShorts.showManagerGui())
     }
 }
 
 menuAlwaysOnTop(targetMenu) {
-    title := state.getActiveTitle()
-    hwnd := state.getActiveHwnd()
+    title := gState.getActiveTitle()
+    hwnd := gState.getActiveHwnd()
 
-    if (!state.onTopWindowsList.Has(hwnd)) {
-        targetMenu.Add("📍 Add " . title, (*) => state.toggleOnTopWindow(hwnd, title))
+    if (!gState.onTopWindowsList.Has(hwnd)) {
+        targetMenu.Add("📍 Add " . title, (*) => gState.toggleOnTopWindow(hwnd, title))
     }
 
-    for key, value in state.onTopWindowsList {
-        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => state.toggleOnTopWindow(k, v))(key, value))
+    for key, value in gState.onTopWindowsList {
+        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => gState.toggleOnTopWindow(k, v))(key, value))
     }
 
     return targetMenu
@@ -197,7 +197,7 @@ DialogPauseGui() {
     ))
     pauseGui.Add("Button", "w200 h40", "Restart without save").OnEvent("Click", (*) => (
         _destryoGui(),
-        state.setShouldSaveOnExit(false),
+        gState.setShouldSaveOnExit(false),
         Reload,
         Suspend(0)
     ))

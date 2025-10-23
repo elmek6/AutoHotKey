@@ -17,24 +17,24 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global state := ScriptState.getInstance("ver_135_b")
-global keyCounts := KeyCounter.getInstance()
-global errHandler := ErrorHandler.getInstance()
-global clipManager := ClipboardManager.getInstance(200, 30000)
-global keyHandler := HotkeyHandler.getInstance()
-global cascade := CascadeMenu.getInstance()
-global recorder := MacroRecorder.getInstance(300)
-global appShorts := ProfileManager.getInstance()
-global memSlots := MemorySlotsManager.getInstance()
+global gState := singleState.getInstance("ver_136_b")
+global gKeyCounts := singleKeyCounter.getInstance()
+global gErrHandler := singleErrorHandler.getInstance()
+global gClipManager := singleClipboard.getInstance(200, 30000)
+global gKeyHandler := singleHotkeyHandler.getInstance()
+global gCascade := singleCascadeHandler.getInstance()
+global gRecorder := singleMacroRecorder.getInstance(300)
+global gAppShorts := singleProfile.getInstance()
+global gMemSlots := singleMemorySlots.getInstance()
 
-global scriptStartTime := A_Now
-global stateConfig := { none: 0, home: 1, work: 2 }
-global currentConfig := stateConfig.none
+global gScriptStartTime := A_Now
+global gStateConfig := { none: 0, home: 1, work: 2 }
+global gCurrentConfig := gStateConfig.none
 
 
 CoordMode("Mouse", "Screen")
 TraySetIcon("arrow.ico")
-A_TrayMenu.Add("Control menu" . state.getVersion(), (*) => DialogPauseGui())
+A_TrayMenu.Add("Control menu" . gState.getVersion(), (*) => DialogPauseGui())
 class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
@@ -65,29 +65,29 @@ OnExit ExitSettings
 ;-------------------------------------------------------------------
 
 LoadSettings() {
-    OutputDebug "Script " state.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-    state.loadStats()
+    OutputDebug "Script " gState.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
+    gState.loadStats()
     if (A_ComputerName = "LAPTOP-UTN6L5PA") { ;work
         SetTimer(checkIdle, 1000)
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
         ToolTip("Bus timer kuruldu")
         SetTimer(() => ToolTip(), -1000)
-        global currentConfig := stateConfig.work
+        global gCurrentConfig := gStateConfig.work
     } else {
         TrayTip("AHK", "Home profile", 1)
-        global currentConfig := stateConfig.home
+        global gCurrentConfig := gStateConfig.home
     }
     AppConst.initDirectory()
 }
 
 ExitSettings(ExitReason, ExitCode) {
-    state.saveStats(scriptStartTime)
-    clipManager.__Delete()
-    state.clearAllOnTopWindows()
+    gState.saveStats(gScriptStartTime)
+    gClipManager.__Delete()
+    gState.clearAllOnTopWindows()
 }
 
 reloadScript() {
-    state.saveStats(scriptStartTime)
+    gState.saveStats(gScriptStartTime)
     SoundBeep(500)
     Reload
 }
@@ -96,14 +96,14 @@ reloadScript() {
 
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
-    keyCounts.inc("DoubleCount")
-    errHandler.handleError("double click: " A_TimeSincePriorHotkey)
+    gKeyCounts.inc("DoubleCount")
+    gErrHandler.handleError("double click: " A_TimeSincePriorHotkey)
     SoundBeep(1000, 100)
     Return
 }
 #HotIf
 
-#HotIf state.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
+#HotIf gState.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
 *3:: return
@@ -122,69 +122,69 @@ LButton:: {
 ; Pause & 2:: recorder.stop()  ; Kayıt durdur
 ; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
 
-#HotIf currentConfig = stateConfig.work ; hotif olan tuslari override eder
->#1:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
->#2:: recorder.playKeyAction(2, 1)
+#HotIf gCurrentConfig = gStateConfig.work ; hotif olan tuslari override eder
+>#1:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+>#2:: gRecorder.playKeyAction(2, 1)
 >#3:: getPressType( ;belki önüne birsey gelince olabilir?
     (pressType) => pressType == 0
-        ? recorder.playKeyAction(3, 1)
-        : recorder.recordAction(3, MacroRecorder.recType.key)
+        ? gRecorder.playKeyAction(3, 1)
+        : gRecorder.recordAction(3, singleMacroRecorder.recType.key)
 )
 #HotIf
 
-#HotIf currentConfig = stateConfig.home
-SC132:: recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
-SC16C:: recorder.playKeyAction(2, 1)
+#HotIf gCurrentConfig = gStateConfig.home
+SC132:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+SC16C:: gRecorder.playKeyAction(2, 1)
 #HotIf
 
 ;Fare tuslari haritasi
-F13:: keyHandler.handleF13()
-F14:: keyHandler.handleF14()
-F15:: keyHandler.handleF15()
-F16:: keyHandler.handleF16()
-F17:: keyHandler.handleF17()
-F18:: keyHandler.handleF18()
-F19:: keyHandler.handleF19()
-F20:: keyHandler.handleF20()
+F13:: gKeyHandler.handleF13()
+F14:: gKeyHandler.handleF14()
+F15:: gKeyHandler.handleF15()
+F16:: gKeyHandler.handleF16()
+F17:: gKeyHandler.handleF17()
+F18:: gKeyHandler.handleF18()
+F19:: gKeyHandler.handleF19()
+F20:: gKeyHandler.handleF20()
 
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 
-SC029:: cascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
-SC00F:: cascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
-SC03A:: cascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
+SC029:: gCascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
+SC00F:: gCascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
+SC03A:: gCascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
 SC00D:: hookCommands() ; ´ backtick SC00D VKDD
 
-~LButton:: keyHandler.handleLButton()
-~MButton:: keyHandler.handleMButton()
-~RButton:: keyCounts.inc("RButton")
+~LButton:: gKeyHandler.handleLButton()
+~MButton:: gKeyHandler.handleMButton()
+~RButton:: gKeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {
-    if (state.getLastWheelTime())
+    if (gState.getLastWheelTime())
         Send("#{NumpadAdd}")
 }
 ~MButton & WheelDown:: {
-    if (state.getLastWheelTime())
+    if (gState.getLastWheelTime())
         Send("#{NumpadSub}")
 }
 
 RButton & WheelUp:: {
-    state.setRightClickActive(true)
-    if (state.getLastWheelTime()) {
+    gState.setRightClickActive(true)
+    if (gState.getLastWheelTime()) {
         Send("{Volume_Up}")
     }
 }
 RButton & WheelDown:: {
-    state.setRightClickActive(true)
-    if (state.getLastWheelTime()) {
+    gState.setRightClickActive(true)
+    if (gState.getLastWheelTime()) {
         Send("{Volume_Down}")
     }
 }
 
 ~RButton Up:: {
-    if (state.getRightClickActive()) {
+    if (gState.getRightClickActive()) {
         Sleep 50
         Send ("{ESC}")
-        state.setRightClickActive(false)
+        gState.setRightClickActive(false)
     }
 }
 

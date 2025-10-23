@@ -1,20 +1,20 @@
 ﻿#Include <key_counter>
 
-class ErrorHandler {
+class singleErrorHandler {
     static instance := ""
 
     static getInstance(maxErrors := 500) {
-        if (!ErrorHandler.instance) {
-            ErrorHandler.instance := ErrorHandler(maxErrors)
+        if (!singleErrorHandler.instance) {
+            singleErrorHandler.instance := singleErrorHandler(maxErrors)
         }
-        return ErrorHandler.instance
+        return singleErrorHandler.instance
     }
 
     __New(maxErrors) {
-        if (ErrorHandler.instance) {
+        if (singleErrorHandler.instance) {
             throw Error("ErrorHandler zaten oluşturulmuş! getInstance kullan.")
         }
-        this.keyCounter := KeyCounter.getInstance()
+        this.keyCounter := singleKeyCounter.getInstance()
         this.maxErrors := maxErrors
         this.errorMap := Map()
         this.scriptStartTime := A_Now
