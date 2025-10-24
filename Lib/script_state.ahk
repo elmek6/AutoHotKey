@@ -23,10 +23,20 @@
         this.activeClassName := ""
         this.lastWheelTime := 0
         this._wheelcount := 0
+        this.smartClipboard := 0  ; 0=off, 1=copy, 2=paste
+        this.smartClipIndex := 0  ; Slot index takibi
     }
 
     setBusy(status) => this.busy := status
     getBusy() => this.busy
+
+    setAutoClip(mode) {
+
+        this.smartClipboard := mode
+    }
+    getAutoClip() => this.smartClipboard
+    setSmartClipIndex(index) => this.smartClipIndex := index
+    getSmartClipIndex() => this.smartClipIndex
 
     getLastWheelTime() {
         diff := A_TickCount - this.lastWheelTime

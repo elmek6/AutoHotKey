@@ -439,7 +439,7 @@ class singleHotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
                 switch pressType {
-                    case 0: Send("^v")
+                    case 0: gMemSlots.smartPaste()
                     case 1: Send("^a^v")
                 }
             })
@@ -457,16 +457,17 @@ class singleHotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
                 switch pressType {
-                    case 0: Send("^c")
+                    case 0: gMemSlots.smartCopy()
                     case 1: Send("^x")
+                    case 2: gMemSlots.start() ; gState.setAutoClip(1)
                 }
             })
-            .mainEnd(() => (ClipWait, Sleep(50), gClipManager.showClipboardPreview()))
+            .mainEnd(() => (ClipWait(1), Sleep(50), gClipManager.showClipboardPreview()))
             .combos("F13", "Select All & Copy", () => gClipManager.press("^a^c"))
             .combos("F14", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
             .combos("F19", "Select All & Copy", () => gClipManager.press("^a^c"))
             .combos("F18", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
-            .combos("LButton", "Click & Copy", () => (Click("Left", 1), gClipManager.press("^c")))
+            .combos("LButton", "Click & Copy", () => (Click("Left", 1), gMemSlots.smartCopy()))
             .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
         builder.setPreview([])
         this.handleFKey(builder)

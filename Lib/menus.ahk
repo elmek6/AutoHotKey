@@ -89,7 +89,7 @@ hookCommands() {
         "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
         "3", { dsc: "Profil manager", fn: (*) => gAppShorts.showManagerGui() },
         "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        "5", { dsc: "Memory slot swap", fn: (*) => gMemSlots.start(false) },
+        "5", { dsc: "Memory slot swap", fn: (*) => gMemSlots.start() },
         "6", { dsc: "Makro...", fn: (*) => gRecorder.showButtons() },
         "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },

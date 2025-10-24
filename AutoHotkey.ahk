@@ -251,3 +251,94 @@ AppsKey & a:: { ;work
 ; ß:: detectPressType((pressType) =>
 ;     OutputDebug("Press type: " pressType "`n")
 ; )
+/*
+ß:: { ; Renkli imleci yükle
+
+    #Requires AutoHotkey v2.0
+
+    #Requires AutoHotkey v2.0
+
+    ; Windows System32 klasöründeki siyah cursor dosyalarını yükle
+    cursors := Map(
+        32512, "arrow_r.cur",      ; Normal ok
+        32513, "help_r.cur",        ; Yardım seçici
+        32514, "wait_r.ani",        ; Arka planda çalışıyor
+        32515, "cross_r.cur",       ; Kesinlik seçimi
+        32516, "up_r.cur",          ; Dikey yeniden boyutlandır
+        32640, "size4_r.cur",       ; Çapraz yeniden boyutlandır 1
+        32641, "size3_r.cur",       ; Çapraz yeniden boyutlandır 2
+        32642, "size1_r.cur",       ; Yatay yeniden boyutlandır
+        32643, "size2_r.cur",       ; Dikey yeniden boyutlandır
+        32644, "move_r.cur",        ; Taşı
+        32645, "no_r.cur",          ; Kullanılamaz
+        32646, "appstarting_r.ani", ; Çalışıyor
+        32648, "pen_r.cur",         ; El yazısı
+        32649, "link_r.cur",        ; Link seçimi
+        32650, "busy_r.ani"         ; Meşgul
+    )
+
+    cursorPath := "C:\Windows\Cursors\"
+
+    ; Tüm cursor'ları değiştir
+    for id, file in cursors {
+        hCursor := DllCall("LoadCursorFromFile", "Str", cursorPath . file, "Ptr")
+        if hCursor
+            DllCall("SetSystemCursor", "Ptr", hCursor, "UInt", id)
+    }
+
+    ToolTip "Siyah cursor aktif (5 saniye)"
+    SetTimer () => ToolTip(), -2000
+
+    ; 5 saniye bekle
+    Sleep 5000
+
+    ; Orijinal cursor'a dön
+    DllCall("SystemParametersInfo", "UInt", 0x0057, "UInt", 0, "Ptr", 0, "UInt", 0)
+
+    ToolTip "Cursor eski haline döndü"
+    SetTimer () => ToolTip(), -2000
+
+}
+*/
+#Requires AutoHotkey v2.0
+
+modActive := false
+lastX := 0
+lastY := 0
+
+F1:: {
+    global modActive
+    modActive := !modActive
+
+    if modActive {
+        SetTimer UpdateIndicator, 50  ; ~60 FPS
+        ToolTip "MOD AKTİF"
+        SetTimer () => ToolTip(), -1000
+    } else {
+        SetTimer UpdateIndicator, 0
+        try mouseIndicator.Destroy()
+        ToolTip "MOD KAPALI"
+        SetTimer () => ToolTip(), -1000
+    }
+}
+
+UpdateIndicator() {
+    global mouseIndicator, lastX, lastY
+
+    MouseGetPos &x, &y
+
+    ; Sadece fare hareket ettiyse güncelle
+    if (x = lastX && y = lastY)
+        return
+
+    lastX := x
+    lastY := y
+
+    try mouseIndicator.Destroy()
+
+    ; Şık neon yeşil halka
+    mouseIndicator := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    mouseIndicator.BackColor := "00FF88"  ; Neon yeşil
+    mouseIndicator.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
+    mouseIndicator.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
+}
