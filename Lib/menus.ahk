@@ -60,7 +60,7 @@ showF14menu() {
     menuF14.Add("Load clip", gClipManager.buildSlotMenu())
     menuF14.Add("Save clip", gClipManager.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", gClipManager.buildHistoryMenu())
-    menuF14.Add("Memory clip", (*) => gMemSlots.start(true))
+    menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()
 
     menuF14.Add("Settings", menuSettings())

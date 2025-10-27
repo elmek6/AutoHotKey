@@ -26,7 +26,6 @@ class singleMemorySlots {
 
         ; Clipboard history
         this.clipHistory := []
-        this.clipListenerActive := false
         this.lastClipContent := ""  ; Tekrar kaydı önlemek için
         this.isDestroyed := false
         this.savedHwnd := 0  ; HWND'yi sakla
@@ -116,7 +115,7 @@ class singleMemorySlots {
     }
 
     smartCopy() {
-        if (gState.getAutoClip() != 1) {
+        if (gState.getAutoClip() == 0 || gState.getAutoClip() == 2) {
             Send("^c")
             return
         }
@@ -126,15 +125,13 @@ class singleMemorySlots {
             gState.setSmartClipIndex(1)
         }
         else
-        {
-            OutputDebug("Current slot index: " . slotIndex)
-        }
-        this._copyToSlot(slotIndex)
+            this._copyToSlot(slotIndex)
         gState.setSmartClipIndex(slotIndex + 1)
     }
 
     smartPaste() {
         switch gState.getAutoClip() {
+            ; case -1: ignore cl
             case 0:
                 Send("^v")
             case 1:
@@ -243,21 +240,24 @@ class singleMemorySlots {
     }
 
     _startClipListener() {
-        if (!this.clipListenerActive) {
-            OnClipboardChange(this._onClipChange.Bind(this))
-            this.clipListenerActive := true
-            if (this.gui && this.gui.hwnd) {
-                this.savedHwnd := this.gui.hwnd
-            }
+        if (gState.getAutoClip() == -1) {
+            return
+        }
+        OnClipboardChange(this._onClipChange.Bind(this))
+        if (this.gui && this.gui.hwnd) {
+            this.savedHwnd := this.gui.hwnd
         }
     }
 
     _onClipChange(clipType) {
-        if (this.isDestroyed || clipType != 1 || !WinExist("ahk_id " . (this.savedHwnd ? this.savedHwnd : this.gui.hwnd))) {
+        if (this.isDestroyed) {
             return
         }
-        if (this.ignoreNextClipChange) {
-            this.ignoreNextClipChange := false
+
+        if (clipType != 1 || !WinExist("ahk_id " . (this.savedHwnd ? this.savedHwnd : this.gui.hwnd))) {
+            return
+        }
+        if (gState.getAutoClip() == 1 || gState.getAutoClip() == 2 || gState.getAutoClip() == -1) {
             return
         }
         newClip := A_Clipboard
@@ -379,10 +379,11 @@ class singleMemorySlots {
                 Hotkey("F" . A_Index, "Off")
             }
         }
-        if (this.clipListenerActive) {
-            OnClipboardChange(this._onClipChange.Bind(this), 0)
-            this.clipListenerActive := false
-        }
+
+        ; destroy clipboard listener
+        OnClipboardChange(this._onClipChange.Bind(this), 0)
+
+
         this.slotControls := []
         this.savedHwnd := 0
         gState.setAutoClip(0)  ; Smart mode sıfırla
@@ -394,3 +395,11 @@ class singleMemorySlots {
         singleMemorySlots.instance := ""
     }
 }
+/*
+; ... Mevcut kod korunuyor ...
+#HotIf (gState.getAutoClip() > 0)
+^c::gMemSlots.smartCopy()
+^x::gMemSlots.smartCopy()  ; Cut yerine copy, farklılaşabilir
+^v::gMemSlots.smartPaste()
+#HotIf
+*/

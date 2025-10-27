@@ -23,7 +23,7 @@
         this.activeClassName := ""
         this.lastWheelTime := 0
         this._wheelcount := 0
-        this.smartClipboard := 0  ; 0=off, 1=copy, 2=paste
+        this.smartClipboard := 0  ; 0=off, 1=copy, 2=paste, -1=clip_manager
         this.smartClipIndex := 0  ; Slot index takibi
     }
 
@@ -31,7 +31,6 @@
     getBusy() => this.busy
 
     setAutoClip(mode) {
-
         this.smartClipboard := mode
     }
     getAutoClip() => this.smartClipboard

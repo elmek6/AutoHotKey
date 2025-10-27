@@ -120,9 +120,7 @@ class singleClipboard {
         this.maxClipSize := maxClipSize
         this.lastClip := ""
         this.clipLength := 0
-        this.ignoreNextChange := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
-
         this.slotManager.loadSlots()
         this.loadHistory()
     }
@@ -213,8 +211,7 @@ class singleClipboard {
     }
 
     clipboardWatcher(Type) {
-        if (this.ignoreNextChange) {
-            this.ignoreNextChange := false
+        if (gState.getAutoClip() == -1) {
             return
         }
         if (Type != 1) {
