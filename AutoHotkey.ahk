@@ -13,11 +13,12 @@
 #Include <cascade_menu>
 #Include <macro_recorder>
 #Include <app_shorts>
+#Include <repository>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_136_b")
+global gState := singleState.getInstance("ver_137_b")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipManager := singleClipboard.getInstance(200, 30000)
@@ -26,6 +27,7 @@ global gCascade := singleCascadeHandler.getInstance()
 global gRecorder := singleMacroRecorder.getInstance(300)
 global gAppShorts := singleProfile.getInstance()
 global gMemSlots := singleMemorySlots.getInstance()
+global gRepo := singleRepository.getInstance()
 
 global gScriptStartTime := A_Now
 global gStateConfig := { none: 0, home: 1, work: 2 }
@@ -41,6 +43,7 @@ class AppConst {
     static FILE_LOG := "Files\log.txt"
     static FILE_PROFILE := "Files\profiles.json"
     static FILE_POS := "Files\positions.json"
+    static FILE_REPO := "Files\repository.json"
     static initDirectory() {
         if !DirExist(AppConst.FILES_DIR) {
             DirCreate(AppConst.FILES_DIR)

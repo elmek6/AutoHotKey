@@ -35,10 +35,15 @@ showF13menu() {
     menuAppProfile(menuF13)
     menuF13.Add()
     ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
-    menuF13.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
-    menuF13.Add("⌫ Backspace", (*) => Send("{Backspace}"))
-    menuF13.Add("⌦ Delete", (*) => SendInput("{Delete}"))
-    menuF13.Add("⎋ Esc", (*) => Send("{Esc}"))
+
+    subKeyMenu := Menu()
+    subKeyMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
+    subKeyMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
+    subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
+    subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
+    menuF13.Add("Special keys", subKeyMenu)
+
+    menuF13.Add("Repository GUI", (*) => gRepo.showGui())
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     menuF13.Add()
@@ -95,6 +100,7 @@ hookCommands() {
         "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
         "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
+        "r", { dsc: "Repository GUI", fn: (*) => gRepo.showGui() },
         "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
         "q", { dsc: "", fn: (*) => Sleep(10) },
     )

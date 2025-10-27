@@ -125,18 +125,18 @@ class singleErrorHandler {
         this.handleError(message)
     }
 
-    backupOnError(filePath) {
+    backupOnError(title, filePath) {
         errorMsg := filePath . ": dosyada okuma hatası oldu, baska isimle yedeklendi "
         try {
             timestamp := FormatTime(A_Now, "dd-MM_HHmmss")
             backupPath := filePath . "." . timestamp
             FileMove(filePath, backupPath, 1)
-            this.handleError("Dosya yedeklendi (" . backupPath . ")")
+            this.handleError(title . " Dosya yedeklendi (" . backupPath . ")")
             OutputDebug(errorMsg)
-            MsgBox(errorMsg, "Hata", "OK Iconi")
+            MsgBox(errorMsg, title, "OK Iconi")
         } catch as err {
-            MsgBox(errorMsg, "Dosya yedekleme sistemi yedeklemeyi beceremedi!", "OK Iconi")
-            this.handleError("Yedekleme başarısız: " . err.Message, err)
+            MsgBox(errorMsg, title . " Yedekleme başarısız", "OK Iconi")
+            this.handleError(title . " Yedekleme başarısız: " . err.Message, err)
         }
     }
 }

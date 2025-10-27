@@ -482,7 +482,7 @@ class singleProfile {
             }
         } catch as err {
             this.profiles := []
-            gErrHandler.backupOnError("load!" . AppConst.FILE_PROFILE)
+            gErrHandler.backupOnError("AppShorts.load!", AppConst.FILE_PROFILE)
         }
     }
     ; Garbage için
