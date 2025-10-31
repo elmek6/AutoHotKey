@@ -162,16 +162,17 @@
         }
     }
 
-    ; hic kullanmadim !!!
-    cleanClosedOnTopWindows() {
+    clearAllOnTopWindows() {
         try {
-            for hwnd, _ in this.onTopWindowsList.Clone() {  ; Clone ile döngüde silme güvenli
-                if (!WinExist("ahk_id " hwnd)) {
-                    this.onTopWindowsList.Delete(hwnd)
+            for k, v in this.onTopWindowsList {
+                if (WinExist(v)) {
+                    this.toggleOnTopWindow(k, v)
                 }
             }
+            this.onTopWindowsList.Clear()
         } catch as err {
-            gErrHandler.handleError("Kapalı always on top temizleme hatası", err)
+            gErrHandler.handleError("Tüm always on top kaldırma hatası", err)
         }
     }
+
 }

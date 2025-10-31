@@ -214,7 +214,12 @@ class singleClipboard {
         if (gState.getAutoClip() == -1) {
             return
         }
-        if (Type != 1) {
+        if (Type == 0) {
+            OutputDebug ("Clipboard boşaltıldı !!!! hic görmezsen sil")
+            return
+        }
+        If (Type == 2) {
+            ShowCustomTip("⛵")
             return
         }
         local text := A_Clipboard
