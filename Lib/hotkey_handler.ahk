@@ -1,6 +1,6 @@
 #Include <HotGestures>
 
-getPressType(fn, key := "", shortTime := 300, longTime := 3000) {
+getPressTypeTest(fn, key := "", shortTime := 300, longTime := 3000) {
     key := A_ThisHotkey
     startTime := A_TickCount
     beepCount := 2
@@ -68,7 +68,7 @@ getPressType(fn, key := "", shortTime := 300, longTime := 3000) {
 
 ; detectPressType((pressType) => OutputDebug("Press type: " pressType "`n"))
 ; short press: 0, medium press: 1, long press: 2, double press: -1
-detectPressType(fn, key := "", short := 300, long := 1000, gap := 100) {
+detectPressTypeTest(fn, key := "", short := 300, long := 1000, gap := 100) {
     if (key = "") {
         key := SubStr(A_ThisHotkey, -1) ; sondan kesiyor diyor ama ?
     }
@@ -146,6 +146,7 @@ class FKeyBuilder {
         this.gestures := []
         this.comboActions := []
         this.tips := [A_ThisHotkey]
+        this._enableVisual := true
     }
 
     mainStart(fn) {
@@ -173,22 +174,16 @@ class FKeyBuilder {
         return this
     }
 
-    combos(key, desc, fn) { ; key, description, callback
+    combos(key, desc, fn) {
         this.comboActions.Push({ key: key, desc: desc, action: fn })
-        this.tips.Push(key ": " desc) ;n buraya mi eklesek?
+        this.tips.Push(key ": " desc)
         return this
     }
 
-    ; titles { ; titles property: key ve description listesi döner
-    ;     get {
-    ;         result := []
-    ;         for c in this.comboActions {
-    ;             result.Push(c.key ": " c.desc)
-    ;         }
-    ;         return result
-    ;     }
-    ; }
-
+    enableVisual(value := true) {
+        this._enableVisual := value
+        return this
+    }
 }
 
 class singleHotkeyHandler {
@@ -208,17 +203,50 @@ class singleHotkeyHandler {
         this.hgsRight := ""
     }
 
-    _getPressType(duration, shortTime := 300, longTime := 1000) {
-        if (duration < shortTime) {
-            return 0  ; short
-        } else if (duration < longTime) {
-            SoundBeep(800, 50)
-            return 1  ; medium
-        } else {
-            SoundBeep(800, 50)
-            SoundBeep(800, 30)
-            return 2  ; long
+    ; duration, pressType ve görsel feedback'i birlikte yönet
+    _detectPressWithVisual(duration, enableVisual, &visualShown) {
+        pressType := -1
+        
+        ; Short press (0-300ms)
+        if (duration < 300) {
+            pressType := 0
         }
+        ; Medium press (300-1000ms) - Sarı göster
+        else if (duration < 1000) {
+            pressType := 1
+            if (enableVisual && !visualShown.medium) {
+                this._showVisual("d4ff00")  ; Sarı
+                visualShown.medium := true
+            }
+        }
+        ; Long press (1000ms+) - Turuncu göster
+        else {
+            pressType := 2
+            if (enableVisual && !visualShown.long) {
+                this._showVisual("00ff9d")  ; Turuncu
+                visualShown.long := true
+            }
+        }
+        
+        return pressType
+    }
+
+    _showVisual(color) {
+        static feedbackGui := ""
+        
+        ; Önceki GUI'yi temizle
+        if (feedbackGui) {
+            try feedbackGui.Destroy()
+        }
+
+        MouseGetPos(&x, &y)
+        feedbackGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+        feedbackGui.BackColor := color
+        feedbackGui.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
+        feedbackGui.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
+        
+        ; 300ms sonra temizle (flicker'ı azalt)
+        SetTimer(() => (feedbackGui.Destroy(), feedbackGui := ""), -300)
     }
 
     handleFKey(builder) {
@@ -228,7 +256,7 @@ class singleHotkeyHandler {
         gestures := builder.gestures
         comboActions := builder.comboActions
         previewList := builder.tips
-        startTime := A_TickCount
+        enableVisual := builder._enableVisual
 
         _checkCombo(comboActions) {
             for c in comboActions {
@@ -237,7 +265,7 @@ class singleHotkeyHandler {
                     KeyWait c.key
                     gKeyCounts.inc(c.key)
                     c.action.Call()
-                    ; return true yanci basildigi sürece tekrar calissin
+                    ; return true ; basıldığı sürece tekrar çalışsın
                 }
             }
             return false
@@ -251,12 +279,12 @@ class singleHotkeyHandler {
             gState.setBusy(1)
             key := A_ThisHotkey
             if (SubStr(key, 1, 1) == "~") {
-                key := SubStr(key, 2)  ; İlk karakteri at
+                key := SubStr(key, 2)
             }
 
             gKeyCounts.inc(key)
 
-            if (previewList.Length > 0) { ;belki long press ile cikmasi daha iyi olur?
+            if (previewList.Length > 0) {
                 text := ""
                 for i, item in previewList
                     text .= item "`n"
@@ -276,9 +304,16 @@ class singleHotkeyHandler {
             }
 
             startTime := A_TickCount
+            visualShown := {medium: false, long: false}
+            
             while GetKeyState(key, "P") {
+                duration := A_TickCount - startTime
+                
+                ; Press type ve görsel feedback'i birlikte kontrol et
+                this._detectPressWithVisual(duration, enableVisual, &visualShown)
+                
                 if (_checkCombo(comboActions)) {
-                    if (gestures.Length > 0) {
+                    if (gestures.Length > 0 && IsObject(this.hgsRight)) {
                         this.hgsRight.Stop()
                     }
                     break
@@ -287,6 +322,7 @@ class singleHotkeyHandler {
             }
 
             KeyWait key
+            totalDuration := A_TickCount - startTime
 
             if (gestures.Length > 0) {
                 this.hgsRight.Stop()
@@ -295,15 +331,26 @@ class singleHotkeyHandler {
                     for g in gestures {
                         if (detectedGesture == g.gesture) {
                             g.action.Call()
-                            return  ; Gesture valid (finally bloğu çalışacak)
+                            return
                         }
                     }
                 }
             }
 
             if (gState.getBusy() == 1 && mainDefault != "" && IsObject(mainDefault)) {
-                mainPressType := this._getPressType(A_TickCount - startTime)
-                mainDefault.Call(mainPressType)   ; Gesture yok/invalid, default çalış
+                ; Final press type belirleme
+                pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
+                
+                ; Double-click kontrolü (sadece short press için)
+                if (pressType == 0) {
+                    result := KeyWait(key, "D T0.1")
+                    if (result) {
+                        KeyWait(key)
+                        pressType := -1
+                    }
+                }
+                
+                mainDefault.Call(pressType)
             }
 
             if (mainEnd != "" && IsObject(mainEnd)) {
@@ -324,6 +371,7 @@ class singleHotkeyHandler {
 
     handleLButton() {
         static builder := FKeyBuilder()
+            .enableVisual(false)
             .combos("F14", "LB+F14() => Send('L F14')", () => Send("L F14"))
             .combos("F15", "LB+F15() => Send('L 15')", () => Send("L 15"))
             .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
@@ -337,7 +385,9 @@ class singleHotkeyHandler {
 
     handleMButton() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => {})
+            .mainDefault((pressType) { 
+                OutputDebug ("MButton: " pressType "`n")
+            })
             .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
             .combos("F16", "Find & Paste", () => gClipManager.press(["^f", "{Sleep 100}", "^a^v"]))
             .combos("F17", "Send F17", () => Send("F17"))
@@ -345,6 +395,7 @@ class singleHotkeyHandler {
             .combos("F19", "Paste & Enter", () => gClipManager.press(["^v", "{Enter}"]))
             .combos("F20", "Enter", () => Send("{Enter}"))
             .combos("F14", "Show History Search", () => gClipManager.showHistorySearch())
+            .enableVisual(true)
         builder.setPreview([])
         this.handleFKey(builder)
     }

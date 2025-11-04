@@ -33,7 +33,8 @@ global gScriptStartTime := A_Now
 global gStateConfig := { none: 0, home: 1, work: 2 }
 global gCurrentConfig := gStateConfig.none
 
-
+SendMode("Input")        ; hızlı ve güvenilir gönderim yöntemi
+SetWorkingDir(A_ScriptDir)  ; scriptin bulunduğu dizini çalışma dizini yapar
 CoordMode("Mouse", "Screen")
 TraySetIcon("arrow.ico")
 A_TrayMenu.Add("Control menu" . gState.getVersion(), (*) => DialogPauseGui())
@@ -121,6 +122,12 @@ LButton:: {
 ; *RButton:: return
 #HotIf
 
+; #HotIf gClipManager.getAutoClip()
+; ^c:: gClipManager.copyToClipboard()
+; ^x:: gClipManager.copyToClipboard()
+; ^v:: gClipManager.pasteFromClipboard()
+; #HotIf
+
 ; Pause & 1:: recorder.recordAction(1, MacroRecorder.recType.key)
 ; Pause & 2:: recorder.stop()  ; Kayıt durdur
 ; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
@@ -128,7 +135,7 @@ LButton:: {
 #HotIf gCurrentConfig = gStateConfig.work ; hotif olan tuslari override eder
 >#1:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 >#2:: gRecorder.playKeyAction(2, 1)
->#3:: getPressType( ;belki önüne birsey gelince olabilir?
+>#3:: getPressTypeTest( ;belki önüne birsey gelince olabilir?
     (pressType) => pressType == 0
         ? gRecorder.playKeyAction(3, 1)
         : gRecorder.recordAction(3, singleMacroRecorder.recType.key)

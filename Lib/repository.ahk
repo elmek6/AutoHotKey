@@ -61,39 +61,74 @@ class singleRepository {
 
     loadAll() {
         if !FileExist(AppConst.FILE_REPO)
-            return
+            return false
 
         try {
-            file := FileOpen(AppConst.FILE_REPO, "r", "UTF-8")
-            if !file
-                return
-            data := file.Read()
-            file.Close()
-            loaded := jsongo.Parse(data)
-            for i in loaded["items"] {
-                tags := i.Has("tags") ? i["tags"] : []
-                item := Item(i["title"], i["category"], i["text"], tags)
-                if (i.Has("uuid"))
-                    item.uuid := i["uuid"]
-                this.items.Push(item)
+            local file := FileOpen(AppConst.FILE_REPO, "r", "UTF-8")
+            if (!file) {
+                throw Error("repository.json okunamadı")
             }
-        } catch as err {
-            gErrHandler.backupOnError("Repository.loadAll!", AppConst.FILE_REPO)
+            local data := file.Read()
+            file.Close()
+
+            local loaded := jsongo.Parse(data)
+
             this.items := []
+            for itemData in loaded {
+                ; Değerleri önce değişkenlere al
+                local itemTitle := ""
+                local itemCategory := ""
+                local itemText := ""
+                local tags := []
+
+                if (itemData.Has("title"))
+                    itemTitle := itemData["title"]
+                if (itemData.Has("category"))
+                    itemCategory := itemData["category"]
+                if (itemData.Has("text"))
+                    itemText := itemData["text"]
+                if (itemData.Has("tags"))
+                    tags := itemData["tags"]
+
+                ; Item oluştur
+                local newItem := Item(itemTitle, itemCategory, itemText, tags)
+
+                ; UUID'yi sonradan ata
+                if (itemData.Has("uuid"))
+                    newItem.uuid := itemData["uuid"]
+
+                this.items.Push(newItem)
+            }
+            return true
+        } catch as err {
+            gErrHandler.handleError("Repository yükleme başarısız: " . err.Message, err)
+            this.items := []
+            return false
         }
     }
 
     saveAll() {
         try {
-            jsonData := []
+            ; Item class'larını Map'e çevir
+            local jsonData := []
             for item in this.items {
-                jsonData.Push(Map("title", item.title, "category", item.category, "text", item.text, "tags", item.tags, "uuid", item.uuid))
+                ; item bir Item class
+                jsonData.Push(Map(
+                    "title", item.title,
+                    "category", item.category,
+                    "text", item.text,
+                    "tags", item.tags,
+                    "uuid", item.uuid
+                ))
             }
-            file := FileOpen(AppConst.FILE_REPO, "w", "UTF-8")
+
+            ; Stringify ve kaydet
+            local jsonStr := jsongo.Stringify(jsonData)
+            local file := FileOpen(AppConst.FILE_REPO, "w", "UTF-8")
             if (!file) {
-                throw Error("repository.json yazılamadı")
+                throw Error(AppConst.FILE_REPO . " yazılamadı")
             }
-            file.Write(jsongo.Stringify(jsonData))
+            file.Write(jsonStr)
             file.Close()
             return true
         } catch as err {
@@ -149,6 +184,7 @@ class singleRepository {
         catMap := Map()
         tagMap := Map()
         for item in this.items {
+            ; item artık Item class, Map değil!
             if (!catMap.Has(item.category) && item.category != "") {
                 catMap[item.category] := true
                 this.categories.Push(item.category)
@@ -393,7 +429,7 @@ class singleRepository {
     }
 
     _onGuiClose() {
-        this.saveAll()
+        ; GUI kapanırken save YAPMA
         this._gui.Destroy()
         this._gui := ""
         this._searchEdit := ""
