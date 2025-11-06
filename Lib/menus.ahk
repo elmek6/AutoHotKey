@@ -227,3 +227,48 @@ DialogPauseGui() {
     pauseGui.Show("xCenter yCenter")
     SoundBeep(750)
 }
+
+; Enum tipi (class olarak)
+class TipType {
+    static Info := "info"
+    static Warning := "warning"
+    static Error := "error"
+    static Success := "success"
+    static Cut := "cut"
+    static Copy := "copy"
+    static Paste := "paste"
+}
+
+ShowTip(msg, type := TipType.Info, duration := 800) {
+    static tipGui := ""
+    if (tipGui) {
+        tipGui.Destroy()
+    }
+
+    tipGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "CustomTip")
+    
+    ; Type'a göre renkler (text/bg)
+    colors := Map(
+        TipType.Info, {text: "007BFF", bg: "FFFFE0"},  ; Mavi/Sarı
+        TipType.Warning, {text: "FD7E14", bg: "FFFFFF"},  ; Turuncu/Beyaz
+        TipType.Error, {text: "DC3545", bg: "FFFFFF"},  ; Kırmızı/Beyaz
+        TipType.Success, {text: "28A745", bg: "E6FFE6"},  ; Yeşil/Açık Yeşil
+        TipType.Cut, {text: "6F42C1", bg: "F8F9FA"},  ; Mor/Gri
+        TipType.Copy, {text: "17A2B8", bg: "E3F2FD"},  ; Mavi/Açık Mavi
+        TipType.Paste, {text: "198754", bg: "D1E7DD"}  ; Yeşil/Açık Yeşil
+    )
+
+    ; Varsayılan renk (eğer type yoksa veya hatalıysa)
+    colorPair := colors.Has(type) ? colors[type] : colors[TipType.Info]
+    
+    tipGui.BackColor := colorPair.bg
+    tipGui.SetFont("s10 c" colorPair.text, "Segoe UI")  ; Text color'ı SetFont ile uygula
+    tipGui.MarginX := 6, tipGui.MarginY := 6
+
+    tipGui.AddText("ReadOnly -E0x200", msg)
+
+    MouseGetPos(&x, &y)
+    tipGui.Show("x" (x + 16) " y" (y + 16) " AutoSize NoActivate")
+
+    SetTimer(() => (tipGui.Destroy(), tipGui := ""), -duration)
+}

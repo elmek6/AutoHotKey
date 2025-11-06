@@ -18,7 +18,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_137_b")
+global gState := singleState.getInstance("ver_138_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipManager := singleClipboard.getInstance(200, 30000)
@@ -351,22 +351,4 @@ UpdateIndicator() {
     mouseIndicator.BackColor := "00FF88"  ; Neon yeşil
     mouseIndicator.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
     mouseIndicator.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
-}
-
-ShowCustomTip(msg, duration := 1000) {
-    static tipGui := ""
-    if (tipGui) {
-        tipGui.Destroy()
-    }
-
-    tipGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "CustomTip")
-    tipGui.SetFont("s10", "Segoe UI")
-    tipGui.MarginX := 8, tipGui.MarginY := 6
-
-    tipGui.AddEdit("ReadOnly -E0x200", msg)
-
-    MouseGetPos(&x, &y)
-    tipGui.Show("x" (x + 20) " y" (y + 20) " AutoSize NoActivate")
-
-    SetTimer(() => (tipGui.Destroy(), tipGui := ""), -duration)
 }

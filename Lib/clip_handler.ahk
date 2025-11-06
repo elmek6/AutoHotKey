@@ -219,7 +219,7 @@ class singleClipboard {
             return
         }
         If (Type == 2) {
-            ShowCustomTip("⛵")
+            ShowTip("⛵")
             return
         }
         local text := A_Clipboard

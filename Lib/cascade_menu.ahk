@@ -1,7 +1,9 @@
+; tus icin 3 basim türüne izin verir (süreleri ayrıca belirtilmelidir)
+; kisa basım: 0, orta basım: 1, (uzun basım: 2 opsiyonel)
 class CascadeBuilder {
-    __New(shortTime := 500, longTime := 1500) {
+    __New(shortTime := 500, longTime := "") {
         this.shortTime := shortTime
-        this.longTime := longTime
+        this.longTime := (longTime != "") ? longTime : ""
         this.exitOnPressType := -1
         this.durationType := -1
         this._mainKey := ""
@@ -44,7 +46,6 @@ class CascadeBuilder {
         }
         return this
     }
-
 }
 
 class singleCascadeHandler {
@@ -63,18 +64,20 @@ class singleCascadeHandler {
         }
     }
 
-    ;short 500 medium 1500 long 0 1 2
-    ;short medium 2000 2ßßß long 0 0 2
     getPressType(duration, shortTime, longTime) {
-        if (duration <= shortTime) {
-            result := 0
-        } else if (duration > shortTime && duration < longTime) {
-            result := 1
-        } else {
-            result := 2
+        if (longTime == "") {
+            ; Nullable long - sadece 0 ve 1 döner
+            return (duration <= shortTime) ? 0 : 1
         }
-        this.durationType := result
-        return result
+
+        ; Normal mod - 0, 1, 2 döner
+        if (duration <= shortTime) {
+            return 0
+        } else if (duration < longTime) {
+            return 1
+        } else {
+            return 2
+        }
     }
 
     cascadeKey(builder, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
@@ -88,25 +91,41 @@ class singleCascadeHandler {
         previewList := builder.tips
         shortTime := builder.shortTime
         longTime := builder.longTime
-        senderKey := key
-        durationType := -1
+        mainKeyExecuted := false
 
         try {
             gState.setBusy(1)
             startTime := A_TickCount
-            beepCount := 2
+            beepCount := (longTime != "") ? 2 : 1
             mediumTriggered := false
             longTriggered := false
+
             while (GetKeyState(key, "P")) {
                 duration := A_TickCount - startTime
 
-                if (duration >= shortTime && beepCount == 2) {
+                ; NULLABLE LONG MODE: Short geçtiğinde hemen mainKey(1) çağır
+                if (longTime == "" && duration >= shortTime && !mainKeyExecuted) {
+                    if (mainKey != "" && IsObject(mainKey)) {
+                        mainKey.Call(1)
+                        mainKeyExecuted := true
+                    }
+
+                    if (exitOnPressType = 1) {
+                        return
+                    }
+                    break  ; While'dan çık, pairs'e geç
+                }
+
+                ; Medium beep (normal 3-level mode)
+                if (longTime != "" && duration >= shortTime && beepCount >= 1 && !mediumTriggered) {
                     SoundBeep(800, 50)
                     beepCount--
                     mediumTriggered := true
                     ; OutputDebug("MEDIUM press detected (" duration " ms)`n")
                 }
-                if (duration >= longTime && beepCount == 1) {
+
+                ; Long beep (sadece longTime varsa)
+                if (longTime != "" && duration >= longTime && beepCount >= 1 && !longTriggered) {
                     SoundBeep(800, 50)
                     beepCount--
                     longTriggered := true
@@ -120,60 +139,59 @@ class singleCascadeHandler {
                     if (GetKeyState(p.key, "P")) {
                         KeyWait p.key
                         p.action.Call(this.getPressType(A_TickCount - startTime, shortTime, longTime))
-                        ToolTip()
                         return
                     }
                 }
                 Sleep(30)
             }
-            mainHoldTime := A_TickCount - startTime
-            mainPressType := this.getPressType(mainHoldTime, shortTime, longTime)
 
-            ; Ana tuş aksiyonu
-            if (mainKey != "" && IsObject(mainKey)) {
-                mainKey.Call(mainPressType)
-            }
+            ; NORMAL MODE veya SHORT PRESS
+            if (!mainKeyExecuted) {
+                mainHoldTime := A_TickCount - startTime
+                mainPressType := this.getPressType(mainHoldTime, shortTime, longTime)
 
-            ; Exit threshold kontrolü, yoksa -1
-            if (mainPressType = exitOnPressType) {
-                if (previewList.Length > 0) {
-                    ToolTip ("")
+                ; Ana tuş aksiyonu
+                if (mainKey != "" && IsObject(mainKey)) {
+                    mainKey.Call(mainPressType)
                 }
-                return
+
+                ; Exit threshold kontrolü
+                if (mainPressType = exitOnPressType) {
+                    return
+                }
             }
 
+            ; Preview göster
             gState.setBusy(1)
+            previewText := ""
             if (IsObject(builder.previewCallback)) {
-                previewList := builder.previewCallback.Call(this, mainPressType)
+                currentPressType := mainKeyExecuted ? 1 : this.getPressType(A_TickCount - startTime, shortTime, longTime)
+                previewList := builder.previewCallback.Call(this, currentPressType)
                 if (previewList.Length > 0) {
-                    text := ""
-                    for i, item in previewList {
-                        text .= item "`n"
+                    for item in previewList {
+                        previewText .= item "`n"
                     }
-                    ToolTip(text)
+                    ToolTip(previewText)
                 }
             }
 
-            ; state.setBusy(1)
-            Hotkey("SC001", "Off")
-
+            ; InputHook ile pair bekle
             ih := InputHook()
             ih.VisibleNonText := false
-            ih.KeyOpt("{All}", "E") ; 
+            ih.KeyOpt("{All}", "E")
             ih.Start()
             ih.Wait()
 
-            ; if (ih.EndKey = "Escape") { ; Escape
-            ;     ToolTip()
-            ;     return
-            ; }
-            Hotkey("SC001", "On")
-            ; pressedTogether := GetKeyState(A_ThisHotkey, "P")
-            ; OutputDebug (pressedTogether)
+            ; Tooltip'i kapat (ESC veya tekrar basma durumu)
+            if (ih.EndKey = "Escape" || ih.EndKey = key) {
+                ToolTip("")
+                return
+            }
 
+            ; Pair action çalıştır
             for p in pairsActions {
                 if (p.key = ih.EndKey) {
-                    p.action.Call(mainPressType)
+                    p.action.Call(mainKeyExecuted ? 1 : this.getPressType(A_TickCount - startTime, shortTime, longTime))
                     ToolTip("")
                     return
                 }
@@ -186,126 +204,103 @@ class singleCascadeHandler {
             gErrHandler.handleError(err.Message " " key, err)
         } finally {
             gState.setBusy(0)
-            OutputDebug "0`r"
-
         }
     }
 
     cascadeCaret() {
         loadSave(dt, number) {
-            if (dt = 2) {
-                gClipManager.promptAndSaveSlot(number)
-            } else {
-                gClipManager.loadFromSlot(number)
-            }
+            gClipManager.loadFromSlot(number)
         }
 
-        builder := CascadeBuilder(400, 2500)
+        builder := CascadeBuilder(350)  ; 2 level mode
             .mainKey((dt) {
-                if (dt = 0)
-                    SendInput("{SC029}")
-            })
-            .setExitOnPressType(0)
-            .pairs("s", "Search...", (dt) => gClipManager.showSlotsSearch())
-            .pairs("1", "Test 1", (dt) => loadSave(dt, 1))
-            .pairs("2", "Test 2", (dt) => loadSave(dt, 2))
-            .pairs("3", "Test 3", (dt) => loadSave(dt, 3))
-            .pairs("4", "Test 4", (dt) => loadSave(dt, 4))
-            .pairs("5", "Test 5", (dt) => loadSave(dt, 5))
-            .pairs("6", "Test 6", (dt) => loadSave(dt, 6))
-            .pairs("7", "Test 7", (dt) => loadSave(dt, 7))
-            .pairs("8", "Test 8", (dt) => loadSave(dt, 8))
-            .pairs("9", "Test 9", (dt) => loadSave(dt, 9))
-            .pairs("0", "Test 0", (dt) => loadSave(dt, 13))
-            .setPreview((b, pressType) {
-                if (pressType == 0) {
-                    return []
-                } else if (pressType == 1) {
-                    ; return builder.getPairsTips()
-                    return gClipManager.getSlotsPreviewText()
-                } else {
-                    result := []
-                    result.Push("-------------------- SAVE --------------------")
-                    result.Push("----------------------------------------------")
-                    for v in gClipManager.getSlotsPreviewText()
-                        result.Push(v)
-                    result.Push("kisa basma (" pressType "ms): Daha fazla seçenek")
-                    return result
+                switch (dt) {
+                    case 0:
+                        SendInput("{SC029}")
+                    case 1:
+                        gClipManager.showSlotsSearch()
                 }
             })
+            .setExitOnPressType(0)
+            .pairs("1", "Slot 1", (dt) => loadSave(dt, 1))
+            .pairs("2", "Slot 2", (dt) => loadSave(dt, 2))
+            .pairs("3", "Slot 3", (dt) => loadSave(dt, 3))
+            .pairs("4", "Slot 4", (dt) => loadSave(dt, 4))
+            .pairs("5", "Slot 5", (dt) => loadSave(dt, 5))
+            .pairs("6", "Slot 6", (dt) => loadSave(dt, 6))
+            .pairs("7", "Slot 7", (dt) => loadSave(dt, 7))
+            .pairs("8", "Slot 8", (dt) => loadSave(dt, 8))
+            .pairs("9", "Slot 9", (dt) => loadSave(dt, 9))
+            .pairs("0", "Slot 0", (dt) => loadSave(dt, 13))
+        ; .setPreview((b, pressType) => gClipManager.getSlotsPreviewText())
+
         gCascade.cascadeKey(builder, "^")
     }
 
-
     cascadeTab() {
-        builder := CascadeBuilder(400, 2500)
+        builder := CascadeBuilder(350)  ; 2 level mode
             .mainKey((dt) {
-                if (dt = 0)
-                    SendInput("{Tab}")
-            })
-            .setExitOnPressType(0)
-            .pairs("1", "Load History 1", (dt) => gClipManager.loadFromHistory(1))
-            .pairs("2", "Load History 2", (dt) => gClipManager.loadFromHistory(2))
-            .pairs("3", "Load History 3", (dt) => gClipManager.loadFromHistory(3))
-            .pairs("4", "Load History 4", (dt) => gClipManager.loadFromHistory(4))
-            .pairs("5", "Load History 5", (dt) => gClipManager.loadFromHistory(5))
-            .pairs("6", "Load History 6", (dt) => gClipManager.loadFromHistory(6))
-            .pairs("7", "Load History 7", (dt) => gClipManager.loadFromHistory(7))
-            .pairs("8", "Load History 8", (dt) => gClipManager.loadFromHistory(8))
-            .pairs("9", "Load History 9", (dt) => gClipManager.loadFromHistory(9))
-            .pairs("s", "Show History Search", (dt) => gClipManager.showHistorySearch())
-            .setPreview((b, pressType) {
-                if (pressType = 1) {
-                    return gClipManager.getHistoryPreviewList()
-                } else {
-                    return []
+                switch (dt){
+                    case 0:
+                        SendInput("{Tab}")
+                    case 1:
+                        gClipManager.showHistorySearch()
+
                 }
             })
+            .setExitOnPressType(0)
+            .pairs("1", "History 1", (dt) => gClipManager.loadFromHistory(1))
+            .pairs("2", "History 2", (dt) => gClipManager.loadFromHistory(2))
+            .pairs("3", "History 3", (dt) => gClipManager.loadFromHistory(3))
+            .pairs("4", "History 4", (dt) => gClipManager.loadFromHistory(4))
+            .pairs("5", "History 5", (dt) => gClipManager.loadFromHistory(5))
+            .pairs("6", "History 6", (dt) => gClipManager.loadFromHistory(6))
+            .pairs("7", "History 7", (dt) => gClipManager.loadFromHistory(7))
+            .pairs("8", "History 8", (dt) => gClipManager.loadFromHistory(8))
+            .pairs("9", "History 9", (dt) => gClipManager.loadFromHistory(9))
+        ; .setPreview((b, pressType) => gClipManager.getHistoryPreviewList())
+
         gCascade.cascadeKey(builder, "Tab")
     }
-
 
     cascadeCaps() {
         gState.updateActiveWindow()
         profile := gAppShorts.findProfileByWindow()
-        ; if (!profile || profile.shortCuts.Length == 0) {
-        ;     ToolTip("yok yok yok"), SetTimer(() => ToolTip(), -1000)
-        ;     return
-        ; }
-        loadSaveMacro(number) {
+
+        if (!profile) {
+            ; Profile yoksa normal CapsLock toggle
+            SetCapsLockState(!GetKeyState("CapsLock", "T"))
+            return
+        }
+
+        loadMacro(number) {
             if (number > profile.shortCuts.Length) {
-                ToolTip("yok yok"), SetTimer(() => ToolTip(), -1000)
+                ToolTip("Slot boş"), SetTimer(() => ToolTip(), -1000)
                 return
             }
-            ; profile.shortCuts.play
             profile.playAt(number)
         }
 
-        builder := CascadeBuilder(400, 2000)
+        builder := CascadeBuilder(350)  ; 2 level mode
             .mainKey((dt) {
-                if (dt = 0)
-                    SetCapsLockState(!GetKeyState("CapsLock", "T"))
-            })
-            .setExitOnPressType(0)
-            ; .pairs("s", "Search...", (dt) => clipManager.showSlotsSearch())
-            ; .pairs("Esc", "Cancel", (dt) => SendInput("{Esc}"))
-            .pairs("1", profile.shortCuts[1].shortCutName, (dt) => loadSaveMacro(1))
-            .pairs("2", "rec2.ahk", (dt) => loadSaveMacro(2))
-            .pairs("3", "rec3.ahk", (dt) => loadSaveMacro(3))
-            .pairs("4", "rec4.ahk", (dt) => loadSaveMacro(4))
-            .pairs("5", "rec5.ahk", (dt) => loadSaveMacro(5))
-            .pairs("6", "rec6.ahk", (dt) => loadSaveMacro(6))
-            .pairs("7", "rec7.ahk", (dt) => loadSaveMacro(7))
-            .pairs("8", "rec8.ahk", (dt) => loadSaveMacro(8))
-            .pairs("9", "rec9.ahk", (dt) => loadSaveMacro(9))
-            .setPreview((b, pressType) {
-                ; Profile shortCuts preview'larını döndür (ad + kısa açıklama)
-                if (pressType = 1) {
-                    return profile.getShortCutsPreview()
-                } else {
-                    return []
+                if (dt = 0) {
+                    local caps := GetKeyState("CapsLock", "T")
+                    ShowTip(caps ? "CAPSLOCK " : "capsLock")
+                    SetCapsLockState(!caps)
                 }
             })
-        gCascade.cascadeKey(builder, "Esc")
+            .setExitOnPressType(0)
+            .pairs("1", "Action 1", (dt) => loadMacro(1))
+            .pairs("2", "Action 2", (dt) => loadMacro(2))
+            .pairs("3", "Action 3", (dt) => loadMacro(3))
+            .pairs("4", "Action 4", (dt) => loadMacro(4))
+            .pairs("5", "Action 5", (dt) => loadMacro(5))
+            .pairs("6", "Action 6", (dt) => loadMacro(6))
+            .pairs("7", "Action 7", (dt) => loadMacro(7))
+            .pairs("8", "Action 8", (dt) => loadMacro(8))
+            .pairs("9", "Action 9", (dt) => loadMacro(9))
+            .setPreview((b, pressType) => profile.getShortCutsPreview())
+
+        gCascade.cascadeKey(builder, "CapsLock")
     }
 }
