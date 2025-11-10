@@ -39,7 +39,7 @@
 
     getLastWheelTime() {
         diff := A_TickCount - this.lastWheelTime
-        if (diff > 400) {  ; 100ms'den fazla geçtiyse resetle (yeni tekerlek serisi)
+        if (diff > 600) {  ; 100ms'den fazla geçtiyse resetle (yeni tekerlek serisi)
             this.lastWheelTime := A_TickCount
             this._wheelcount := 0
             return false

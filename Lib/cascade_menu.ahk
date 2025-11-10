@@ -284,9 +284,9 @@ class singleCascadeHandler {
         builder := CascadeBuilder(350)  ; 2 level mode
             .mainKey((dt) {
                 if (dt = 0) {
-                    local caps := GetKeyState("CapsLock", "T")
+                    local caps := !GetKeyState("CapsLock", "T")
                     ShowTip(caps ? "CAPSLOCK " : "capsLock")
-                    SetCapsLockState(!caps)
+                    SetCapsLockState(caps)
                 }
             })
             .setExitOnPressType(0)

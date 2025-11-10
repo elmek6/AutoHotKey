@@ -67,7 +67,7 @@ getPressTypeTest(fn, key := "", shortTime := 300, longTime := 3000) {
 
 
 ; detectPressType((pressType) => OutputDebug("Press type: " pressType "`n"))
-; short press: 0, medium press: 1, long press: 2, double press: -1
+; short press: 0, medium press: 1, long press: 2, double press: 4
 detectPressTypeTest(fn, key := "", short := 300, long := 1000, gap := 100) {
     if (key = "") {
         key := SubStr(A_ThisHotkey, -1) ; sondan kesiyor diyor ama ?
@@ -80,7 +80,7 @@ detectPressTypeTest(fn, key := "", short := 300, long := 1000, gap := 100) {
 
         if (result) {
             KeyWait(key)
-            fn.Call(-1)
+            fn.Call(4)
         } else {
             fn.Call(0)
         }
@@ -206,7 +206,7 @@ class singleHotkeyHandler {
     ; duration, pressType ve görsel feedback'i birlikte yönet
     _detectPressWithVisual(duration, enableVisual, &visualShown) {
         pressType := -1
-        
+
         ; Short press (0-300ms)
         if (duration < 300) {
             pressType := 0
@@ -227,13 +227,13 @@ class singleHotkeyHandler {
                 visualShown.long := true
             }
         }
-        
+
         return pressType
     }
 
     _showVisual(color) {
         static feedbackGui := ""
-        
+
         ; Önceki GUI'yi temizle
         if (feedbackGui) {
             try feedbackGui.Destroy()
@@ -244,7 +244,7 @@ class singleHotkeyHandler {
         feedbackGui.BackColor := color
         feedbackGui.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
         feedbackGui.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
-        
+
         ; 300ms sonra temizle (flicker'ı azalt)
         SetTimer(() => (feedbackGui.Destroy(), feedbackGui := ""), -300)
     }
@@ -304,14 +304,14 @@ class singleHotkeyHandler {
             }
 
             startTime := A_TickCount
-            visualShown := {medium: false, long: false}
-            
+            visualShown := { medium: false, long: false }
+
             while GetKeyState(key, "P") {
                 duration := A_TickCount - startTime
-                
+
                 ; Press type ve görsel feedback'i birlikte kontrol et
                 this._detectPressWithVisual(duration, enableVisual, &visualShown)
-                
+
                 if (_checkCombo(comboActions)) {
                     if (gestures.Length > 0 && IsObject(this.hgsRight)) {
                         this.hgsRight.Stop()
@@ -340,16 +340,16 @@ class singleHotkeyHandler {
             if (gState.getBusy() == 1 && mainDefault != "" && IsObject(mainDefault)) {
                 ; Final press type belirleme
                 pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
-                
+
                 ; Double-click kontrolü (sadece short press için)
                 if (pressType == 0) {
                     result := KeyWait(key, "D T0.1")
                     if (result) {
                         KeyWait(key)
-                        pressType := -1
+                        pressType := 4
                     }
                 }
-                
+
                 mainDefault.Call(pressType)
             }
 
@@ -385,8 +385,11 @@ class singleHotkeyHandler {
 
     handleMButton() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) { 
-                OutputDebug ("MButton: " pressType "`n")
+            .mainDefault((pressType) {
+                ; OutputDebug ("MButton: " pressType "`n")
+                switch (pressType) {
+                    case 4: Send("zoom normal yap")
+                }
             })
             .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
             .combos("F16", "Find & Paste", () => gClipManager.press(["^f", "{Sleep 100}", "^a^v"]))
@@ -404,9 +407,10 @@ class singleHotkeyHandler {
         static builder := FKeyBuilder()
             ; .mainStart(() => (ToolTip("F13 Paste Mode"), SetTimer(() => ToolTip(), -800)))
             .mainDefault((pressType) {
-                pressType == 0
-                    ? showF13menu()
-                    : Send("abc")
+                switch (pressType) {
+                    case 0: showF13menu()
+                    case 1: Send("abc")
+                }
             })
             .mainGesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}"))
             .mainGesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}"))
@@ -421,7 +425,12 @@ class singleHotkeyHandler {
 
     handleF14() {
         static builder := FKeyBuilder()
-            .mainDefault((pressType) => showF14menu())
+            .mainDefault((pressType) {
+                switch (pressType) {
+                    case 0: showF14menu()
+                    case 1: showF14menu()
+                }                
+            })
             .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}"))
             .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}"))
             .combos("F15", "Select All", () => Send("^a"))
@@ -438,9 +447,10 @@ class singleHotkeyHandler {
     handleF15() {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
-                pressType == 0
-                    ? Send("^y")
-                    : Send("{Escape}")
+                switch (pressType) {
+                    case 0: Send("^y")
+                    case 1: Send("{Escape}")
+                }
             })
             .combos("F13", "Send F13", () => Send("F13 bos"))
             .combos("LButton", "Send F15 L", () => Send("F15 L bos"))
@@ -450,9 +460,10 @@ class singleHotkeyHandler {
     handleF16() {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
-                pressType == 0
-                    ? Send("^z")
-                    : Send("{Enter}")
+                switch (pressType) {
+                    case 0: Send("^z")
+                    case 1: Send("{Enter}")
+                }
             })
             .combos("F13", "Send F13", () => Send("F13 bos"))
             .combos("LButton", "Send F16 L", () => Send("F16 L bos"))
@@ -462,9 +473,10 @@ class singleHotkeyHandler {
     handleF17() {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
-                pressType == 0
-                    ? Send("!{Right}")
-                    : Send("{Home}")
+                switch (pressType) {
+                    case 0: Send("!{Right}")
+                    case 1: Send("{Home}")
+                }
             })
             .combos("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}"), ToolTip("3x Click + Delete"), SetTimer(() => ToolTip(), -800), SoundBeep(600)))
             .combos("F18", "Delete", () => Send("{Delete}"))
@@ -476,9 +488,10 @@ class singleHotkeyHandler {
     handleF18() {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
-                pressType == 0
-                    ? Send("!{Left}")
-                    : Send("{End}")
+                switch (pressType) {
+                    case 0: Send("!{Left}")
+                    case 1: Send("{End}")
+                }
             })
             .combos("F17", "Cut", () => Send("^x"))
             .combos("F20", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
