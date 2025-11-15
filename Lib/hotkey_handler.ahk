@@ -357,7 +357,7 @@ class singleHotkeyHandler {
                 mainEnd.Call()
             }
         } catch Error as err {
-            gErrHandler.handleError(err.Message " " key)
+            gErrHandler.handleError(err.Message " " key, err)
         } finally {
             if (previewList.Length > 0) {
                 ToolTip()
@@ -377,7 +377,7 @@ class singleHotkeyHandler {
             .combos("F16", "LB+F16() => Send('L 16')", () => Send("L 16"))
             .combos("F17", "LB+F17() => Send('L 17')", () => Send("L 17"))
             .combos("F18", "LB+F18() => Send('L 18')", () => Send("L 18"))
-            .combos("F19", "All+Paste", () => gClipManager.press(["^a^v", "{Enter}"]))
+            .combos("F19", "All+Paste", () => Send("^a^v{Enter}"))
             .combos("F20", "Enter", () => Send("{Enter}"))
         builder.setPreview([])
         this.handleFKey(builder)
@@ -392,12 +392,12 @@ class singleHotkeyHandler {
                 }
             })
             .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
-            .combos("F16", "Find & Paste", () => gClipManager.press(["^f", "{Sleep 100}", "^a^v"]))
+            .combos("F16", "Find & Paste", () => Send(["^f{Sleep 100}^a^v"]))
             .combos("F17", "Send F17", () => Send("F17"))
             .combos("F18", "Send F18", () => Send("F18"))
-            .combos("F19", "Paste & Enter", () => gClipManager.press(["^v", "{Enter}"]))
+            .combos("F19", "Paste & Enter", () => Send("^v{Enter}"))
             .combos("F20", "Enter", () => Send("{Enter}"))
-            .combos("F14", "Show History Search", () => gClipManager.showHistorySearch())
+            .combos("F14", "Show History Search", () => gClipHist.showHistorySearch())
             .enableVisual(true)
         builder.setPreview([])
         this.handleFKey(builder)
@@ -417,7 +417,7 @@ class singleHotkeyHandler {
             .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
             .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}"))
             .mainGesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A"))
-            .combos("F14", "Click & Paste", () => (Click("Left", 1), gClipManager.press("^v")))
+            .combos("F14", "Click & Paste", () => (Click("Left", 1), Send("^v")))
             .combos("F18", "Delete", () => Send("{Delete}"))
         builder.setPreview([])
         this.handleFKey(builder)
@@ -429,7 +429,7 @@ class singleHotkeyHandler {
                 switch (pressType) {
                     case 0: showF14menu()
                     case 1: showF14menu()
-                }                
+                }
             })
             .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}"))
             .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}"))
@@ -439,7 +439,7 @@ class singleHotkeyHandler {
             .combos("F18", "End", () => Send("{End}"))
             .combos("F19", "Select All", () => Send("^a"))
             .combos("F20", "Select All", () => Send("^a"))
-            .combos("RButton", "Show Slots Search", () => gClipManager.showSlotsSearch())
+            .combos("RButton", "Show Slots Search", () => gClipSlot.showSlotsSearch())
         builder.setPreview([])
         this.handleFKey(builder)
     }
@@ -494,7 +494,7 @@ class singleHotkeyHandler {
                 }
             })
             .combos("F17", "Cut", () => Send("^x"))
-            .combos("F20", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
+            .combos("F20", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c")))
             .combos("LButton", "Del line VSCode", () => SendInput("^+k"))
         this.handleFKey(builder)
     }
@@ -507,12 +507,12 @@ class singleHotkeyHandler {
                     case 1: Send("^a^v")
                 }
             })
-            .mainEnd(() => gClipManager.showClipboardPreview())
-            .combos("F13", "Select All & Paste", () => gClipManager.press("^a^v"))
-            .combos("F14", "3x Click + Paste", () => (Click("Left", 3), gClipManager.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
-            .combos("F20", "Select All & Paste", () => gClipManager.press("^a^v"))
-            .combos("LButton", "Click & Paste", () => (Click("Left", 1), gClipManager.press("^v")))
-            .combos("MButton", "3x Click + Paste", () => (Click("Left", 3), gClipManager.press("^v")))
+            .mainEnd(() => gClipSlot.showClipboardPreview())
+            .combos("F13", "Select All & Paste", () => gClipSlot.press("^a^v"))
+            .combos("F14", "3x Click + Paste", () => (Click("Left", 3), gClipSlot.press("^v"), ToolTip("3x Click + Paste"), SetTimer(() => ToolTip(), -800)))
+            .combos("F20", "Select All & Paste", () => gClipSlot.press("^a^v"))
+            .combos("LButton", "Click & Paste", () => (Click("Left", 1), gClipSlot.press("^v")))
+            .combos("MButton", "3x Click + Paste", () => (Click("Left", 3), gClipSlot.press("^v")))
         builder.setPreview([])
         this.handleFKey(builder)
     }
@@ -526,13 +526,13 @@ class singleHotkeyHandler {
                     case 2: gMemSlots.start() ; gState.setAutoClip(1)
                 }
             })
-            .mainEnd(() => (ClipWait(1), Sleep(50), gClipManager.showClipboardPreview()))
-            .combos("F13", "Select All & Copy", () => gClipManager.press("^a^c"))
-            .combos("F14", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
-            .combos("F19", "Select All & Copy", () => gClipManager.press("^a^c"))
-            .combos("F18", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
+            .mainEnd(() => (ClipWait(1), Sleep(50), gClipSlot.showClipboardPreview()))
+            .combos("F13", "Select All & Copy", () => gClipSlot.press("^a^c"))
+            .combos("F14", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
+            .combos("F19", "Select All & Copy", () => gClipSlot.press("^a^c"))
+            .combos("F18", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c")))
             .combos("LButton", "Click & Copy", () => (Click("Left", 1), gMemSlots.smartCopy()))
-            .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), gClipManager.press("^c")))
+            .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c")))
         builder.setPreview([])
         this.handleFKey(builder)
     }

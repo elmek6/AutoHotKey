@@ -8,7 +8,8 @@
 #Include <menus>
 #Include <key_counter>
 #Include <hotkey_handler>
-#Include <clip_handler>
+#Include <clip_hist>
+#Include <clip_slot>
 #Include <memory_slots>
 #Include <cascade_menu>
 #Include <macro_recorder>
@@ -18,17 +19,17 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_139_h")
+global gState := singleState.getInstance("ver_140_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
-global gClipManager := singleClipboard.getInstance(200, 30000)
+global gClipHist := singleClipHist.getInstance(250, 10000)
+global gClipSlot := singleClipSlot.getInstance()
 global gKeyHandler := singleHotkeyHandler.getInstance()
 global gCascade := singleCascadeHandler.getInstance()
 global gRecorder := singleMacroRecorder.getInstance(300)
 global gAppShorts := singleProfile.getInstance()
 global gMemSlots := singleMemorySlots.getInstance()
 global gRepo := singleRepository.getInstance()
-
 global gScriptStartTime := A_Now
 global gStateConfig := { none: 0, home: 1, work: 2 }
 global gCurrentConfig := gStateConfig.none
@@ -52,7 +53,6 @@ class AppConst {
         ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
     }
 }
-
 #SuspendExempt
 Pause & Home:: {
     ; DialogPauseGui()
@@ -83,13 +83,12 @@ LoadSettings() {
     }
     AppConst.initDirectory()
 }
-
 ExitSettings(ExitReason, ExitCode) {
     gState.saveStats(gScriptStartTime)
-    gClipManager.__Delete()
+    gClipHist.__Delete()
+    gClipSlot.__Delete()
     gState.clearAllOnTopWindows()
 }
-
 reloadScript() {
     gState.saveStats(gScriptStartTime)
     SoundBeep(500)

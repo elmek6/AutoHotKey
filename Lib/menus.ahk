@@ -56,15 +56,14 @@ showF14menu() {
     Click("Middle", 1)
 
     menuF14 := Menu()
-    menuF14.Add("Paste enter", (*) => gClipManager.press("^v{Enter}"))
-    menuF14.Add("Cut", (*) => gClipManager.press("^x"))
-    menuF14.Add("Select All + Cut", (*) => gClipManager.press("^a^x"))
-    menuF14.Add("Unformatted paste", (*) => gClipManager.press("^+v"))
+    menuF14.Add("Paste enter", (*) => gClipSlot.press("^v{Enter}"))
+    menuF14.Add("Cut", (*) => gClipSlot.press("^x"))
+    menuF14.Add("Select All + Cut", (*) => gClipSlot.press("^a^x"))
+    menuF14.Add("Unformatted paste", (*) => gClipSlot.press("^+v"))
     menuF14.Add()
-
-    menuF14.Add("Load clip", gClipManager.buildSlotMenu())
-    menuF14.Add("Save clip", gClipManager.buildSaveSlotMenu())
-    menuF14.Add("Clipboard history", gClipManager.buildHistoryMenu())
+    menuF14.Add("Load clip", gClipSlot.buildSlotMenu())
+    menuF14.Add("Save clip", gClipSlot.buildSaveSlotMenu())
+    menuF14.Add("Clipboard history", gClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()
 

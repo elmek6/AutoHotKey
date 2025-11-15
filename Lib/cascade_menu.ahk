@@ -209,7 +209,7 @@ class singleCascadeHandler {
 
     cascadeCaret() {
         loadSave(dt, number) {
-            gClipManager.loadFromSlot(number)
+            gClipSlot.loadFromSlot(number)
         }
 
         builder := CascadeBuilder(350)  ; 2 level mode
@@ -218,7 +218,7 @@ class singleCascadeHandler {
                     case 0:
                         SendInput("{SC029}")
                     case 1:
-                        gClipManager.showSlotsSearch()
+                        gClipSlot.showSlotsSearch()
                 }
             })
             .setExitOnPressType(0)
@@ -240,26 +240,24 @@ class singleCascadeHandler {
     cascadeTab() {
         builder := CascadeBuilder(350)  ; 2 level mode
             .mainKey((dt) {
-                switch (dt){
+                switch (dt) {
                     case 0:
                         SendInput("{Tab}")
                     case 1:
-                        gClipManager.showHistorySearch()
-
+                        gClipHist.showHistorySearch()
                 }
             })
             .setExitOnPressType(0)
-            .pairs("1", "History 1", (dt) => gClipManager.loadFromHistory(1))
-            .pairs("2", "History 2", (dt) => gClipManager.loadFromHistory(2))
-            .pairs("3", "History 3", (dt) => gClipManager.loadFromHistory(3))
-            .pairs("4", "History 4", (dt) => gClipManager.loadFromHistory(4))
-            .pairs("5", "History 5", (dt) => gClipManager.loadFromHistory(5))
-            .pairs("6", "History 6", (dt) => gClipManager.loadFromHistory(6))
-            .pairs("7", "History 7", (dt) => gClipManager.loadFromHistory(7))
-            .pairs("8", "History 8", (dt) => gClipManager.loadFromHistory(8))
-            .pairs("9", "History 9", (dt) => gClipManager.loadFromHistory(9))
-        ; .setPreview((b, pressType) => gClipManager.getHistoryPreviewList())
-
+            .pairs("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
+            .pairs("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
+            .pairs("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
+            .pairs("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
+            .pairs("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
+            .pairs("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
+            .pairs("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
+            .pairs("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
+            .pairs("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
+        ; .setPreview((b, pressType) => gClipHist.getHistoryPreviewList())
         gCascade.cascadeKey(builder, "Tab")
     }
 
