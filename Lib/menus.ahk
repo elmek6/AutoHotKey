@@ -63,6 +63,7 @@ showF14menu() {
     menuF14.Add()
     menuF14.Add("Load clip", gClipSlot.buildSlotMenu())
     menuF14.Add("Save clip", gClipSlot.buildSaveSlotMenu())
+    ; menuF14.Add("Slot archive (" . (gClipSlot.activatedGroup != "" ? gClipSlot.activatedGroup : "None") . ")", gClipSlot.buildArchiveMenu())  ; Yeni sub menü eklendi
     menuF14.Add("Clipboard history", gClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()

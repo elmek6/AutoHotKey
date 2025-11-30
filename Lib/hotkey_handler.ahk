@@ -388,7 +388,7 @@ class singleHotkeyHandler {
             .mainDefault((pressType) {
                 ; OutputDebug ("MButton: " pressType "`n")
                 switch (pressType) {
-                    case 4: Send("zoom normal yap")
+                    case 4: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
                 }
             })
             .combos("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))

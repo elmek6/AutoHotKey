@@ -46,6 +46,12 @@
         this.addToHistory(text)
     }
     addToHistory(text) {
+        Loop this.history.Length {
+            if (this.history[A_Index] == text) {
+                this.history.RemoveAt(A_Index)
+                break
+            }
+        }
         this.history.Push(text)
         if (this.history.Length > this.maxHistory) {
             this.history.RemoveAt(1)
@@ -57,7 +63,7 @@
         if (this.autoSaveEvery <= 0) {
             this.saveHistory()
             this.autoSaveEvery := 50
-            OutputDebug("Autosave yapıldı. Sayaç sıfırlandı.")
+            ; OutputDebug("Autosave yapıldı. Sayaç sıfırlandı.")
         }
     }
     getHistory() {
