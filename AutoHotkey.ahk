@@ -19,7 +19,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_140_h")
+global gState := singleState.getInstance("ver_143_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(250, 10000)
@@ -165,7 +165,8 @@ SC00D:: hookCommands() ; ´ backtick SC00D VKDD
 
 ~LButton:: gKeyHandler.handleLButton()
 ~MButton:: gKeyHandler.handleMButton()
-~RButton:: gKeyCounts.inc("RButton")
+~RButton:: gKeyHandler.handleRButton()
+; ~RButton:: gKeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {
     if (gState.getLastWheelTime())
@@ -182,6 +183,7 @@ RButton & WheelUp:: {
         Send("{Volume_Up}")
     }
 }
+
 RButton & WheelDown:: {
     gState.setRightClickActive(true)
     if (gState.getLastWheelTime()) {

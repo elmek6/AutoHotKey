@@ -262,6 +262,34 @@ class singleCascadeHandler {
     }
 
     cascadeCaps() {
+        builder := CascadeBuilder(350)  ; 2 level mode
+            .mainKey((dt) {
+                switch (dt) {
+                    case 0:
+                        local caps := !GetKeyState("CapsLock", "T")
+                        ShowTip(caps ? "CAPSLOCK " : "capsLock")
+                        SetCapsLockState(caps)
+                    case 1:
+                        gClipHist.showHistorySearch()
+                }
+
+
+            })
+            .setExitOnPressType(0)
+            .pairs("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
+            .pairs("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
+            .pairs("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
+            .pairs("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
+            .pairs("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
+            .pairs("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
+            .pairs("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
+            .pairs("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
+            .pairs("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
+        gCascade.cascadeKey(builder, "CapsLock")
+    }
+}
+/*
+    cascadeCaps() {
         gState.updateActiveWindow()
         profile := gAppShorts.findProfileByWindow()
 
@@ -301,4 +329,4 @@ class singleCascadeHandler {
 
         gCascade.cascadeKey(builder, "CapsLock")
     }
-}
+*/

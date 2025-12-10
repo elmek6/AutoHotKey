@@ -16,6 +16,11 @@ class ArrayFilter {
     }
 
     closeGuiAndHotkeys(myGui, listView, SelectAndClose) {
+        ; ÖNCELİKLE TÜM HOTKEY'LERİ KAPAT
+        this.changeHotKeyMode(false, listView, SelectAndClose)
+        try Hotkey("Up", "Off")
+        try Hotkey("Down", "Off")
+        
         SetTimer this.CheckFocus, 0
         ; Fare mesajını tamamen kaldır
         if (ArrayFilter.mouseMessageHandler) {
@@ -23,7 +28,6 @@ class ArrayFilter {
             ArrayFilter.mouseMessageHandler := ""
         }
         try myGui.Destroy()
-        this.changeHotKeyMode(false, listView, SelectAndClose)
     }
 
     sendText(text) {
@@ -38,6 +42,7 @@ class ArrayFilter {
     changeHotKeyMode(sw, listView, SelectAndClose) {
         mode := sw ? "On" : "Off"
         Hotkey("Enter", sw ? (*) => SelectAndClose(listView.GetNext(0, "F")) : "", mode)
+        Hotkey("NumpadEnter", sw ? (*) => SelectAndClose(listView.GetNext(0, "F")) : "", mode)
 
         CreateHotkeyHandler(idx) {
             return (*) => SelectAndClose(idx)
@@ -98,7 +103,23 @@ class ArrayFilter {
             }
         }
 
-        ; Seçili satır değişince previewBox'ı güncelle
+        ; Yukarı/Aşağı tuşları için hotkey'ler
+        Hotkey("Up", (*) => (
+            currentRow := listView.GetNext(0, "F"),
+            currentRow > 1 ? (
+                listView.Modify(currentRow, "-Select"),  ; Önce eski seçimi kaldır
+                listView.Modify(currentRow - 1, "Select Focus Vis")
+            ) : ""
+        ), "On")
+
+        Hotkey("Down", (*) => (
+            currentRow := listView.GetNext(0, "F"),
+            currentRow > 0 && currentRow < results.Length ? (
+                listView.Modify(currentRow, "-Select"),  ; Önce eski seçimi kaldır
+                listView.Modify(currentRow + 1, "Select Focus Vis")
+            ) : ""
+        ), "On")
+
         listView.OnEvent("ItemSelect", (*) => (
             index := listView.GetNext(0, "F"),
             index > 0 && index <= results.Length ? previewBox.Value := results[index]["content"] : previewBox.Value := ""

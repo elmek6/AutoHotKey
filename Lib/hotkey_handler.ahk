@@ -147,6 +147,8 @@ class FKeyBuilder {
         this.comboActions := []
         this.tips := [A_ThisHotkey]
         this._enableVisual := true
+        this._enableDoubleClick := false
+        this._mainEndOnlyCombo := false
     }
 
     mainStart(fn) {
@@ -182,6 +184,16 @@ class FKeyBuilder {
 
     enableVisual(value := true) {
         this._enableVisual := value
+        return this
+    }
+
+    enableDoubleClick(value := false) {
+        this._enableVisual := value
+        return this
+    }
+
+    mainEndOnlyCombo(value := false) {
+        this._mainEndOnlyCombo := value
         return this
     }
 }
@@ -257,6 +269,8 @@ class singleHotkeyHandler {
         comboActions := builder.comboActions
         previewList := builder.tips
         enableVisual := builder._enableVisual
+        onlyOnCombo := builder._mainEndOnlyCombo
+        enabledDoubleClick := builder._enableDoubleClick
 
         _checkCombo(comboActions) {
             for c in comboActions {
@@ -342,7 +356,7 @@ class singleHotkeyHandler {
                 pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
 
                 ; Double-click kontrolü (sadece short press için)
-                if (pressType == 0) {
+                if (pressType == 0 && enabledDoubleClick) {
                     result := KeyWait(key, "D T0.1")
                     if (result) {
                         KeyWait(key)
@@ -353,7 +367,7 @@ class singleHotkeyHandler {
                 mainDefault.Call(pressType)
             }
 
-            if (mainEnd != "" && IsObject(mainEnd)) {
+            if (mainEnd != "" && IsObject(mainEnd) && onlyOnCombo == 1 && gState.getBusy() == 2) {
                 mainEnd.Call()
             }
         } catch Error as err {
@@ -398,7 +412,20 @@ class singleHotkeyHandler {
             .combos("F19", "Paste & Enter", () => Send("^v{Enter}"))
             .combos("F20", "Enter", () => Send("{Enter}"))
             .combos("F14", "Show History Search", () => gClipHist.showHistorySearch())
-            .enableVisual(true)
+            .enableVisual(false)
+        builder.setPreview([])
+        this.handleFKey(builder)
+    }
+
+    handleRButton() {
+        static builder := FKeyBuilder()
+            .enableVisual(false)
+            .combos("F13", "Zoom+", () => Send("#{NumpadAdd}"))
+            .combos("F14", "Zoom-", () => Send("#{NumpadSub}"))
+            ; .combos("WheelUp", "vol", () => Send("#{NumpadAdd}"))
+            ; .combos("WheelDown", "vol", () => Send("#{NumpadSub}"))
+            .mainEndOnlyCombo(true)
+            .mainEnd(() => Send("{Sleep 100}{Escape}"))
         builder.setPreview([])
         this.handleFKey(builder)
     }
@@ -459,6 +486,7 @@ class singleHotkeyHandler {
 
     handleF16() {
         static builder := FKeyBuilder()
+            .enableDoubleClick(false)
             .mainDefault((pressType) {
                 switch (pressType) {
                     case 0: Send("^z")
