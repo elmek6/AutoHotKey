@@ -15,7 +15,7 @@
         this.maxClipSize := maxClipSize
         this.lastClip := ""
         this.clipLength := 0
-        this.autoSaveEvery := 50
+        this.autoSaveEvery := 100
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this.loadHistory()
     }
@@ -62,7 +62,7 @@
         this.autoSaveEvery--
         if (this.autoSaveEvery <= 0) {
             this.saveHistory()
-            this.autoSaveEvery := 50
+            this.autoSaveEvery := 100
             ; OutputDebug("Autosave yapıldı. Sayaç sıfırlandı.")
         }
     }
@@ -87,8 +87,7 @@
             if (actualIndex > 0 && actualIndex <= this.history.Length) {
                 this.ignoreNextChange := true
                 A_Clipboard := this.history[actualIndex]
-                ClipWait(1)
-                Sleep(50)
+                ClipWait(0.1)
                 Send("^v")
                 return true
             } else {

@@ -19,10 +19,10 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_143_h")
+global gState := singleState.getInstance("ver_144_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
-global gClipHist := singleClipHist.getInstance(250, 10000)
+global gClipHist := singleClipHist.getInstance(1000, 1000) ;maxHistory, maxClipSize
 global gClipSlot := singleClipSlot.getInstance()
 global gKeyHandler := singleHotkeyHandler.getInstance()
 global gCascade := singleCascadeHandler.getInstance()
@@ -34,8 +34,7 @@ global gScriptStartTime := A_Now
 global gStateConfig := { none: 0, home: 1, work: 2 }
 global gCurrentConfig := gStateConfig.none
 
-SendMode("Input")        ; hızlı ve güvenilir gönderim yöntemi
-SetWorkingDir(A_ScriptDir)  ; scriptin bulunduğu dizini çalışma dizini yapar
+SetWorkingDir(A_ScriptDir)
 CoordMode("Mouse", "Screen")
 TraySetIcon("arrow.ico")
 A_TrayMenu.Add("Control menu" . gState.getVersion(), (*) => DialogPauseGui())
