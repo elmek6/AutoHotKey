@@ -11,29 +11,89 @@ class singleClipSlot {
         if (singleClipSlot.instance) {
             throw Error("ClipSlot zaten oluşturulmuş! getInstance kullan.")
         }
-        this.slots := []
-        Loop 10 {
-            this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
-        }
+        this.groups := []
+        this.defaultGroupName := ""
+        this.allGroupNames := []
         this.loadSlots()
+        if (this.groups.Length == 0) {
+            this.initializeDefaultGroups()
+        }
     }
-    getName(pos) {
-        return this.slots[pos]["name"] ? this.slots[pos]["name"] : "Slot " . pos
+    initializeDefaultGroups() {
+        this.groups.Push(Map("groupName", "", "values", []))
+        Loop 10 {
+            this.groups[1]["values"].Push(Map("name", "Slot " . A_Index, "content", ""))
+        }
+        this.saveSlots()
     }
-    setName(pos, newName) {
-        this.slots[pos]["name"] := newName
+    getGroupsName() {
+        return this.allGroupNames
     }
-    getContent(pos) {
-        return this.slots[pos]["content"]
+    setDefaultGroup(newName) {
+        try {
+            local fullData := this.readFullJson()
+            fullData["defaultGroupName"] := newName
+            local jsonStr := jsongo.Stringify(fullData)
+            local file := FileOpen(AppConst.FILES_DIR . "slots.json", "w", "UTF-8")
+            if (!file) {
+                throw
+            }
+            file.Write(jsonStr)
+            file.Close()
+            this.loadSlots()
+            return true
+        } catch as err {
+            gErrHandler.handleError("Default grup değiştirme başarısız: " . err.Message, err)
+            return false
+        }
     }
-    setContent(pos, newContent) {
-        this.slots[pos]["content"] := newContent
+    addGroup(newGroupName) {
+        if (newGroupName == "") {
+            return
+        }
+        local newGroup := Map("groupName", newGroupName, "values", [])
+        this.groups.Push(newGroup)
+        this.saveSlots()
     }
-    clearContent(pos) {
-        this.slots[pos]["content"] := ""
+    getName(groupIndex := 1, slotIndex) {
+        if (groupIndex < 1 || groupIndex > this.groups.Length) {
+            return ""
+        }
+        values := this.groups[groupIndex]["values"]
+        return (slotIndex <= values.Length) ? values[slotIndex]["name"] : ""
     }
-    getSlotPreview(pos, maxLength := 200) {
-        content := Trim(this.getContent(pos))
+    setName(groupIndex := 1, slotIndex, newName) {
+        if (groupIndex < 1 || groupIndex > this.groups.Length) {
+            return
+        }
+        values := this.groups[groupIndex]["values"]
+        while (slotIndex > values.Length) {
+            values.Push(Map("name", "Slot " . (values.Length + 1), "content", ""))
+        }
+        values[slotIndex]["name"] := newName
+    }
+    getContent(groupIndex := 1, slotIndex) {
+        if (groupIndex < 1 || groupIndex > this.groups.Length) {
+            return ""
+        }
+        values := this.groups[groupIndex]["values"]
+        return (slotIndex <= values.Length) ? values[slotIndex]["content"] : ""
+    }
+    setContent(groupIndex := 1, slotIndex, newContent) {
+        if (groupIndex < 1 || groupIndex > this.groups.Length) {
+            return
+        }
+        values := this.groups[groupIndex]["values"]
+        while (slotIndex > values.Length) {
+            values.Push(Map("name", "Slot " . (values.Length + 1), "content", ""))
+        }
+        values[slotIndex]["content"] := newContent
+    }
+    clearContent(groupIndex := 1, slotIndex) {
+        this.setContent(groupIndex, slotIndex, "")
+    }
+    getSlotPreview(groupIndex := 1, slotIndex, maxLength := 200) {
+        content := Trim(this.getContent(groupIndex, slotIndex))
         if (content == "") {
             return "(Boş)"
         }
@@ -46,12 +106,27 @@ class singleClipSlot {
     }
     saveSlots() {
         try {
-            local jsonData := jsongo.Stringify(this.slots)
+            local fullData := this.readFullJson()
+            for loadedGroup in this.groups {
+                local found := false
+                Loop fullData["groups"].Length {
+                    if (fullData["groups"][A_Index]["groupName"] == loadedGroup["groupName"]) {
+                        fullData["groups"][A_Index] := loadedGroup
+                        found := true
+                        break
+                    }
+                }
+                if (!found) {
+                    fullData["groups"].Push(loadedGroup)
+                }
+            }
+            fullData["defaultGroupName"] := this.defaultGroupName
+            local jsonStr := jsongo.Stringify(fullData)
             local file := FileOpen(AppConst.FILES_DIR . "slots.json", "w", "UTF-8")
             if (!file) {
                 throw
             }
-            file.Write(jsonData)
+            file.Write(jsonStr)
             file.Close()
             return true
         } catch as err {
@@ -59,10 +134,9 @@ class singleClipSlot {
             return false
         }
     }
-    loadSlots() {
+    readFullJson() {
         if !FileExist(AppConst.FILES_DIR . "slots.json") {
-            this.initializeEmptySlots()
-            return false
+            return Map("defaultGroupName", "", "groups", [])
         }
         try {
             local file := FileOpen(AppConst.FILES_DIR . "slots.json", "r", "UTF-8")
@@ -71,87 +145,41 @@ class singleClipSlot {
             }
             local data := file.Read()
             file.Close()
-            local loadedData := jsongo.Parse(data)
-            this.slots := []
-            Loop 10 {
-                if (A_Index <= loadedData.Length && loadedData[A_Index].Has("name") && loadedData[A_Index].Has("content")) {
-                    this.slots.Push(Map(
-                        "name", loadedData[A_Index]["name"],
-                        "content", loadedData[A_Index]["content"]
-                    ))
-                } else {
-                    this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
+            return jsongo.Parse(data)
+        } catch as err {
+            gErrHandler.handleError("JSON okuma başarısız: " . err.Message)
+            return Map("defaultGroupName", "", "groups", [])
+        }
+    }
+    loadSlots() {
+        if !FileExist(AppConst.FILES_DIR . "slots.json") {
+            return false
+        }
+        try {
+            local fullData := this.readFullJson()
+            this.defaultGroupName := fullData.Has("defaultGroupName") ? fullData["defaultGroupName"] : ""
+            this.allGroupNames := []
+            this.groups := []
+            local defaultGroup := ""
+            local selectedGroup := ""
+            for group in fullData["groups"] {
+                this.allGroupNames.Push(group["groupName"])
+                if (group["groupName"] == "") {
+                    defaultGroup := group
+                } else if (group["groupName"] == this.defaultGroupName) {
+                    selectedGroup := group
                 }
             }
-            return true
-        } catch as err {
-            gErrHandler.handleError("Slot yükleme başarısız: " . err.Message)
-            this.initializeEmptySlots()
-            return false
-        }
-    }
-    initializeEmptySlots() { ;*
-        this.slots := []
-        Loop 10 {
-            this.slots.Push(Map("name", "Slot " . A_Index, "content", ""))
-        }
-    }
-    promptAndSaveSlot(slotNumber) {
-        local temp := A_Clipboard
-        Send("^c")
-        Sleep(50)
-        try {
-            ClipWait(1)
-            if (A_Clipboard == "") {
-                throw
+            if (defaultGroup != "") {
+                this.groups.Push(defaultGroup)
             }
-            local content := A_Clipboard
-            local preview := StrReplace(SubStr(content, 1, 500), "`n", " ")
-            if (StrLen(content) > 500) {
-                preview .= "............................."
+            if (selectedGroup != "") {
+                this.groups.Push(selectedGroup)
             }
-            local oldName := this.getName(slotNumber)
-            local title := "Save slot " . slotNumber
-            local input := InputBox(preview, title, , oldName)
-            if (input.Result == "OK" && input.Value != "") {
-                this.storeToSlot(slotNumber, content, input.Value)
-                this.showMessage("Slot " . slotNumber . " : " . input.Value)
-                this.showClipboardPreview()
-                return true
-            } else {
-                this.showMessage("iptal edildi.")
-                return false
-            }
-        } catch as err {
-            gErrHandler.handleError("Slot kaydetme/adlandırma başarısız", err)
-            return false
-        } finally {
-            A_Clipboard := temp
-        }
-    }
-    storeToSlot(slotNumber, content, name) {
-        try {
-            this.setContent(slotNumber, content)
-            this.setName(slotNumber, name)
-            this.saveSlots()
-            return true
-        } catch as err {
-            gErrHandler.handleError("storeToSlot! Slot kaydetme başarısız: ", err)
-            return false
-        }
-    }
-    loadFromSlot(slotNumber) {
-        try {
-            A_Clipboard := this.getContent(slotNumber)
-            ClipWait(1)
-            if (A_Clipboard == "") {
-                throw
-            }
-            Sleep(20)
-            if (gState.isActiveClass("Qt5QWindowIcon")) { ;ilerde appprofile alınabilir
-                SendText(A_Clipboard)
-            } else {
-                SendInput("^v")
+            for group in fullData["groups"] {
+                if (group["groupName"] != "" && group["groupName"] != this.defaultGroupName) {
+                    this.groups.Push(group)
+                }
             }
             return true
         } catch as err {
@@ -159,48 +187,92 @@ class singleClipSlot {
             return false
         }
     }
-    buildSlotMenu() {
+    buildLoadClipMenu() {
         local slotMenu := Menu()
         slotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
         slotMenu.Add()
-        Loop 9 {
-            local preview := this.getSlotPreview(A_Index)
-            local displayName := this.getName(A_Index)
+        
+        local defaultIndex := 1
+        local defaultValues := this.groups[defaultIndex]["values"]
+        Loop 10 {
+            local preview := this.getSlotPreview(defaultIndex, A_Index)
+            local displayName := this.getName(defaultIndex, A_Index) || "Slot " . A_Index
             slotMenu.Add(displayName . " (" . A_Index . "): " . preview,
-                ((num) => (*) => this.loadFromSlot(num))(A_Index))
+                ((num) => (*) => this.loadFromSlot(defaultIndex, num))(A_Index))
         }
-        slotMenu.Add(this.getName(10) . " (" . 10 . "): " . "[x]",
-            (*) => this.loadFromSlot(10))
+        slotMenu.Add()
+        
+        if (this.groups.Length > 1) {
+            local selectedIndex := 2
+            local selectedValues := this.groups[selectedIndex]["values"]
+            Loop 10 {
+                local preview := this.getSlotPreview(selectedIndex, A_Index)
+                local displayName := this.getName(selectedIndex, A_Index) || "Slot " . A_Index
+                slotMenu.Add("Tab " . displayName . " (" . A_Index . "): " . preview,
+                    ((num) => (*) => this.loadFromSlot(selectedIndex, num))(A_Index))
+            }
+        }
+        
+        local selectLabel := "Select group"
+        if (this.defaultGroupName != "") {
+            selectLabel .= " (" . this.defaultGroupName . ")"
+        }
+        slotMenu.Add(selectLabel, this.buildGroupMenu())
+        
         return slotMenu
     }
-    buildSaveSlotMenu() {
+    buildSaveClipMenu() {
         local saveSlotMenu := Menu()
+        saveSlotMenu.Add("Add new group", (*) => this.promptNewGroup())
+        saveSlotMenu.Add()
+        
+        local defaultIndex := 1
+        local defaultValues := this.groups[defaultIndex]["values"]
         Loop 10 {
-            local preview := this.getSlotPreview(A_Index)
-            local displayName := this.getName(A_Index)
+            local preview := this.getSlotPreview(defaultIndex, A_Index)
+            local displayName := this.getName(defaultIndex, A_Index) || "Slot " . A_Index
             saveSlotMenu.Add(displayName . " (" . A_Index . "): " . preview,
-                ((num) => (*) => this.promptAndSaveSlot(num))(A_Index))
+                ((num) => (*) => this.promptAndSaveSlot(defaultIndex, num))(A_Index))
         }
+        saveSlotMenu.Add()
+        
+        if (this.groups.Length > 1) {
+            local selectedIndex := 2
+            local selectedValues := this.groups[selectedIndex]["values"]
+            Loop 10 {
+                local preview := this.getSlotPreview(selectedIndex, A_Index)
+                local displayName := this.getName(selectedIndex, A_Index) || "Slot " . A_Index
+                saveSlotMenu.Add("Tab " . displayName . " (" . A_Index . "): " . preview,
+                    ((num) => (*) => this.promptAndSaveSlot(selectedIndex, num))(A_Index))
+            }
+        }
+        
         return saveSlotMenu
     }
     getSlotsPreviewText() {
         previews := []
+        local groupIndex := 1
+        local values := this.groups[groupIndex]["values"]
         Loop 9 {
-            local preview := StrReplace(this.getSlotPreview(A_Index, 100), "`n", " ")
-            local displayName := this.getName(A_Index)
+            local preview := StrReplace(this.getSlotPreview(groupIndex, A_Index, 100), "`n", " ")
+            local displayName := this.getName(groupIndex, A_Index)
             previews.Push(displayName . " (" . A_Index . "): " . preview)
         }
-        previews.Push(displayName . " (" . 0 . "): " . "[x]")
+        if (values.Length >= 10) {
+            previews.Push(this.getName(groupIndex, 10) . " (" . 0 . "): " . "[x]")
+        }
         return previews
     }
     showSlotsSearch() {
         local slotsArray := []
-        Loop 9 {
-            if (StrLen(this.getContent(A_Index)) > 0) {
+        local groupIndex := 1
+        local values := this.groups[groupIndex]["values"]
+        Loop Min(9, values.Length) {
+            if (StrLen(this.getContent(groupIndex, A_Index)) > 0) {
                 slotsArray.Push(Map(
                     "slotNumber", A_Index,
-                    "name", this.getName(A_Index),
-                    "content", this.getContent(A_Index)
+                    "name", this.getName(groupIndex, A_Index),
+                    "content", this.getContent(groupIndex, A_Index)
                 ))
             }
         }
@@ -240,6 +312,26 @@ class singleClipSlot {
     showMessage(message, duration := 2000) {
         ToolTip(message)
         SetTimer(() => ToolTip(), -duration)
+    }
+    promptNewGroup() {
+        local input := InputBox("What is new group name?")
+        if (input.Result == "OK" && input.Value != "") {
+            this.addGroup(input.Value)
+            this.setDefaultGroup(input.Value)
+            this.showMessage("Grup oluşturuldu ve seçildi.")
+        }
+    }
+    buildGroupMenu() {
+        local groupMenu := Menu()
+        local allGroups := this.getGroupsName()
+        for name in allGroups {
+            if (name != "") {
+                groupMenu.Add(name, (*) => this.setDefaultGroup(name))
+            }
+        }
+        groupMenu.Add()
+        groupMenu.Add("Only default slots", (*) => this.setDefaultGroup(""))
+        return groupMenu
     }
     __Delete() {
         if (gState.getShouldSaveOnExit) {

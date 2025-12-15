@@ -61,8 +61,8 @@ showF14menu() {
     menuF14.Add("Select All + Cut", (*) => gClipSlot.press("^a^x"))
     menuF14.Add("Unformatted paste", (*) => gClipSlot.press("^+v"))
     menuF14.Add()
-    menuF14.Add("Load clip", gClipSlot.buildSlotMenu())
-    menuF14.Add("Save clip", gClipSlot.buildSaveSlotMenu())
+    menuF14.Add("Load clip", gClipSlot.buildLoadClipMenu())
+    menuF14.Add("Save clip", gClipSlot.buildSaveClipMenu())
     ; menuF14.Add("Slot archive (" . (gClipSlot.activatedGroup != "" ? gClipSlot.activatedGroup : "None") . ")", gClipSlot.buildArchiveMenu())  ; Yeni sub menü eklendi
     menuF14.Add("Clipboard history", gClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
@@ -246,21 +246,21 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
     }
 
     tipGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "CustomTip")
-    
+
     ; Type'a göre renkler (text/bg)
     colors := Map(
-        TipType.Info, {text: "007BFF", bg: "FFFFE0"},  ; Mavi/Sarı
-        TipType.Warning, {text: "FD7E14", bg: "FFFFFF"},  ; Turuncu/Beyaz
-        TipType.Error, {text: "DC3545", bg: "FFFFFF"},  ; Kırmızı/Beyaz
-        TipType.Success, {text: "28A745", bg: "E6FFE6"},  ; Yeşil/Açık Yeşil
-        TipType.Cut, {text: "6F42C1", bg: "F8F9FA"},  ; Mor/Gri
-        TipType.Copy, {text: "17A2B8", bg: "E3F2FD"},  ; Mavi/Açık Mavi
-        TipType.Paste, {text: "198754", bg: "D1E7DD"}  ; Yeşil/Açık Yeşil
+        TipType.Info, { text: "007BFF", bg: "FFFFE0" },  ; Mavi/Sarı
+        TipType.Warning, { text: "FD7E14", bg: "FFFFFF" },  ; Turuncu/Beyaz
+        TipType.Error, { text: "DC3545", bg: "FFFFFF" },  ; Kırmızı/Beyaz
+        TipType.Success, { text: "28A745", bg: "E6FFE6" },  ; Yeşil/Açık Yeşil
+        TipType.Cut, { text: "6F42C1", bg: "F8F9FA" },  ; Mor/Gri
+        TipType.Copy, { text: "17A2B8", bg: "E3F2FD" },  ; Mavi/Açık Mavi
+        TipType.Paste, { text: "198754", bg: "D1E7DD" }  ; Yeşil/Açık Yeşil
     )
 
     ; Varsayılan renk (eğer type yoksa veya hatalıysa)
     colorPair := colors.Has(type) ? colors[type] : colors[TipType.Info]
-    
+
     tipGui.BackColor := colorPair.bg
     tipGui.SetFont("s10 c" colorPair.text, "Segoe UI")  ; Text color'ı SetFont ile uygula
     tipGui.MarginX := 6, tipGui.MarginY := 6
