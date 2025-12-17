@@ -19,7 +19,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_144_h")
+global gState := singleState.getInstance("ver_146_b")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 1000) ;maxHistory, maxClipSize
@@ -42,6 +42,7 @@ class AppConst {
     static FILES_DIR := "Files\"
     static FILE_CLIPBOARD := "Files\clipboards.json"
     static FILE_LOG := "Files\log.txt"
+    static FILE_SLOT := "Files\slots.json"
     static FILE_PROFILE := "Files\profiles.json"
     static FILE_POS := "Files\positions.json"
     static FILE_REPO := "Files\repository.json"
@@ -310,7 +311,6 @@ AppsKey & a:: { ;work
 
 }
 */
-#Requires AutoHotkey v2.0
 
 modActive := false
 lastX := 0

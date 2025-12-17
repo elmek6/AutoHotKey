@@ -209,7 +209,7 @@ class singleCascadeHandler {
 
     cascadeCaret() {
         loadSave(dt, number) {
-            gClipSlot.loadFromSlot(number)
+            gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, number)
         }
 
         builder := CascadeBuilder(350)  ; 2 level mode
@@ -231,7 +231,7 @@ class singleCascadeHandler {
             .pairs("7", "Slot 7", (dt) => loadSave(dt, 7))
             .pairs("8", "Slot 8", (dt) => loadSave(dt, 8))
             .pairs("9", "Slot 9", (dt) => loadSave(dt, 9))
-            .pairs("0", "Slot 0", (dt) => loadSave(dt, 13))
+            .pairs("0", "Slot 0", (dt) => loadSave(dt, 10))
         ; .setPreview((b, pressType) => gClipManager.getSlotsPreviewText())
 
         gCascade.cascadeKey(builder, "^")

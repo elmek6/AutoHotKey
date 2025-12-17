@@ -61,9 +61,8 @@ showF14menu() {
     menuF14.Add("Select All + Cut", (*) => gClipSlot.press("^a^x"))
     menuF14.Add("Unformatted paste", (*) => gClipSlot.press("^+v"))
     menuF14.Add()
-    menuF14.Add("Load clip", gClipSlot.buildLoadClipMenu())
-    menuF14.Add("Save clip", gClipSlot.buildSaveClipMenu())
-    ; menuF14.Add("Slot archive (" . (gClipSlot.activatedGroup != "" ? gClipSlot.activatedGroup : "None") . ")", gClipSlot.buildArchiveMenu())  ; Yeni sub menü eklendi
+    menuF14.Add("Load from slot", gClipSlot.buildLoadSlotMenu())
+    menuF14.Add("Save to slot", gClipSlot.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", gClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()
