@@ -20,7 +20,7 @@
         this.loadHistory()
     }
     clipboardWatcher(Type) {
-        if (gState.getAutoClip() == -1) {
+        if (gState.getClipHandler() != gState.clipStatusEnum.none) {
             return
         }
         if (Type == 0) {

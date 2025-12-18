@@ -402,6 +402,10 @@ class singleHotkeyHandler {
             .mainDefault((pressType) {
                 ; OutputDebug ("MButton: " pressType "`n")
                 switch (pressType) {
+                    case 1: ;test
+                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy || gState.getClipHandler() == gState.clipStatusEnum.memSlot_paste) {
+                            gMemSlots.smartPaste()
+                        }
                     case 4: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
                 }
             })
@@ -531,7 +535,13 @@ class singleHotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
                 switch pressType {
-                    case 0: gMemSlots.smartPaste()
+                    case 0:
+                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy
+                            || gState.getClipHandler() == gState.clipStatusEnum.memSlot_paste) {
+                            gMemSlots.smartPaste()
+                        } else {
+                            Send("^v")
+                        }
                     case 1: Send("^a^v")
                 }
             })
@@ -549,7 +559,7 @@ class singleHotkeyHandler {
         static builder := FKeyBuilder()
             .mainDefault((pressType) {
                 switch pressType {
-                    case 0: gMemSlots.smartCopy()
+                    case 0: Send("^c")
                     case 1: Send("^x")
                     case 2: gMemSlots.start() ; gState.setAutoClip(1)
                 }
@@ -559,7 +569,7 @@ class singleHotkeyHandler {
             .combos("F14", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c"), ToolTip("3x Click + Copy"), SetTimer(() => ToolTip(), -800)))
             .combos("F19", "Select All & Copy", () => gClipSlot.press("^a^c"))
             .combos("F18", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c")))
-            .combos("LButton", "Click & Copy", () => (Click("Left", 1), gMemSlots.smartCopy()))
+            .combos("LButton", "Click & Copy", () => (Click("Left", 1), Send("^c")))
             .combos("MButton", "3x Click + Copy", () => (Click("Left", 3), gClipSlot.press("^c")))
         builder.setPreview([])
         this.handleFKey(builder)
