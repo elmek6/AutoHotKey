@@ -26,9 +26,8 @@ class singleState {
 
         this.clipStatusEnum := {
             none: 0,
-            ; clipHist: 1,
-            memSlot_copy: 2,
-            memSlot_paste: 3
+            clipHist: 1,
+            memSlot: 2,
         }
         this.clipHandleStatus := this.clipStatusEnum.none
     }

@@ -403,7 +403,7 @@ class singleHotkeyHandler {
                 ; OutputDebug ("MButton: " pressType "`n")
                 switch (pressType) {
                     case 0: ;test
-                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy || gState.getClipHandler() == gState.clipStatusEnum.memSlot_paste) {
+                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot) {
                             gMemSlots.smartPaste(true)
                         }
                     case 4: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
@@ -536,8 +536,7 @@ class singleHotkeyHandler {
             .mainDefault((pressType) {
                 switch pressType {
                     case 0:
-                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy
-                            || gState.getClipHandler() == gState.clipStatusEnum.memSlot_paste) {
+                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy) {
                             gMemSlots.smartPaste()
                         } else {
                             Send("^v")

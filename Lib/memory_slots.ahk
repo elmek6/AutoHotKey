@@ -15,7 +15,8 @@ class singleMemorySlots {
     }
 
     start() {
-        gState.setClipHandler(gState.clipStatusEnum.memSlot_copy)
+        this.previousState := gState.getClipHandler()
+        gState.setClipHandler(gState.clipStatusEnum.memSlot)
 
         this.slots := []
         Loop 10 {
@@ -32,7 +33,11 @@ class singleMemorySlots {
         this.lastClipContent := ""
         this.isDestroyed := false
         this.savedHwnd := 0
-        ; this.smartPasteMode := false
+        this.clipTypeEnum := {
+            copy: true,
+            paste: false,
+        }
+        this.clipType := this.clipTypeEnum.copy
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
         this._createGui()
@@ -49,16 +54,15 @@ class singleMemorySlots {
 
             this.gui.Add("Text", "x10 y10 w400 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste 🔹")
 
-            currentMode := gState.getClipHandler()
-            isActive := (currentMode == gState.clipStatusEnum.memSlot_copy || currentMode == gState.clipStatusEnum.memSlot_paste)
-            this.toggleBtn := this.gui.Add("Button", "x10 y25 w200 h30", isActive ? "🟢 Smart Mode: Aktif" : "🔴 Smart Mode: Pasif")
+            ; Toggle butonu: clipType'a göre renk ve yazı
+            this.toggleBtn := this.gui.Add("Button", "x10 y25 w200 h30", this.clipType ? "🟢 Smart Mode: Aktif (Copy)" : "🔴 Smart Mode: Pasif")
             this.toggleBtn.OnEvent("Click", (*) => this._toggleSmartMode())
 
             ; Temizle butonu
             clearBtn := this.gui.Add("Button", "x220 y25 w190 h30", "🗑️ Slotları Temizle")
             clearBtn.OnEvent("Click", (*) => this._clearSlots())
 
-            ; Middle paste checkbox - Default checked
+            ; Middle paste checkbox
             this.middlePasteCheck := this.gui.Add("CheckBox", "x10 y60 w300 h20 Checked1", "Orta basım: Aktif slotu yapıştır (Middle Paste)")
             this.middlePasteCheck.OnEvent("Click", (*) => this._showTooltip(this.middlePasteCheck.Value ? "🖱️ Orta basım → Yapıştır aktif" : "🖱️ Orta basım → Devre dışı", 1000))
 
@@ -84,13 +88,13 @@ class singleMemorySlots {
     }
 
     _toggleSmartMode() {
-        current := gState.getClipHandler()
-        if (current == gState.clipStatusEnum.memSlot_copy || current == gState.clipStatusEnum.memSlot_paste) {
-            gState.setClipHandler(gState.clipStatusEnum.none)
-            this.toggleBtn.Text := "🔴 Smart Mode: Pasif"
+        this.clipType := !this.clipType  ; Copy <-> Paste arası geçiş
+        if (this.clipType) {
+            this.toggleBtn.Text := "🟢 Smart Mode: Aktif (Copy)"
+            this._showTooltip("📥 Copy modu aktif: Yeni kopyalamalar slotlara dolacak", 1200)
         } else {
-            gState.setClipHandler(gState.clipStatusEnum.memSlot_copy)  ; Varsayılan copy modu
-            this.toggleBtn.Text := "🟢 Smart Mode: Aktif"
+            this.toggleBtn.Text := "🔴 Smart Mode: Pasif"
+            this._showTooltip("⏸️ Smart mode kapandı", 1000)
         }
     }
 
@@ -124,19 +128,20 @@ class singleMemorySlots {
     ; Observer'dan gelen clipboard değişikliği
     clipboardWatcher(type) {
         ; OutputDebug("Clipboard tetiklendi! İkinci açılışta mı?")
-        switch gState.getClipHandler() {
-            case gState.clipStatusEnum.none:
-                return  ; mem slot modu kapalıysa çık
-            case gState.clipStatusEnum.memSlot_paste:
-                return ; eger yapistirma modundaysa
-                ; case gState.clipStatusEnum.memSlot_copy:
+        if (gState.getClipHandler() != gState.clipStatusEnum.memSlot) {
+            return
         }
+
+        if (this.clipType == this.clipTypeEnum.paste) {
+            return ; eger yapistirma modundaysa
+        }
+
         newClip := A_Clipboard
         if (newClip = "" || newClip = this.lastClipContent) {
             return
         }
 
-        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy) {
+        if (this.clipType == this.clipTypeEnum.copy) {
             this._autoFillSlot(newClip)
         }
 
@@ -168,18 +173,18 @@ class singleMemorySlots {
     }
 
     smartPaste(middlePressed := false) {
-        switch gState.getClipHandler() {
-            case gState.clipStatusEnum.none:
-                return
+        ;duruma göre ya disardan kontrol et ya da burdan simdilik her iksinde de
+        if (gState.getClipHandler() != gState.clipStatusEnum.memSlot) {
+            return
+        }
 
-            case gState.clipStatusEnum.memSlot_Copy:
+        switch this.clipType {
+            case this.clipTypeEnum.copy:
                 if (middlePressed && this.middlePasteCheck.Value) {
-                    gState.setClipHandler(gState.clipStatusEnum.memSlot_paste)
+                    this.clipType := this.clipTypeEnum.paste                    
                     this.currentSlotIndex := 1
                 }
-
-
-            case gState.clipStatusEnum.memSlot_paste:
+            case this.clipTypeEnum.paste:
                 if (middlePressed) {
                     this.currentSlotIndex++
                     if (this.currentSlotIndex > this.slots.Length) {
@@ -209,7 +214,7 @@ class singleMemorySlots {
         realIdx := this.clipHistory.Length - historyIndex + 1
         content := this.clipHistory[realIdx]
         A_Clipboard := content
-        ClipWait(1)
+        ClipWait(0.2)
         SendInput("^v")
         this._showTooltip("📜 History #" . historyIndex . " yapıştırıldı", 800)
     }
@@ -309,7 +314,7 @@ class singleMemorySlots {
             }
         }
 
-        gState.setClipHandler(gState.clipStatusEnum.none)
+        gState.setClipHandler(this.previousState)
 
         this.slotControls := []
         this.savedHwnd := 0
