@@ -32,6 +32,7 @@ class singleMemorySlots {
         this.lastClipContent := ""
         this.isDestroyed := false
         this.savedHwnd := 0
+        ; this.smartPasteMode := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
         this._createGui()
@@ -106,17 +107,16 @@ class singleMemorySlots {
         if (!WinExist("ahk_id " . (this.savedHwnd ? this.savedHwnd : this.gui.hwnd))) {
             return
         }
-
-        middleFn := this.middlePasteCheck.Value
-            ? (*) => this.smartPaste()  ; Checked ise orta basım smartPaste
-            : (*) => {}                 ; Unchecked ise hiçbir şey yapma
+        ; middleFn := this.middlePasteCheck.Value
+        ;     ? (*) => this.smartPaste()  ; Checked ise orta basım smartPaste
+        ;     : (*) => {}                 ; Unchecked ise hiçbir şey yapma
 
         this._tapOrHold(
             () => this.smartPaste(),                    ; Kısa: Smart paste
-            middleFn,                                   ; Orta: checkbox'a göre
+            ; middleFn,                                   ; Orta: checkbox'a göre copyToSlot
             () => this._pasteFromHistory(slotNum),      ; Uzun: History'den paste
             300,   ; Short threshold
-            800,   ; Medium threshold
+            ; 800,   ; Medium threshold
             1500   ; Long threshold
         )
     }
@@ -167,33 +167,33 @@ class singleMemorySlots {
         }
     }
 
-    smartPaste() {
+    smartPaste(middlePressed := false) {
         switch gState.getClipHandler() {
             case gState.clipStatusEnum.none:
                 return
-            case gState.clipStatusEnum.memSlot_copy:
-                gState.setClipHandler(gState.clipStatusEnum.memSlot_paste)
-                this.currentSlotIndex := 1
+
+            case gState.clipStatusEnum.memSlot_Copy:
+                if (middlePressed && this.middlePasteCheck.Value) {
+                    gState.setClipHandler(gState.clipStatusEnum.memSlot_paste)
+                    this.currentSlotIndex := 1
+                }
+
+
             case gState.clipStatusEnum.memSlot_paste:
-                this.currentSlotIndex++
-                ; if (this.currentSlotIndex < 1 || this.currentSlotIndex > this.slots.Length) {
-                ;     this.currentSlotIndex := 1
-                ; }
+                if (middlePressed) {
+                    this.currentSlotIndex++
+                    if (this.currentSlotIndex > this.slots.Length) {
+                        this.currentSlotIndex := 1
+                    }
+                }
+
+
         }
-
-
-        ; if (this.slots[this.currentSlotIndex] == "") {
-        ;     this._showTooltip("⚠️ Aktif slot boş! (Slot " . this.currentSlotIndex . ")", 1000)
-        ;     return
-        ; }
-
         A_Clipboard := this.slots[this.currentSlotIndex]
-        ClipWait(1)
+        ClipWait(0.2)
         SendInput("^v")
         ; OutputDebug("Slot " . this.currentSlotIndex . " yapıştırıldı." . A_Clipboard)
 
-        ; Her paste'ten sonra index artır (sırayla gitmek için, loop et)
-        ; this.currentSlotIndex++
         if (this.currentSlotIndex > this.slots.Length) {
             this.currentSlotIndex := 1
         }
