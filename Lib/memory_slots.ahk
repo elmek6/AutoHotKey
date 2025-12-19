@@ -1,5 +1,6 @@
 class singleMemorySlots {
     static instance := ""
+    static MAX_SLOTS := 10
 
     static getInstance() {
         if (!singleMemorySlots.instance) {
@@ -19,10 +20,6 @@ class singleMemorySlots {
         gState.setClipHandler(gState.clipStatusEnum.memSlot)
 
         this.slots := []
-        Loop 10 {
-            this.slots.Push("")
-        }
-
         this.currentSlotIndex := 1
         this.slotControls := []
         this.gui := ""
@@ -66,7 +63,7 @@ class singleMemorySlots {
             this.middlePasteCheck := this.gui.Add("CheckBox", "x10 y60 w300 h20 Checked1", "Orta basım: Aktif slotu yapıştır (Middle Paste)")
             this.middlePasteCheck.OnEvent("Click", (*) => this._showTooltip(this.middlePasteCheck.Value ? "🖱️ Orta basım → Yapıştır aktif" : "🖱️ Orta basım → Devre dışı", 1000))
 
-            Loop 10 {
+            Loop singleMemorySlots.MAX_SLOTS {
                 slotNum := A_Index
                 yPos := 90 + (A_Index - 1) * 26
                 fKey := "F" . slotNum
@@ -77,8 +74,10 @@ class singleMemorySlots {
                 this.slotControls.Push(textCtrl)
             }
 
-            this.gui.Add("Text", "x10 y350 w400 Center", "📋 Clipboard Geçmişi (Çift Tık: Kopyala)")
-            this.listBox := this.gui.Add("ListBox", "x10 y375 w400 h160")
+            historyYPos := 90 + singleMemorySlots.MAX_SLOTS * 26 + 10
+            this.gui.Add("Text", "x10 y" . historyYPos . " w400 Center", "📋 Clipboard Geçmişi (Çift Tık: Kopyala)")
+            listBoxYPos := historyYPos + 25
+            this.listBox := this.gui.Add("ListBox", "x10 y" . listBoxYPos . " w400 h160")
             this.listBox.OnEvent("DoubleClick", (*) => this._showHistoryDetail())
 
             this.savedHwnd := this.gui.hwnd
@@ -99,7 +98,7 @@ class singleMemorySlots {
     }
 
     _setupHotkeys() {
-        Loop 10 {
+        Loop singleMemorySlots.MAX_SLOTS {
             num := A_Index
             ; Her lambda için num'u explicit capture et (loop son değeri sorunu önler)
             capturedCallback := ((fixedNum) => (*) => this._handleSlotPress(fixedNum))(num)
@@ -111,17 +110,12 @@ class singleMemorySlots {
         if (!WinExist("ahk_id " . (this.savedHwnd ? this.savedHwnd : this.gui.hwnd))) {
             return
         }
-        ; middleFn := this.middlePasteCheck.Value
-        ;     ? (*) => this.smartPaste()  ; Checked ise orta basım smartPaste
-        ;     : (*) => {}                 ; Unchecked ise hiçbir şey yapma
 
         this._tapOrHold(
-            () => this.smartPaste(),                    ; Kısa: Smart paste
-            ; middleFn,                                   ; Orta: checkbox'a göre copyToSlot
-            () => this._pasteFromHistory(slotNum),      ; Uzun: History'den paste
-            300,   ; Short threshold
-            ; 800,   ; Medium threshold
-            1500   ; Long threshold
+            () => this.smartPaste(),
+            () => this._pasteFromHistory(slotNum),
+            300,
+            1500
         )
     }
 
@@ -133,7 +127,7 @@ class singleMemorySlots {
         }
 
         if (this.clipType == this.clipTypeEnum.paste) {
-            return ; eger yapistirma modundaysa
+            return
         }
 
         newClip := A_Clipboard
@@ -151,24 +145,42 @@ class singleMemorySlots {
     }
 
     _autoFillSlot(newClip) {
-        if (this.currentSlotIndex < 1 || this.currentSlotIndex > this.slots.Length) {
+        ; Eğer currentSlotIndex geçersizse, başa al
+        if (this.currentSlotIndex < 1) {
             this.currentSlotIndex := 1
         }
+
+        ; Eğer array'in sonundaysak ve limit aşılmadıysa, yeni slot ekle
+        if (this.currentSlotIndex > this.slots.Length) {
+            if (this.slots.Length < singleMemorySlots.MAX_SLOTS) {
+                this.slots.Push(newClip)
+                this._updateSlotPreview(this.currentSlotIndex, newClip)
+                this._showTooltip("✅ Slot " . this.currentSlotIndex . " otomatik dolduruldu (" . StrLen(newClip) . " karakter)", 1000)
+                this.currentSlotIndex++
+                return
+            } else {
+                ; Limit doldu, başa dön
+                this._showTooltip("⚠️ Tüm slotlar dolu", 800)
+                this.currentSlotIndex := 1
+            }
+        }
+
+        ; Mevcut slot boşsa doldur
         if (this.slots[this.currentSlotIndex] == "") {
             this.slots[this.currentSlotIndex] := newClip
             this._updateSlotPreview(this.currentSlotIndex, newClip)
             this._showTooltip("✅ Slot " . this.currentSlotIndex . " otomatik dolduruldu (" . StrLen(newClip) . " karakter)", 1000)
             this.currentSlotIndex++
-            if (this.currentSlotIndex > this.slots.Length) {
-                this.currentSlotIndex := 1
-            }
-        } else {
-            this._showTooltip("⚠️ Slot " . this.currentSlotIndex . " dolu, bir sonrakine geçiliyor", 800)
-            this.currentSlotIndex++
-            if (this.currentSlotIndex > this.slots.Length) {
-                this._showTooltip("⚠️ Tüm slotlar dolu", 800)
-                this.currentSlotIndex := 1
-            }
+            return
+        }
+
+        ; Slot dolu, bir sonrakine geç
+        this._showTooltip("⚠️ Slot " . this.currentSlotIndex . " dolu, bir sonrakine geçiliyor", 800)
+        this.currentSlotIndex++
+        
+        ; Sınır kontrolü
+        if (this.currentSlotIndex > singleMemorySlots.MAX_SLOTS) {
+            this.currentSlotIndex := 1
         }
     }
 
@@ -178,30 +190,29 @@ class singleMemorySlots {
             return
         }
 
-        switch this.clipType {
-            case this.clipTypeEnum.copy:
-                if (middlePressed && this.middlePasteCheck.Value) {
-                    this.clipType := this.clipTypeEnum.paste                    
-                    this.currentSlotIndex := 1
-                }
-            case this.clipTypeEnum.paste:
-                if (middlePressed) {
+        if (middlePressed) {
+            switch this.clipType {
+                case this.clipTypeEnum.copy:
+                    if (this.middlePasteCheck.Value) {
+                        this.clipType := this.clipTypeEnum.paste
+                        this.currentSlotIndex := 1
+                    }
+                case this.clipTypeEnum.paste:
                     this.currentSlotIndex++
                     if (this.currentSlotIndex > this.slots.Length) {
                         this.currentSlotIndex := 1
                     }
-                }
-
-
+            }
         }
+
+        if (this.currentSlotIndex > this.slots.Length || this.slots[this.currentSlotIndex] == "") {
+            this._showTooltip("⚠️ Slot " . this.currentSlotIndex . " boş!", 800)
+            return
+        }
+
         A_Clipboard := this.slots[this.currentSlotIndex]
         ClipWait(0.2)
         SendInput("^v")
-        ; OutputDebug("Slot " . this.currentSlotIndex . " yapıştırıldı." . A_Clipboard)
-
-        if (this.currentSlotIndex > this.slots.Length) {
-            this.currentSlotIndex := 1
-        }
     }
 
     _pasteFromHistory(slotNum) {
@@ -256,7 +267,7 @@ class singleMemorySlots {
     }
 
     _updateSlotPreview(slotNum, content) {
-        if (slotNum < 1 || slotNum > this.slots.Length) {
+        if (slotNum < 1 || slotNum > singleMemorySlots.MAX_SLOTS) {
             return
         }
         preview := StrReplace(StrReplace(content, "`r`n", " "), "`n", " ")
@@ -268,17 +279,12 @@ class singleMemorySlots {
         this.slotControls[slotNum].Text := "F" . slotNum . " [Slot " . slotNum . "]: " . (preview ? preview : "(Boş)")
     }
 
-    _tapOrHold(shortFn, mediumFn, longFn, shortTime := 300, mediumTime := 800, longTime := 1500) {
+    _tapOrHold(shortFn, longFn, shortTime := 300, longTime := 1500) {
         startTime := A_TickCount
         key := A_ThisHotkey
-        beepMedium := false
         beepLong := false
         while GetKeyState(key, "P") {
             elapsed := A_TickCount - startTime
-            if (elapsed >= mediumTime && !beepMedium) {
-                SoundBeep(800, 80)
-                beepMedium := true
-            }
             if (elapsed >= longTime && !beepLong) {
                 SoundBeep(600, 100)
                 beepLong := true
@@ -288,19 +294,14 @@ class singleMemorySlots {
         elapsed := A_TickCount - startTime
         if (elapsed < shortTime)
             shortFn.Call()
-        else if (elapsed < mediumTime)
-            mediumFn.Call()
         else
             longFn.Call()
     }
 
     _clearSlots() {
         this.slots := []
-        Loop 10 {
-            this.slots.Push("")
-        }
         this.currentSlotIndex := 1
-        Loop 10 {
+        Loop singleMemorySlots.MAX_SLOTS {
             this._updateSlotPreview(A_Index, "")
         }
         this._showTooltip("🗑️ Slotlar temizlendi, index sıfırlandı", 1000)
@@ -308,7 +309,7 @@ class singleMemorySlots {
 
     _destroy() {
         this.isDestroyed := true
-        Loop 10 {
+        Loop singleMemorySlots.MAX_SLOTS {
             try {
                 Hotkey("F" . A_Index, "Off")
             }

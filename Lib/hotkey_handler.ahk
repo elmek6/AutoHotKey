@@ -536,7 +536,7 @@ class singleHotkeyHandler {
             .mainDefault((pressType) {
                 switch pressType {
                     case 0:
-                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot_copy) {
+                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot) {
                             gMemSlots.smartPaste()
                         } else {
                             Send("^v")
