@@ -22,7 +22,7 @@
 global gState := singleState.getInstance("ver_147_b")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
-global gClipHist := singleClipHist.getInstance(1000, 1000) ;maxHistory, maxClipSize
+global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
 global gClipSlot := singleClipSlot.getInstance()
 global gKeyHandler := singleHotkeyHandler.getInstance()
 global gCascade := singleCascadeHandler.getInstance()

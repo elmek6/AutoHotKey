@@ -16,11 +16,12 @@
         this.lastClip := ""
         this.clipLength := 0
         this.autoSaveEvery := 100
+        gState.setClipHandler(gState.clipStatusEnum.clipHist)
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this.loadHistory()
     }
     clipboardWatcher(Type) {
-        if (gState.getClipHandler() != gState.clipStatusEnum.none) {
+        if (gState.getClipHandler() != gState.clipStatusEnum.clipHist) {
             return
         }
         if (Type == 0) {
@@ -109,6 +110,7 @@
             file.Close()
             return true
         } catch as err {
+            MsgBox("Hata: " . err.Message)
             gErrHandler.handleError("History kaydetme başarısız: " . err.Message, err)
             return false
         }
@@ -141,7 +143,7 @@
         historyMenu.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
         historyMenu.Add("Search on history", (*) => this.showHistorySearch())
         historyMenu.Add()
-        Loop this.history.Length {
+        Loop Min(30, this.history.Length) { ; this.history.Length {
             local index := this.history.Length - A_Index + 1
             local text := this.history[index]
             local menuIndex := A_Index
@@ -188,8 +190,8 @@
         ArrayFilter.getInstance().Show(historyArray, "Clipboard History Search")
     }
     _addClipToMenu(menu, prefix, text) {
-        local display := SubStr(text, 1, 100)
-        if (StrLen(text) > 100)
+        local display := SubStr(text, 1, 60)
+        if (StrLen(text) > 60)
             display .= "..."
         menu.Add(prefix . display, (*) => (A_Clipboard := text, Send("^v")))
     }
