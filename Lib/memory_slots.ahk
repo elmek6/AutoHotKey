@@ -31,12 +31,17 @@ class singleMemorySlots {
         this.lastClipContent := ""
         this.isDestroyed := false
         this.savedHwnd := 0
+
         this.clipTypeEnum := {
             copy: true,
             paste: false,
         }
+        this.activeViewerEnum := {
+            slots: true,
+            history: false
+        }
         this.clipType := this.clipTypeEnum.copy
-        this.activeList := "history"
+        this.activeList := this.activeViewerEnum.history
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
         fullHistory := gClipHist.getHistory()
@@ -80,8 +85,10 @@ class singleMemorySlots {
             this.slotsLV.OnEvent("DoubleClick", (*) => this._onSlotDoubleClick())
 
             Loop singleMemorySlots.MAX_SLOTS {
-                this.slotsLV.Add("", "F" . A_Index . "..", "(Boş)")
+                idx := Format("{:02}", A_Index)
+                this.slotsLV.Add("", "f" idx, "-")
             }
+
 
             historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
             historyHeader.SetFont("Bold")
@@ -145,6 +152,7 @@ class singleMemorySlots {
             this.currentSlotIndex := sel
             this.activeList := "slots"
             this.clipType := this.clipTypeEnum.paste
+            this.activeList := this.activeViewerEnum.slots
             this.historyLV.Modify(0, "-Select")
             this.slotsLV.Modify(sel, "Select Focus Vis")
         }
@@ -159,7 +167,7 @@ class singleMemorySlots {
         content := this.slots[sel]
         A_Clipboard := content
         ClipWait(0.5)
-        this._showTooltip("✅ Slot " . sel . " clipboard'a kopyalandı (" . StrLen(content) . " karakter)", 1500)
+        this._showTooltip(content, 700)
     }
 
     _onHistoryClick() {
@@ -168,6 +176,7 @@ class singleMemorySlots {
             this.currentHistoryIndex := sel
             this.activeList := "history"
             this.clipType := this.clipTypeEnum.paste
+            this.activeList := this.activeViewerEnum.history
             this.slotsLV.Modify(0, "-Select")
             this.historyLV.Modify(sel, "Select Focus Vis")
         }
@@ -186,7 +195,7 @@ class singleMemorySlots {
         }
         A_Clipboard := content
         ClipWait(0.5)
-        this._showTooltip("✅ F" . sel . ".. clipboard'a kopyalandı (" . StrLen(content) . " karakter)", 1500)
+        this._showTooltip(content, 700)
     }
 
     clipboardWatcher(type) {
@@ -194,8 +203,19 @@ class singleMemorySlots {
             return
         }
 
+
         if (this.clipType == this.clipTypeEnum.paste) {
+            ;eger slotta olmayan birsey clipboard'a düstüyse bunu yine solata ekle
+            if (this.activeList == this.activeViewerEnum.slots)
+                for item in this.slots {
+                    if (item != A_Clipboard) {
+                        OutputDebug("NEW A_Clipboard: " . A_Clipboard . "`r`n")
+                        this.clipType := this.clipTypeEnum.copy
+                        break
+                    }
+                }
             return
+            ;OutputDebug("clipboardWatcher: type: " . type . ", slots.Length: " . this.slots.Length . "A_Clipboard: " . A_Clipboard . "`r`n")
         }
 
         newClip := A_Clipboard
@@ -212,11 +232,10 @@ class singleMemorySlots {
 
     _autoFillSlot(newClip) {
         ; İlk kopyalama yapıldığında slotlar seçili olur
-        if (this.activeList = "history") {
-            this.activeList := "slots"
+        if (this.activeList == this.activeViewerEnum.history) {
+            this.activeList := this.activeViewerEnum.slots
         }
 
-        ; Senin verdiğin mantık
         if (this.slots.Length == singleMemorySlots.MAX_SLOTS) {
             place := 1
         } else {
@@ -252,7 +271,7 @@ class singleMemorySlots {
         this.slotsLV.Modify(0, "-Select")
         this.historyLV.Modify(0, "-Select")
         this.slotsLV.Modify(slotNum, "Select Focus Vis")
-        this.activeList := "slots"
+        this.activeList := this.activeViewerEnum.slots
         this.currentSlotIndex := slotNum
     }
 
@@ -263,7 +282,7 @@ class singleMemorySlots {
         this.slotsLV.Modify(0, "-Select")
         this.historyLV.Modify(0, "-Select")
         this.historyLV.Modify(histNum, "Select Focus Vis")
-        this.activeList := "history"
+        this.activeList := this.activeViewerEnum.history
         this.currentHistoryIndex := histNum
     }
 
@@ -277,14 +296,14 @@ class singleMemorySlots {
         }
 
         if (!middlePressed) {
-             this._pasteFromSlot()
+            this._pasteFromSlot()
             return
         }
 
         ; Middle paste yapıldı clipType paste moduna geç
         this.clipType := this.clipTypeEnum.paste
 
-        if (this.activeList = "slots") {
+        if (this.activeList == this.activeViewerEnum.slots) {
             this._pasteFromSlot()
             this.currentSlotIndex++
             if (this.currentSlotIndex > this.slots.Length) {
