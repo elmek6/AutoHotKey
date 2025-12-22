@@ -41,7 +41,7 @@ class singleMemorySlots {
             history: false
         }
         this.clipType := this.clipTypeEnum.copy
-        this.activeList := this.activeViewerEnum.history
+        this.activeList := this.activeViewerEnum.slots
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
         fullHistory := gClipHist.getHistory()
@@ -74,9 +74,8 @@ class singleMemorySlots {
             this.middlePasteCheck := this.gui.Add("CheckBox", "x10 y75 w350 h20 Checked1", "Orta basım: Aktif slotu yapıştır (Middle Paste)")
             this.middlePasteCheck.OnEvent("Click", (*) => this._showTooltip(this.middlePasteCheck.Value ? "🖱️ Orta basım → Yapıştır aktif" : "🖱️ Orta basım → Devre dışı", 1000))
 
-            slotsHeader := this.gui.Add("Text", "x10 y105 w430 h25 Center BackgroundTrans", "📦 Memory Slots")
-            slotsHeader.SetFont("Bold")
-            slotsHeader.Opt("Background0x2196F3 cWhite")
+            this.slotsHeader := this.gui.Add("Text", "x10 y105 w430 h25 Center BackgroundTrans", "📦 Memory Slots")  ; DEĞİŞTİRİLDİ: this. eklendi (class property oldu)
+            this.slotsHeader.SetFont("Bold")
 
             this.slotsLV := this.gui.Add("ListView", "x10 y130 w430 h220 +HScroll -Multi +LV0x10", ["Slot", "İçerik"])
             this.slotsLV.ModifyCol(1, 60)
@@ -90,22 +89,23 @@ class singleMemorySlots {
             }
 
 
-            historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
-            historyHeader.SetFont("Bold")
-            historyHeader.Opt("Background0x4CAF50 cWhite")
+            this.historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")  ; DEĞİŞTİRİLDİ: this. eklendi (class property oldu)
+            this.historyHeader.SetFont("Bold")
 
             this.historyLV := this.gui.Add("ListView", "x10 y390 w430 h220 +HScroll -Multi +LV0x10", ["#", "İçerik"])
             this.historyLV.ModifyCol(1, 60)
             this.historyLV.ModifyCol(2, 350)
             this.historyLV.OnEvent("Click", (*) => this._onHistoryClick())
             this.historyLV.OnEvent("DoubleClick", (*) => this._onHistoryDoubleClick())
-
             this._populateHistory()
-            if (this.clipHistory.Length > 0) {
-                this.historyLV.Modify(1, "Select Focus Vis")
-            }
+
+            ; if (this.clipHistory.Length > 0) {
+            ;     this.historyLV.Modify(1, "Select Focus Vis")
+            ; }
+
 
             this.savedHwnd := this.gui.hwnd
+            this._activeViewerBackground()
         } catch as err {
             gErrHandler.handleError("GUI oluşturma hatası", err)
         }
@@ -150,11 +150,11 @@ class singleMemorySlots {
         sel := this.slotsLV.GetNext(0)
         if (sel) {
             this.currentSlotIndex := sel
-            this.activeList := "slots"
             this.clipType := this.clipTypeEnum.paste
             this.activeList := this.activeViewerEnum.slots
             this.historyLV.Modify(0, "-Select")
             this.slotsLV.Modify(sel, "Select Focus Vis")
+            this._activeViewerBackground()
         }
     }
 
@@ -174,11 +174,11 @@ class singleMemorySlots {
         sel := this.historyLV.GetNext(0)
         if (sel) {
             this.currentHistoryIndex := sel
-            this.activeList := "history"
             this.clipType := this.clipTypeEnum.paste
             this.activeList := this.activeViewerEnum.history
             this.slotsLV.Modify(0, "-Select")
             this.historyLV.Modify(sel, "Select Focus Vis")
+            this._activeViewerBackground()
         }
     }
 
@@ -203,25 +203,31 @@ class singleMemorySlots {
             return
         }
 
-
-        if (this.clipType == this.clipTypeEnum.paste) {
-            ;eger slotta olmayan birsey clipboard'a düstüyse bunu yine solata ekle
-            if (this.activeList == this.activeViewerEnum.slots)
-                for item in this.slots {
-                    if (item != A_Clipboard) {
-                        OutputDebug("NEW A_Clipboard: " . A_Clipboard . "`r`n")
-                        this.clipType := this.clipTypeEnum.copy
-                        break
-                    }
-                }
-            return
-            ;OutputDebug("clipboardWatcher: type: " . type . ", slots.Length: " . this.slots.Length . "A_Clipboard: " . A_Clipboard . "`r`n")
-        }
-
         newClip := A_Clipboard
         if (newClip = "" || newClip = this.lastClipContent) {
             return
         }
+
+        if (this.clipType == this.clipTypeEnum.paste) {
+            ;eger slotta olmayan birsey clipboard'a düstüyse bunu yine solata ekle
+            if (this.activeList == this.activeViewerEnum.slots) {
+                newFound := true
+                for item in this.slots {
+                    if (item == newClip) {
+                        newFound := false
+                        break
+                    }
+                }
+            }
+            if (newFound) {
+                OutputDebug("NEW A_Clipboard: " . newClip . "`r`n")
+                this.clipType := this.clipTypeEnum.copy
+                this._autoFillSlot(newClip)
+            }
+            return
+            ;OutputDebug("clipboardWatcher: type: " . type . ", slots.Length: " . this.slots.Length . "A_Clipboard: " . A_Clipboard . "`r`n")
+        }
+
 
         if (this.clipType == this.clipTypeEnum.copy) {
             this._autoFillSlot(newClip)
@@ -273,6 +279,7 @@ class singleMemorySlots {
         this.slotsLV.Modify(slotNum, "Select Focus Vis")
         this.activeList := this.activeViewerEnum.slots
         this.currentSlotIndex := slotNum
+        this._activeViewerBackground()
     }
 
     _selectHistory(histNum) {
@@ -284,6 +291,17 @@ class singleMemorySlots {
         this.historyLV.Modify(histNum, "Select Focus Vis")
         this.activeList := this.activeViewerEnum.history
         this.currentHistoryIndex := histNum
+        this._activeViewerBackground()
+    }
+
+    _activeViewerBackground() {
+        if (this.activeList == this.activeViewerEnum.slots) {
+            this.slotsHeader.Opt("Background0x2196F3 cWhite")  ; Aktif: Mavi
+            this.historyHeader.Opt("Background0x808080 cWhite")  ; Pasif: Gri
+        } else {
+            this.slotsHeader.Opt("Background0x808080 cWhite")  ; Pasif: Gri
+            this.historyHeader.Opt("Background0x4CAF50 cWhite")  ; Aktif: Yeşil
+        }
     }
 
     smartPaste(middlePressed := false) {
