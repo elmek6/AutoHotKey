@@ -36,8 +36,7 @@ class singleMemorySlots {
         this.middlePasteCheck := ""
         this.clipHistory := []
         this.lastClipContent := ""
-        this.isDestroyed := false
-        this.savedHwnd := 0
+        this.isDestroyed := false        
 
         this.clipTypeEnum := {
             copy: true,
@@ -70,7 +69,7 @@ class singleMemorySlots {
             this.gui.OnEvent("Escape", (*) => this._destroy())
             this.gui.SetFont("s9", "Segoe UI")
 
-            this.gui.Add("Text", "x10 y10 w430 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste 🔹")
+            this.gui.Add("Text", "x10 y10 w430 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste | Çift=Kopyala 🔹")
 
             this.toggleBtn := this.gui.Add("Button", "x10 y35 w210 h30", this.clipType ? "🟢 Smart Mode: Aktif (Copy)" : "🔴 Smart Mode: Pasif")
             this.toggleBtn.OnEvent("Click", (*) => this._toggleSmartMode())
@@ -80,7 +79,7 @@ class singleMemorySlots {
 
             this.middlePasteCheck := this.gui.Add("CheckBox", "x10 y75 w350 h20 Checked1", "Orta basım: Aktif slotu yapıştır (Middle Paste)")
 
-            this.slotsHeader := this.gui.Add("Text", "x10 y105 w430 h25 Center BackgroundTrans", "📦 Memory Slots")  ; DEĞİŞTİRİLDİ: this. eklendi (class property oldu)
+            this.slotsHeader := this.gui.Add("Text", "x10 y105 w430 h25 Center BackgroundTrans", "📦 Memory Slots")
             this.slotsHeader.SetFont("Bold")
             this.slotsHeader.OnEvent("Click", (*) => (this._selectSlot(this.currentSlotIndex)))
 
@@ -95,7 +94,7 @@ class singleMemorySlots {
                 this.slotsLV.Add("", "f" idx, "-")
             }
 
-            this.historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")  ; DEĞİŞTİRİLDİ: this. eklendi (class property oldu)
+            this.historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
             this.historyHeader.SetFont("Bold")
             this.historyHeader.OnEvent("Click", (*) => (this._selectHistory(this.currentHistoryIndex)))
 
@@ -105,13 +104,6 @@ class singleMemorySlots {
             this.historyLV.OnEvent("Click", (*) => this._onHistoryClick())
             this.historyLV.OnEvent("DoubleClick", (*) => this._onHistoryDoubleClick())
             this._populateHistory()
-
-            ; if (this.clipHistory.Length > 0) {
-            ;     this.historyLV.Modify(1, "Select Focus Vis")
-            ; }
-
-
-            this.savedHwnd := this.gui.hwnd
             this._activeViewerBackground()
         } catch as err {
             gErrHandler.handleError("GUI oluşturma hatası", err)
@@ -381,7 +373,6 @@ class singleMemorySlots {
 
         gState.setClipHandler(this.previousState)
 
-        this.savedHwnd := 0
         if (this.gui) {
             this.gui.Destroy()
             this.gui := ""
