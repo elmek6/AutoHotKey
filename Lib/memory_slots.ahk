@@ -59,6 +59,7 @@ class singleMemorySlots {
 
         this._createGui()
         this.gui.Show("x10 y10 w450 h620")
+        this.changeHotKeyMode(true)
     }
 
     _createGui() {
@@ -108,6 +109,17 @@ class singleMemorySlots {
         }
     }
 
+    changeHotKeyMode(sw) {
+        mode := sw ? "On" : "Off"
+        CreateHotkeyHandler(idx) {
+            return (*) => this._handleFKey(idx)
+        }
+
+        Loop 10 {
+            try Hotkey("F" A_Index, sw ? CreateHotkeyHandler(A_Index) : "", mode)
+        }
+    }
+
     _populateHistory() {
         this.historyLV.Delete()
         if (this.clipHistory.Length = 0) {
@@ -131,47 +143,47 @@ class singleMemorySlots {
     }
 
     _onSlotClick() {
-        sel := this.slotsLV.GetNext(0)
-        if (sel) {
-            this.currentSlotIndex := sel
+        row := this.slotsLV.GetNext(0)
+        if (row) {
+            this.currentSlotIndex := row
             this.clipType := this.clipTypeEnum.paste
             this.activeList := this.activeViewerEnum.slots
             this.historyLV.Modify(0, "-Select")
-            this.slotsLV.Modify(sel, "Select Focus Vis")
+            this.slotsLV.Modify(row, "Select Focus Vis")
             this._activeViewerBackground()
         }
     }
 
     _onSlotDoubleClick() {
-        sel := this.slotsLV.GetNext(0)
-        if (!sel || sel > this.slots.Length || this.slots[sel] == "") {
+        row := this.slotsLV.GetNext(0)
+        if (!row || row > this.slots.Length || this.slots[row] == "") {
             OutPutDebug("⚠️ Slot boş!")
             return
         }
-        content := this.slots[sel]
+        content := this.slots[row]
         A_Clipboard := content
         ClipWait(0.5)
         ShowTip(content, TipType.Paste, 700)
     }
 
     _onHistoryClick() {
-        sel := this.historyLV.GetNext(0)
-        if (sel) {
-            this.currentHistoryIndex := sel
+        row := this.historyLV.GetNext(0)
+        if (row) {
+            this.currentHistoryIndex := row
             this.clipType := this.clipTypeEnum.paste
             this.activeList := this.activeViewerEnum.history
             this.slotsLV.Modify(0, "-Select")
-            this.historyLV.Modify(sel, "Select Focus Vis")
+            this.historyLV.Modify(row, "Select Focus Vis")
             this._activeViewerBackground()
         }
     }
 
     _onHistoryDoubleClick() {
-        sel := this.historyLV.GetNext(0)
-        if (!sel || sel > this.clipHistory.Length) {
+        row := this.historyLV.GetNext(0)
+        if (!row || row > this.clipHistory.Length) {
             return
         }
-        content := this.clipHistory[sel]
+        content := this.clipHistory[row]
         if (content == "") {
             OutPutDebug("⚠️ Seçili item boş!")
             return
@@ -360,6 +372,7 @@ class singleMemorySlots {
 
     _destroy() {
         this.isDestroyed := true
+        this.changeHotKeyMode(false)
 
         gState.setClipHandler(this.previousState)
 
