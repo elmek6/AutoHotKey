@@ -32,11 +32,10 @@ class singleMemorySlots {
         this.gui := ""
         this.slotsLV := ""
         this.historyLV := ""
-        this.toggleBtn := ""
+        this.ignoreSameValue := ""
         this.middlePasteCheck := ""
         this.clipHistory := []
-        this.lastClipContent := ""
-        this.isDestroyed := false        
+        this.isDestroyed := false
 
         this.clipTypeEnum := {
             copy: true,
@@ -71,8 +70,7 @@ class singleMemorySlots {
 
             this.gui.Add("Text", "x10 y10 w430 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste | Çift=Kopyala 🔹")
 
-            this.toggleBtn := this.gui.Add("Button", "x10 y35 w210 h30", this.clipType ? "🟢 Smart Mode: Aktif (Copy)" : "🔴 Smart Mode: Pasif")
-            this.toggleBtn.OnEvent("Click", (*) => this._toggleSmartMode())
+            this.ignoreSameValue := this.gui.Add("CheckBox", "x10 y35 w210 h30", "Veri tekrarını kabul et")
 
             clearBtn := this.gui.Add("Button", "x230 y35 w210 h30", "🗑️ Slotları Temizle")
             clearBtn.OnEvent("Click", (*) => this._clearSlots())
@@ -117,10 +115,8 @@ class singleMemorySlots {
             return
         }
         Loop this.clipHistory.Length {
-            idx := this.clipHistory.Length - A_Index + 1
-            content := this.clipHistory[idx]
-            preview := this._makePreview(content)
-            this.historyLV.Add("", "F" . A_Index . "..", preview)
+            preview := this._makePreview(this.clipHistory[A_Index])
+            this.historyLV.Add("", "#" . A_Index, preview)
         }
     }
 
@@ -132,15 +128,6 @@ class singleMemorySlots {
             preview := SubStr(preview, 1, 60) . "..."
         }
         return preview ? preview : "(Boş)"
-    }
-
-    _toggleSmartMode() {
-        this.clipType := !this.clipType
-        if (this.clipType) {
-            this.toggleBtn.Text := "🟢 Smart Mode: Aktif (Copy)"
-        } else {
-            this.toggleBtn.Text := "🔴 Smart Mode: Pasif"
-        }
     }
 
     _onSlotClick() {
@@ -184,8 +171,7 @@ class singleMemorySlots {
         if (!sel || sel > this.clipHistory.Length) {
             return
         }
-        realIdx := this.clipHistory.Length - sel + 1
-        content := this.clipHistory[realIdx]
+        content := this.clipHistory[sel]
         if (content == "") {
             OutPutDebug("⚠️ Seçili item boş!")
             return
@@ -195,42 +181,33 @@ class singleMemorySlots {
         ShowTip(content, TipType.Paste, 700)
     }
 
+    _isClipInSlots(clipValue) {
+        if (this.ignoreSameValue.Value) {
+            return false
+        }
+
+        for item in this.slots {
+            if (item == clipValue) {
+                return true
+            }
+        }
+        return false
+    }
+
     clipboardWatcher(type) {
         if (gState.getClipHandler() != gState.clipStatusEnum.memSlot) {
             return
         }
 
         newClip := A_Clipboard
-        if (newClip = "" || newClip = this.lastClipContent) {
+        if (newClip = "" || this._isClipInSlots(newClip)) {
             return
         }
-
-        if (this.clipType == this.clipTypeEnum.paste) {
-            ;eger slotta olmayan birsey clipboard'a düstüyse bunu yine solata ekle
-            if (this.activeList == this.activeViewerEnum.slots) {
-                isInSlots := false
-                for item in this.slots {
-                    if (item == newClip) {
-                        isInSlots := true
-                        break
-                    }
-                }
-                if (!isInSlots) {
-                    ; OutputDebug("NEW A_Clipboard: " . newClip . "`r`n")
-                    this.clipType := this.clipTypeEnum.copy
-                    this._autoFillSlot(newClip)
-                }
-            }
-            return
-            ;OutputDebug("clipboardWatcher: type: " . type . ", slots.Length: " . this.slots.Length . "A_Clipboard: " . A_Clipboard . "`r`n")
-        }
-
 
         if (this.clipType == this.clipTypeEnum.copy) {
             this._autoFillSlot(newClip)
         }
 
-        this.lastClipContent := newClip
     }
 
     _autoFillSlot(newClip) {
@@ -275,6 +252,7 @@ class singleMemorySlots {
         this.historyLV.Modify(0, "-Select")
         this.slotsLV.Modify(slotNum, "Select Focus Vis")
         this.activeList := this.activeViewerEnum.slots
+        this.clipType := this.clipTypeEnum.copy
         this.currentSlotIndex := slotNum
         this._activeViewerBackground()
     }
@@ -293,11 +271,11 @@ class singleMemorySlots {
 
     _activeViewerBackground() {
         if (this.activeList == this.activeViewerEnum.slots) {
-            this.slotsHeader.Opt("Background0x2196F3 cWhite")  ; Aktif: Mavi
-            this.historyHeader.Opt("Background0x808080 cWhite")  ; Pasif: Gri
+            this.slotsHeader.Opt("Background0x2196F3 cWhite")
+            this.historyHeader.Opt("Background0x808080 cWhite")
         } else {
-            this.slotsHeader.Opt("Background0x808080 cWhite")  ; Pasif: Gri
-            this.historyHeader.Opt("Background0x4CAF50 cWhite")  ; Aktif: Yeşil
+            this.slotsHeader.Opt("Background0x808080 cWhite")
+            this.historyHeader.Opt("Background0x4CAF50 cWhite")
         }
     }
 
@@ -311,12 +289,25 @@ class singleMemorySlots {
         }
 
         if (!middlePressed) {
-            this._pasteFromSlot()
+            if (this.activeList == this.activeViewerEnum.slots) {
+                this._pasteFromSlot()
+            } else {
+                this._pasteFromHistory()
+            }
             return
         }
 
         ; Middle paste yapıldı clipType paste moduna geç
-        this.clipType := this.clipTypeEnum.paste
+        if (this.clipType == this.clipTypeEnum.copy) {
+            this.clipType := this.clipTypeEnum.paste
+            ; ilk basimsa listeyi bastan al
+            if (this.activeList == this.activeViewerEnum.slots && this.slots.Length == this.currentSlotIndex) {
+                this.currentSlotIndex := 1
+                this._selectSlot(this.currentSlotIndex)
+                return
+            }
+        }
+
 
         if (this.activeList == this.activeViewerEnum.slots) {
             this._pasteFromSlot()
@@ -353,8 +344,7 @@ class singleMemorySlots {
             return
         }
 
-        realIdx := this.clipHistory.Length - this.currentHistoryIndex + 1
-        content := this.clipHistory[realIdx]
+        content := this.clipHistory[this.currentHistoryIndex]
         A_Clipboard := content
         ClipWait(0.2)
         SendInput("^v")

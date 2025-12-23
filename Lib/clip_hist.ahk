@@ -25,7 +25,7 @@
             return
         }
         if (Type == 0) {
-            OutputDebug ("Clipboard boşaltıldı !!!! degisik bir hata!")
+            ; OutputDebug ("Clipboard boşaltıldı !!!! degisik bir hata!")
             return
         }
         If (Type == 2) {
