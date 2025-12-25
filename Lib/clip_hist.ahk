@@ -139,8 +139,7 @@
     }
 
     buildHistoryMenu() {
-        local historyMenu := Menu()
-        historyMenu.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
+        local historyMenu := Menu()        
         historyMenu.Add("Search on history", (*) => this.showHistorySearch())
         historyMenu.Add()
         Loop Min(30, this.history.Length) { ; this.history.Length {

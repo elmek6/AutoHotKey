@@ -57,18 +57,17 @@ showF14menu() {
 
     menuF14 := Menu()
     menuF14.Add("Paste enter", (*) => Send("^v{Enter}"))
-    menuF14.Add("Cut", (*) => Send("^x"))
     menuF14.Add("Select All + Cut", (*) => Send("^a^x"))
     menuF14.Add("Unformatted paste", (*) => Send("^+v"))
     menuF14.Add()
     menuF14.Add("Load from slot", gClipSlot.buildLoadSlotMenu())
     menuF14.Add("Save to slot", gClipSlot.buildSaveSlotMenu())
     menuF14.Add("Clipboard history", gClipHist.buildHistoryMenu())
+    menuF14.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()
-
-    menuF14.Add("Settings", menuSettings())
-    menuF14.Add("Statistics " . gState.getVersion(), menuStats())
+    menuF14.Add("Settings", menuSettings())    
+    menuF14.Add("Statistics " . gState.getVersion() . (gErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
     menuF14.Show()
 }
 

@@ -186,7 +186,6 @@ class singleClipSlot {
     buildLoadSlotMenu() {
         local loadSlotMenu := Menu()
         loadSlotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
-        loadSlotMenu.Add("Grup seç", this.buildGroupMenu())
         loadSlotMenu.Add()
 
         local defaultName := ""
@@ -209,13 +208,12 @@ class singleClipSlot {
                 }
             }
         }
+        loadSlotMenu.Add()
+        loadSlotMenu.Add("Grup seç", this.buildGroupMenu())
         return loadSlotMenu
     }
     buildSaveSlotMenu() {
         local saveSlotMenu := Menu()
-        saveSlotMenu.Add("Yeni grup ekle", (*) => this.promptNewGroup())
-        saveSlotMenu.Add()
-
         local defaultName := ""
         Loop 10 {
             local preview := this.getSlotPreview(defaultName, A_Index)
@@ -236,6 +234,8 @@ class singleClipSlot {
                 }
             }
         }
+        saveSlotMenu.Add()
+        saveSlotMenu.Add("Yeni grup ekle", (*) => this.promptNewGroup())
         return saveSlotMenu
     }
     ; getSlotsPreviewText() {

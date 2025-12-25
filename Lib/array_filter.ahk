@@ -1,6 +1,14 @@
 class ArrayFilter {
     static instance := ""
-    static mouseMessageHandler := ""  ; Fare mesajı handler'ını saklamak için
+    static mouseMessageHandler := ""
+
+    myGui := ""
+    listView := ""
+    searchBox := ""
+    previewBox := ""
+    CheckFocus := ""
+    results := []
+    arrayData := []
 
     static getInstance() {
         if (!ArrayFilter.instance) {
@@ -15,37 +23,58 @@ class ArrayFilter {
         }
     }
 
-    closeGuiAndHotkeys(myGui, listView, SelectAndClose) {
-        ; ÖNCELİKLE TÜM HOTKEY'LERİ KAPAT
-        this.changeHotKeyMode(false, listView, SelectAndClose)
+    ; Cleanup metodu - tüm referansları temizle
+    __Delete() {
+        ; Safety net: Instance silinirken GUI'yi temizle
+        if (this.myGui) {
+            try this.myGui.Destroy()
+        }
+        if (this.CheckFocus) {
+            SetTimer this.CheckFocus, 0
+        }
+    }
+
+    closeGuiAndHotkeys() {
+        ; 1. TÜM HOTKEY'LERİ KAPAT
+        this.changeHotKeyMode(false)
         try Hotkey("Up", "Off")
         try Hotkey("Down", "Off")
-        
-        SetTimer this.CheckFocus, 0
-        ; Fare mesajını tamamen kaldır
+
+        ; 2. TIMER'I DURDUR
+        if (this.CheckFocus) {
+            SetTimer this.CheckFocus, 0
+            this.CheckFocus := ""
+        }
+
+        ; 3. FARE MESAJINI KALDIR
         if (ArrayFilter.mouseMessageHandler) {
-            OnMessage(0x200, ArrayFilter.mouseMessageHandler, 0)  ; Handler'ı kaldır
+            OnMessage(0x200, ArrayFilter.mouseMessageHandler, 0)
             ArrayFilter.mouseMessageHandler := ""
         }
-        try myGui.Destroy()
+
+        ; 4. GUI'YI YOK ET
+        if (this.myGui) {
+            try this.myGui.Destroy()
+        }
+
+        ; 5. INSTANCE'I SIFIRLA
+        ArrayFilter.instance := ""
+        ArrayFilter.mouseMessageHandler := ""
     }
 
     sendText(text) {
-        ; local prevClip := A_Clipboard
         A_Clipboard := text
         Sleep(50)
         SendInput("^v")
-        ; Sleep(50)
-        ; A_Clipboard := prevClip
     }
 
-    changeHotKeyMode(sw, listView, SelectAndClose) {
+    changeHotKeyMode(sw) {
         mode := sw ? "On" : "Off"
-        Hotkey("Enter", sw ? (*) => SelectAndClose(listView.GetNext(0, "F")) : "", mode)
-        Hotkey("NumpadEnter", sw ? (*) => SelectAndClose(listView.GetNext(0, "F")) : "", mode)
+        Hotkey("Enter", sw ? (*) => this.SelectAndClose(this.listView.GetNext(0, "F")) : "", mode)
+        Hotkey("NumpadEnter", sw ? (*) => this.SelectAndClose(this.listView.GetNext(0, "F")) : "", mode)
 
         CreateHotkeyHandler(idx) {
-            return (*) => SelectAndClose(idx)
+            return (*) => this.SelectAndClose(idx)
         }
 
         Loop 12 {
@@ -53,119 +82,133 @@ class ArrayFilter {
         }
     }
 
+    SelectAndClose(index) {
+        if (index < 1 || index > this.results.Length) {
+            MsgBox("Geçersiz değer!")
+            return
+        }
+        local selectedSlot := this.results[index]
+        this.closeGuiAndHotkeys()
+        Sleep(50)
+        this.sendText(selectedSlot["content"])
+    }
+
+    UpdateList() {
+        local search := this.searchBox.Value
+        this.listView.Delete()
+        this.results := []
+        local idx := 1
+
+        for slot in this.arrayData {
+            local contentPreview := SubStr(slot["content"], 1, 120)
+            if (StrLen(slot["content"]) > 120) {
+                contentPreview .= "..."
+            }
+            if (!search || InStr(StrLower(slot["name"]), StrLower(search)) || InStr(StrLower(slot["content"]), StrLower(search))) {
+                fKey := idx <= 12 ? "F" . idx : ""
+                this.listView.Add("", fKey, slot["name"], contentPreview)
+                this.results.Push(slot)
+                idx++
+            }
+        }
+
+        ; İlk satırı seçili yap
+        if (this.results.Length > 0) {
+            this.listView.Modify(1, "Select Focus")
+        }
+    }
+
     Show(arrayData, title) {
-        local results := []
-        local guiWidth := A_ScreenWidth * 0.4  ; Ekranın %40'ı
-        local guiHeight := A_ScreenHeight * 0.5 ; Ekranın %50'si
-        local myGui := Gui("+AlwaysOnTop +ToolWindow", title)
-        myGui.SetFont("s10")
+        ; Veriyi sakla
+        this.arrayData := arrayData
+        this.results := []
 
-        local searchBox := myGui.AddEdit("x10 y8 w" . (guiWidth - 20), "")
-        local listView := myGui.AddListView("x10 y40 w" . (guiWidth - 20) . " h" . (guiHeight * 0.55) . " Grid", ["F#", "İsim", "İçerik"])
-        local previewBox := myGui.AddEdit("x10 y" . (guiHeight * 0.55 + 50) . " w" . (guiWidth - 20) . " h" . (guiHeight * 0.35) . " ReadOnly Multi +VScroll", "")
+        local guiWidth := A_ScreenWidth * 0.4
+        local guiHeight := A_ScreenHeight * 0.5
 
-        ; Sütun genişliklerini oranlara göre ayarla
-        listView.ModifyCol(1, guiWidth * 0.10) ; %10 F# (F tuşu + slot no)
-        listView.ModifyCol(2, guiWidth * 0.15) ; %15 İsim
-        listView.ModifyCol(3, guiWidth * 0.75) ; %75 İçerik (kalanı doldur)
+        ; GUI'yi oluştur
+        this.myGui := Gui("+AlwaysOnTop +ToolWindow", title)
+        this.myGui.SetFont("s10")
 
-        SelectAndClose(index) {
-            if (index < 1 || index > results.Length) {
-                MsgBox("Geçersiz değer!")
-                return
-            }
-            local selectedSlot := results[index]
-            this.closeGuiAndHotkeys(myGui, listView, SelectAndClose)
-            Sleep(50)
-            this.sendText(selectedSlot["content"])  ; Sadece içeriği gönder
-        }
+        ; Kontrolleri oluştur
+        this.searchBox := this.myGui.AddEdit("x10 y8 w" . (guiWidth - 20), "")
+        this.listView := this.myGui.AddListView("x10 y40 w" . (guiWidth - 20) . " h" . (guiHeight * 0.55) . " Grid", ["F#", "İsim", "İçerik"])
+        this.previewBox := this.myGui.AddEdit("x10 y" . (guiHeight * 0.55 + 50) . " w" . (guiWidth - 20) . " h" . (guiHeight * 0.35) . " ReadOnly Multi +VScroll", "")
 
-        UpdateList() {
-            local search := searchBox.Value
-            listView.Delete() ; ListView'ı temizle
-            results := []
-            local idx := 1
-            for slot in arrayData {
-                local contentPreview := SubStr(slot["content"], 1, 120)
-                if (StrLen(slot["content"]) > 120) {
-                    contentPreview .= "..." ; Uzun içerik için kes
-                }
-                if (!search || InStr(StrLower(slot["name"]), StrLower(search)) || InStr(StrLower(slot["content"]), StrLower(search))) {
-                    fKey := idx <= 12 ? "F" . idx : ""
-                    listView.Add("", fKey, slot["name"], contentPreview)
-                    results.Push(slot)
-                    idx++
-                }
-            }
-            ; İlk satırı seçili yap
-            if (results.Length > 0) {
-                listView.Modify(1, "Select Focus")
-            }
-        }
+        ; Sütun genişliklerini ayarla
+        this.listView.ModifyCol(1, guiWidth * 0.10)
+        this.listView.ModifyCol(2, guiWidth * 0.15)
+        this.listView.ModifyCol(3, guiWidth * 0.75)
 
         ; Yukarı/Aşağı tuşları için hotkey'ler
         Hotkey("Up", (*) => (
-            currentRow := listView.GetNext(0, "F"),
+            currentRow := this.listView.GetNext(0, "F"),
             currentRow > 1 ? (
-                listView.Modify(currentRow, "-Select"),  ; Önce eski seçimi kaldır
-                listView.Modify(currentRow - 1, "Select Focus Vis")
+                this.listView.Modify(currentRow, "-Select"),
+                this.listView.Modify(currentRow - 1, "Select Focus Vis")
             ) : ""
         ), "On")
 
         Hotkey("Down", (*) => (
-            currentRow := listView.GetNext(0, "F"),
-            currentRow > 0 && currentRow < results.Length ? (
-                listView.Modify(currentRow, "-Select"),  ; Önce eski seçimi kaldır
-                listView.Modify(currentRow + 1, "Select Focus Vis")
+            currentRow := this.listView.GetNext(0, "F"),
+            currentRow > 0 && currentRow < this.results.Length ? (
+                this.listView.Modify(currentRow, "-Select"),
+                this.listView.Modify(currentRow + 1, "Select Focus Vis")
             ) : ""
         ), "On")
 
-        listView.OnEvent("ItemSelect", (*) => (
-            index := listView.GetNext(0, "F"),
-            index > 0 && index <= results.Length ? previewBox.Value := results[index]["content"] : previewBox.Value := ""
+        ; ListView seçim eventi
+        this.listView.OnEvent("ItemSelect", (*) => (
+            index := this.listView.GetNext(0, "F"),
+            index > 0 && index <= this.results.Length ? this.previewBox.Value := this.results[index]["content"] : this.previewBox.Value := ""
         ))
 
         ; Fareyle gezinirken previewBox'ı güncelle
         static lastRowIndex := 0
 
-        ; Fare mesajı handler'ını tanımla ve sakla
         ArrayFilter.mouseMessageHandler := (wParam, lParam, msg, hwnd) => (
-            hwnd = listView.Hwnd ? (
+            hwnd = this.listView.Hwnd ? (
                 MouseGetPos(&mouseX, &mouseY),
-                WinGetPos(&winX, &winY, , , "ahk_id " . listView.Hwnd),
-                rowHeight := 20,
-                headerHeight := 30,
+                WinGetPos(&winX, &winY, , , "ahk_id " . this.listView.Hwnd),
+                rowHeight := 26,
+                headerHeight := 2,
                 relativeY := mouseY - winY - headerHeight - 40,
-                rowIndex := Floor(relativeY / rowHeight) + 1,
-                rowIndex > 0 && rowIndex <= results.Length && rowIndex != lastRowIndex ? (
-                    previewBox.Value := results[rowIndex]["content"],
+                rowIndex := Floor((relativeY + (rowHeight / 2)) / rowHeight) + 1,
+                rowIndex > 0 && rowIndex <= this.results.Length && rowIndex != lastRowIndex ? (
+                    this.previewBox.Value := this.results[rowIndex]["content"],
                     lastRowIndex := rowIndex
-                ) : (rowIndex <= 0 || rowIndex > results.Length ? (
-                    previewBox.Value := "",
+                ) : (rowIndex <= 0 || rowIndex > this.results.Length ? (
+                    this.previewBox.Value := "",
                     lastRowIndex := 0
                 ) : "")
             ) : ""
         )
 
-        ; Fare mesajını kaydet
         OnMessage(0x200, ArrayFilter.mouseMessageHandler)
 
-        searchBox.OnEvent("Change", (*) => UpdateList())
-        listView.OnEvent("DoubleClick", (*) => SelectAndClose(listView.GetNext(0, "F")))
+        ; Event'ler
+        this.searchBox.OnEvent("Change", (*) => this.UpdateList())
+        this.listView.OnEvent("DoubleClick", (*) => this.SelectAndClose(this.listView.GetNext(0, "F")))
 
-        myGui.OnEvent("Escape", (*) => (
-            searchBox.Value ? (searchBox.Value := "", UpdateList())
-            : this.closeGuiAndHotkeys(myGui, listView, SelectAndClose)
+        this.myGui.OnEvent("Escape", (*) => (
+            this.searchBox.Value ? (this.searchBox.Value := "", this.UpdateList())
+            : this.closeGuiAndHotkeys()
         ))
 
-        myGui.OnEvent("Close", (*) => this.closeGuiAndHotkeys(myGui, listView, SelectAndClose))
+        this.myGui.OnEvent("Close", (*) => this.closeGuiAndHotkeys())
 
-        this.changeHotKeyMode(true, listView, SelectAndClose)
+        ; Hotkey'leri aktif et
+        this.changeHotKeyMode(true)
 
-        UpdateList()
-        myGui.Show("w" . guiWidth . " h" . guiHeight)
+        ; Listeyi doldur
+        this.UpdateList()
+
+        ; GUI'yi göster
+        this.myGui.Show("w" . guiWidth . " h" . guiHeight)
+
+        ; Focus kontrolü
         this.CheckFocus := (*) => (
-            IsObject(myGui) && myGui.Title && !WinActive(myGui.Title) ? this.closeGuiAndHotkeys(myGui, listView, SelectAndClose) : ""
+            IsObject(this.myGui) && this.myGui.Title && !WinActive(this.myGui.Title) ? this.closeGuiAndHotkeys() : ""
         )
         SetTimer this.CheckFocus, 100
     }

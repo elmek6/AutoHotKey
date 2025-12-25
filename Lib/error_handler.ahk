@@ -21,9 +21,6 @@ class singleErrorHandler {
         this.lastFullError := ""  ; Yeni: Son hatanın tam detaylarını tutacak string
     }
 
-    ; Mevcut handleError'ı genişletiyoruz: Artık opsiyonel 'err' parametresi ekliyoruz
-    ; Eğer 'err' nesnesi geçilirse (try-catch'ten), full detayları lastFullError'a ata
-    ; Yoksa sadece mesajı kullan
     handleError(errorMessage, err := unset) {
         this.keyCounter.inc("ErrorCount")
 
@@ -32,9 +29,8 @@ class singleErrorHandler {
             this._cleanOldErrors()
         }
 
-        this.errorMap[A_Now] := errorMessage ; Yeni hatayı ekle
+        this.errorMap[A_Now] := errorMessage
 
-        ; Eğer err nesnesi varsa, full detayları hazırla ve sakla
         if (IsSet(err) && IsObject(err)) {
             this.lastFullError := this._formatFullError(err, errorMessage)
         } else {
@@ -43,13 +39,12 @@ class singleErrorHandler {
         }
         OutputDebug (this.lastFullError)
 
-        this.showError(errorMessage) ; Kullanıcıya göster
+        this.showError(errorMessage)
     }
 
 
     showError(errorMessage) {
-        ;ToolTip("ðŸ’¥ Error: ðŸ‘½`n" errorMessage)         SetTimer(() => ToolTip(), -5000)
-        TrayTip("ðŸ’¥ Script Error", errorMessage, 10) ; 10 saniye gÃ¶rÃ¼nÃ¼r, bilgi ikonu
+        TrayTip("Script Error", errorMessage, 10)
     }
 
     copyLastError() {
@@ -108,7 +103,6 @@ class singleErrorHandler {
     }
 
     _cleanOldErrors() {
-        ; En eski hatayı bul ve sil
         oldest := ""
         for timestamp, _ in this.errorMap {
             if (!oldest || timestamp < oldest) {
