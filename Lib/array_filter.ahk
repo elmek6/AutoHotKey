@@ -84,7 +84,7 @@ class ArrayFilter {
 
     SelectAndClose(index) {
         if (index < 1 || index > this.results.Length) {
-            MsgBox("Geçersiz değer!")
+            ShowTip("Geçersiz değer!", TipType.Warning, 1500)            
             return
         }
         local selectedSlot := this.results[index]

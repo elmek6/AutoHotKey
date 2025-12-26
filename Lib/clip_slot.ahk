@@ -53,7 +53,6 @@ class singleClipSlot {
             return true
         } catch as err {
             gErrHandler.backupOnError("ClipSlot.setDefaultGroup!", AppConst.FILE_SLOT)
-            gErrHandler.handleError("setDefaultGroup! Grup değiştirme başarısız: " . err.Message, err)
             return false
         }
     }
@@ -143,8 +142,6 @@ class singleClipSlot {
             return true
         } catch as err {
             gErrHandler.backupOnError("ClipSlot.saveSlots!", AppConst.FILE_SLOT)
-            gErrHandler.handleError("saveSlots! Kaydetme başarısız: " . err.Message, err)
-            ShowTip("Kaydetme hatası! " . err.Message, TipType.Error, 2000)
             return false
         }
     }
@@ -297,8 +294,7 @@ class singleClipSlot {
                 this.setContent(groupName, slotIndex, content)
                 this.setName(groupName, slotIndex, newName)
                 this.saveSlots()
-                ShowTip("Kaydedildi: " . newName, TipType.Success, 800)
-                this.showClipboardPreview()
+                ShowTip(A_Clipboard, TipType.Info)
                 return true
             } else {
                 ShowTip("İptal edildi.", TipType.Info, 700)
@@ -334,19 +330,7 @@ class singleClipSlot {
             return false
         }
     }
-    showClipboardPreview() {
-        if (StrLen(A_Clipboard) > 8000) {
-            ToolTip(SubStr(A_Clipboard, 1, 8000) . "`n[..................]")
-            SetTimer(() => ToolTip(), -800)
-        } else {
-            ToolTip(A_Clipboard)
-            SetTimer(() => ToolTip(), -800)
-        }
-    }
-    showMessage(message, duration := 1000) {
-        ToolTip(message)
-        SetTimer(() => ToolTip(), -duration)
-    }
+
     promptNewGroup() {
         local input := InputBox("What is new group name?")
         if (input.Result == "OK" && Trim(input.Value) != "") {

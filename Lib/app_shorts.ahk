@@ -221,7 +221,7 @@ class singleProfile {
         newClass := this._classNameEdit.Value
         newTitle := this._titleEdit.Value
         if (newName == "") {
-            MsgBox("Profil adı zorunlu!")
+            ShowTip("Profil adı zorunlu!", TipType.Error, 1500)
             return
         }
         newProfile := AppProfile(newName, newClass, newTitle)
@@ -236,7 +236,7 @@ class singleProfile {
     ; Profil güncelle
     _updateProfile() {
         if (this._selectedProfileIndex < 1) {
-            MsgBox("Profil seçin! (Yeni profil için 'New' kullanın)")
+            ShowTip("Profil seçin! (Yeni profil için 'New' kullanın)", TipType.Warning, 1500)
             return
         }
         profile := this.profiles[this._selectedProfileIndex]
@@ -249,7 +249,7 @@ class singleProfile {
     ; Profil sil
     _deleteProfile() {
         if (this._selectedProfileIndex < 1) {
-            MsgBox("Profil seçin!")
+            ShowTip("Profil seçin!", TipType.Warning, 1500)
             return
         }
         this.profiles.RemoveAt(this._selectedProfileIndex)
@@ -273,7 +273,7 @@ class singleProfile {
     ; Yeni aksiyon
     _newAction() {
         if (this._selectedProfileIndex < 1) {
-            MsgBox("Önce profil seçin!")
+            ShowTip("Önce profil seçin!", TipType.Warning, 1500)
             return
         }
         name := this._actionNameEdit.Value
@@ -286,7 +286,7 @@ class singleProfile {
             }
         }
         if (name == "") {
-            MsgBox("Aksiyon adı zorunlu!")
+            ShowTip("Aksiyon adı zorunlu!", TipType.Error, 1500)
             return
         }
         newShortCut := ShortCut(name, desc, filteredStrokes)
@@ -300,7 +300,7 @@ class singleProfile {
     ; Aksiyon güncelle
     _updateAction() {
         if (this._selectedProfileIndex < 1 || this._selectedActionIndex < 1) {
-            MsgBox("Aksiyon seçin!")
+            ShowTip("Aksiyon seçin!", TipType.Warning, 1500)
             return
         }
         profile := this.profiles[this._selectedProfileIndex]
@@ -322,7 +322,7 @@ class singleProfile {
     ; Aksiyon sil
     _deleteAction() {
         if (this._selectedProfileIndex < 1 || this._selectedActionIndex < 1) {
-            MsgBox("Aksiyon seçin!")
+            ShowTip("Aksiyon seçin!", TipType.Warning, 1500)
             return
         }
         profile := this.profiles[this._selectedProfileIndex]
@@ -334,7 +334,7 @@ class singleProfile {
     ; Aksiyon yukarı/aşağı taşı
     _moveAction(direction) {
         if (this._selectedProfileIndex < 1 || this._selectedActionIndex < 1) {
-            MsgBox("Aksiyon seçin!")
+            ShowTip("Aksiyon seçin!", TipType.Warning, 1500)
             return
         }
         profile := this.profiles[this._selectedProfileIndex]
@@ -355,8 +355,7 @@ class singleProfile {
     ; Makro kaydet
     _recordMacro() {
         recorder := singleMacroRecorder.getInstance()
-        ToolTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan")
-        SetTimer(() => ToolTip(), -3000)
+        ShowTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan", TipType.Info, 3000)
         recorder.recordScreen(true)  ; Strokes modunda kaydet
         while (recorder.recording || recorder.status == singleMacroRecorder.macroStatusType.pause) {
             Sleep(100)
@@ -394,7 +393,9 @@ class singleProfile {
     ; GUI kapanınca temizle
     _onGuiClose() {
         this.save()  ; Son kaydet
-        this._gui.Destroy()
+        if (this._gui) {
+            this._gui.Destroy()
+        }
         this._gui := ""
         this._profileList := ""
         this._actionList := ""
@@ -490,5 +491,6 @@ class singleProfile {
         if (this._gui) {
             this._onGuiClose()
         }
+        singleProfile.instance := ""
     }
 }

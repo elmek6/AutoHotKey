@@ -49,7 +49,7 @@ class singleErrorHandler {
 
     copyLastError() {
         if (this.lastFullError == "") {
-            MsgBox("Son hata bilgisi yok!")
+            ShowTip("Son hata bilgisi yok!", TipType.Warning, 2000)            
             return
         }
         A_Clipboard := this.lastFullError

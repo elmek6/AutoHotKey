@@ -79,7 +79,7 @@ class singleMacroRecorder {
         this.relativeX := x
         this.relativeY := y
         tipMsg := isStrokeOnly ? "Recording strokes..." : "Recording"
-        this.showTip(tipMsg)
+        this.showCustomTip(tipMsg)
         SetTimer(ObjBindMethod(this, "stopRecording"), -this.maxRecordTime * 1000)
     }
 
@@ -89,12 +89,12 @@ class singleMacroRecorder {
             this.status := singleMacroRecorder.macroStatusType.pause
             this.catchPressedHotkey(false, this.isStrokeOnlyMode)
             SetTimer(ObjBindMethod(this, "stopRecording"), 0)
-            this.showTip("Paused")
+            this.showCustomTip("Paused")
         } else if (this.status == singleMacroRecorder.macroStatusType.pause) {
             this.recording := true
             this.status := singleMacroRecorder.macroStatusType.record
             this.catchPressedHotkey(true, this.isStrokeOnlyMode)
-            this.showTip(this.isStrokeOnlyMode ? "Recording strokes..." : "Recording")
+            this.showCustomTip(this.isStrokeOnlyMode ? "Recording strokes..." : "Recording")
             SetTimer(ObjBindMethod(this, "stopRecording"), -this.maxRecordTime * 1000)
         }
     }
@@ -113,7 +113,7 @@ class singleMacroRecorder {
         this.status := singleMacroRecorder.macroStatusType.ready
         this.catchPressedHotkey(false, this.isStrokeOnlyMode)
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
-        this.showTip()
+        this.showCustomTip()
 
         if (this.logArr.Length = 0 || this.logArr.Length > this.maxLines) {
             return returnOnly ? "" : ""
@@ -190,16 +190,16 @@ class singleMacroRecorder {
         this.outputFile := "rec" . fileNumber . ".ahk"
         this.logFile := AppConst.FILES_DIR . this.outputFile
         if (!FileExist(this.logFile)) {
-            this.showTip()
-            ToolTip("Dosya bulunamadı: " this.logFile), SetTimer(() => ToolTip(), -2000)
+            this.showCustomTip()
+            ShowTip("Dosya bulunamadı: " . this.logFile, TipType.Error, 2000)
             return
         }
         this.playing := true
         this.status := singleMacroRecorder.macroStatusType.play
-        this.showTip("Playing " . this.outputFile, "y35", "Green|00FFFF")
+        this.showCustomTip("Playing " . this.outputFile, "y35", "Green|00FFFF")
         ahk := A_AhkPath
         if (!FileExist(ahk)) {
-            this.showTip()
+            this.showCustomTip()
             MsgBox("AutoHotkey bulunamadı: " ahk "!", "Hata", 4096)
             this.playing := false
             this.status := singleMacroRecorder.macroStatusType.ready
@@ -212,7 +212,7 @@ class singleMacroRecorder {
         scriptExitCode := RunWait(command)
         this.playing := false
         this.status := singleMacroRecorder.macroStatusType.ready
-        this.showTip()
+        this.showCustomTip()
         if (scriptExitCode != 0) {
             gErrHandler.handleError("Script Error in " this.outputFile ": - Exit code :" scriptExitCode)
         }
@@ -404,7 +404,7 @@ class singleMacroRecorder {
         this.logArr.Push(keyboard ? "    Send `"{Blind}" str "`"" : str)
     }
 
-    showTip(s := "", pos := "y35", color := "Red|00FFFF") {
+    showCustomTip(s := "", pos := "y35", color := "Red|00FFFF") {
         static ShowTip := Gui()
         if (singleMacroRecorder.bak = color "," pos "," s)
             return

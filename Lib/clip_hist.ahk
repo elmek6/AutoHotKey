@@ -33,11 +33,8 @@
             return
         }
         local text := A_Clipboard
-        if (StrLen(text) > 1000) {
-            ToolTip(SubStr(text, 1, 1000) . "`r`n..............."), SetTimer(() => ToolTip(), -1000)
-        } else {
-            ToolTip(text), SetTimer(() => ToolTip(), -1000)
-        }
+        ShowTip(text, TipType.Copy)
+
         if (StrLen(text) = 0)
             return
         if (StrLen(text) > this.maxClipSize)
@@ -79,7 +76,7 @@
             this.history := []
             this.clipLength := 0
             this.lastClip := ""
-            this.showMessage("Pano geçmişi temizlendi.")
+            ShowTip("Pano geçmişi temizlendi.", TipType.Info, 1500)
         }
     }
     loadFromHistory(index) {
@@ -110,8 +107,7 @@
             file.Close()
             return true
         } catch as err {
-            MsgBox("Hata: " . err.Message)
-            gErrHandler.handleError("History kaydetme başarısız: " . err.Message, err)
+            gErrHandler.backupOnError("ClipHist.saveHistory!", AppConst.FILE_CLIPBOARD)
             return false
         }
     }
@@ -139,7 +135,7 @@
     }
 
     buildHistoryMenu() {
-        local historyMenu := Menu()        
+        local historyMenu := Menu()
         historyMenu.Add("Search on history", (*) => this.showHistorySearch())
         historyMenu.Add()
         Loop Min(30, this.history.Length) { ; this.history.Length {
@@ -172,7 +168,7 @@
     }
     showHistorySearch() {
         if (this.history.Length == 0) {
-            this.showMessage("Geçmiş boş!")
+            ShowTip("Geçmiş boş!", TipType.Warning, 1500)
             return
         }
         ; History dizisini ters sırada Map formatına dönüştür
@@ -213,18 +209,9 @@
         }
     }
     showClipboardPreview() {
-        if (StrLen(A_Clipboard) > 8000) {
-            ToolTip(SubStr(A_Clipboard, 1, 8000) . "`n[..................]")
-            SetTimer(() => ToolTip(), -800)
-        } else {
-            ToolTip(A_Clipboard)
-            SetTimer(() => ToolTip(), -800)
-        }
+        ShowTip(A_Clipboard, TipType.Info)
     }
-    showMessage(message, duration := 2000) {
-        ToolTip(message)
-        SetTimer(() => ToolTip(), -duration)
-    }
+
     __Delete() {
         if (gState.getShouldSaveOnExit) {
             this.saveHistory()

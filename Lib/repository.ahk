@@ -18,18 +18,18 @@ class Item {
     }
 }
 
-class singleRepository {
+class SingleRepository {
     static instance := ""
 
     static getInstance() {
-        if (!singleRepository.instance) {
-            singleRepository.instance := singleRepository()
+        if (!SingleRepository.instance) {
+            SingleRepository.instance := SingleRepository()
         }
-        return singleRepository.instance
+        return SingleRepository.instance
     }
 
     __New() {
-        if (singleRepository.instance) {
+        if (SingleRepository.instance) {
             throw Error("Repository zaten oluşturulmuş! getInstance kullan.")
         }
         this.items := []
@@ -41,17 +41,21 @@ class singleRepository {
         this.updateCategoriesAndTags()
 
         ; GUI referansları
-        this._gui := ""
-        this._searchEdit := ""
-        this._categoryList := ""
-        this._tagList := ""
-        this._resultList := ""
-        this._uuidLabel := ""
-        this._titleEdit := ""
-        this._categoryEdit := ""
-        this._textEdit := ""
-        this._tagsEdit := ""
-        this._actionBtn := ""
+        this.gui := ""
+        this.searchEdit := ""
+        this.categoryList := ""
+        this.tagList := ""
+        this.resultList := ""
+        this.uuidLabel := ""
+        this.titleEdit := ""
+        this.categoryEdit := ""
+        this.textEdit := ""
+        this.tagsEdit := ""
+        this.actionBtn := ""
+    }
+
+    __Delete() {
+        SingleRepository.instance := ""
     }
 
     resetFilters() {
@@ -132,7 +136,7 @@ class singleRepository {
             file.Close()
             return true
         } catch as err {
-            gErrHandler.handleError("Repository kaydetme başarısız: " . err.Message, err)
+            gErrHandler.backupOnError("Repository.saveAll!", AppConst.FILE_REPO)
             return false
         }
     }
@@ -271,69 +275,69 @@ class singleRepository {
     }
 
     showGui() {
-        if (this._gui && WinExist("ahk_id " this._gui.hwnd)) {
-            this._gui.Show()
+        if (this.gui && WinExist("ahk_id " this.gui.hwnd)) {
+            this.gui.Show()
             return
         }
-        this._gui := Gui("+Resize +MinSize800x500", "Repository Manager")
-        this._gui.OnEvent("Close", (*) => this._onGuiClose())
-        this._gui.OnEvent("Escape", (*) => this._onGuiClose())
-        this._gui.SetFont("s9", "Segoe UI")
+        this.gui := Gui("+Resize +MinSize800x500", "Repository Manager")
+        this.gui.OnEvent("Close", (*) => this._onGuiClose())
+        this.gui.OnEvent("Escape", (*) => this._onGuiClose())
+        this.gui.SetFont("s9", "Segoe UI")
 
         ; Üst: Arama
-        this._gui.Add("Text", "x10 y10 w100", "Arama:")
-        this._searchEdit := this._gui.Add("Edit", "x120 y10 w760")
-        this._searchEdit.OnEvent("Change", (*) => this._applyFilters())
+        this.gui.Add("Text", "x10 y10 w100", "Arama:")
+        this.searchEdit := this.gui.Add("Edit", "x120 y10 w760")
+        this.searchEdit.OnEvent("Change", (*) => this._applyFilters())
 
         ; Sol: Kategoriler
-        this._gui.Add("Text", "x10 y50 w270", "Kategoriler (Alfabetik):")
-        this._categoryList := this._gui.Add("ListBox", "x10 y70 w270 h150 Sort", this.categories)
-        this._categoryList.OnEvent("Change", (*) => this._applyFilters())
+        this.gui.Add("Text", "x10 y50 w270", "Kategoriler (Alfabetik):")
+        this.categoryList := this.gui.Add("ListBox", "x10 y70 w270 h150 Sort", this.categories)
+        this.categoryList.OnEvent("Change", (*) => this._applyFilters())
 
         ; Sol alt: Tag'ler
-        this._gui.Add("Text", "x10 y230 w270", "Tagler (Alfabetik, Çoklu Seç):")
-        this._tagList := this._gui.Add("ListBox", "x10 y250 w270 h200 Multi Sort", this.tags)
-        this._tagList.OnEvent("Change", (*) => this._applyFilters())
+        this.gui.Add("Text", "x10 y230 w270", "Tagler (Alfabetik, Çoklu Seç):")
+        this.tagList := this.gui.Add("ListBox", "x10 y250 w270 h200 Multi Sort", this.tags)
+        this.tagList.OnEvent("Change", (*) => this._applyFilters())
 
         ; Orta: Sonuçlar
-        this._gui.Add("Text", "x290 y50 w290", "Sonuçlar (Başlıklar):")
-        this._resultList := this._gui.Add("ListBox", "x290 y70 w290 h400", [])
-        this._resultList.OnEvent("DoubleClick", (*) => this._loadItemToDetails())
+        this.gui.Add("Text", "x290 y50 w290", "Sonuçlar (Başlıklar):")
+        this.resultList := this.gui.Add("ListBox", "x290 y70 w290 h400", [])
+        this.resultList.OnEvent("DoubleClick", (*) => this._loadItemToDetails())
         this._updateResultList()
 
         ; Sağ: Detaylar
-        this._gui.Add("Text", "x590 y50 w290", "UUID:")
-        this._uuidLabel := this._gui.Add("Text", "x590 y70 w290", "(Yeni)")
+        this.gui.Add("Text", "x590 y50 w290", "UUID:")
+        this.uuidLabel := this.gui.Add("Text", "x590 y70 w290", "(Yeni)")
 
-        this._gui.Add("Text", "x590 y100 w290", "Title:")
-        this._titleEdit := this._gui.Add("Edit", "x590 y120 w290")
+        this.gui.Add("Text", "x590 y100 w290", "Title:")
+        this.titleEdit := this.gui.Add("Edit", "x590 y120 w290")
 
-        this._gui.Add("Text", "x590 y150 w290", "Category:")
-        this._categoryEdit := this._gui.Add("Edit", "x590 y170 w290")
+        this.gui.Add("Text", "x590 y150 w290", "Category:")
+        this.categoryEdit := this.gui.Add("Edit", "x590 y170 w290")
 
-        this._gui.Add("Text", "x590 y200 w290", "Text:")
-        this._textEdit := this._gui.Add("Edit", "x590 y220 w290 h150 Multi")
+        this.gui.Add("Text", "x590 y200 w290", "Text:")
+        this.textEdit := this.gui.Add("Edit", "x590 y220 w290 h150 Multi")
 
-        this._gui.Add("Text", "x590 y380 w290", "Tags (Her satır bir tag):")
-        this._tagsEdit := this._gui.Add("Edit", "x590 y400 w290 h100 Multi")
+        this.gui.Add("Text", "x590 y380 w290", "Tags (Her satır bir tag):")
+        this.tagsEdit := this.gui.Add("Edit", "x590 y400 w290 h100 Multi")
 
-        this._actionBtn := this._gui.Add("Button", "x590 y510 w90 h30", "Add")
-        this._actionBtn.OnEvent("Click", (*) => this._saveItem())
+        this.actionBtn := this.gui.Add("Button", "x590 y510 w90 h30", "Add")
+        this.actionBtn.OnEvent("Click", (*) => this._saveItem())
 
-        refreshBtn := this._gui.Add("Button", "x680 y510 w90 h30", "Refresh")
+        refreshBtn := this.gui.Add("Button", "x680 y510 w90 h30", "Refresh")
         refreshBtn.OnEvent("Click", (*) => this._refreshGuiElements())
 
-        delBtn := this._gui.Add("Button", "x770 y510 w90 h30", "Delete")
+        delBtn := this.gui.Add("Button", "x770 y510 w90 h30", "Delete")
         delBtn.OnEvent("Click", (*) => this._deleteSelectedItem())
 
-        this._gui.Show("w900 h560")
+        this.gui.Show("w900 h560")
     }
 
     _applyFilters() {
-        query := this._searchEdit.Value
-        selectedCat := this._categoryList.Text
+        query := this.searchEdit.Value
+        selectedCat := this.categoryList.Text
         selectedTags := []
-        val := this._tagList.Value
+        val := this.tagList.Value
         if (IsObject(val)) {  ; Güvenlik: Value array değilse (boş veya hata) atla
             for idx in val {
                 selectedTags.Push(this.tags[idx])
@@ -353,56 +357,55 @@ class singleRepository {
     }
 
     _updateResultList() {
-        if (!this._resultList)
+        if (!this.resultList)
             return
-        this._resultList.Delete()
+        this.resultList.Delete()
         for item in this.filteredItems {
-            this._resultList.Add([item.title " (" item.category ")"])
+            this.resultList.Add([item.title " (" item.category ")"])
         }
     }
 
     _loadItemToDetails() {
-        sel := this._resultList.Value
+        sel := this.resultList.Value
         if (sel < 1 || sel > this.filteredItems.Length) {
             return
         }
         item := this.filteredItems[sel]
         this.workingItem := item.uuid
-        this._uuidLabel.Text := item.uuid
-        this._titleEdit.Value := item.title
-        this._categoryEdit.Value := item.category
-        this._textEdit.Value := item.text
-        this._tagsEdit.Value := StrJoin(item.tags, "`n")
-        this._actionBtn.Text := "Update"
+        this.uuidLabel.Text := item.uuid
+        this.titleEdit.Value := item.title
+        this.categoryEdit.Value := item.category
+        this.textEdit.Value := item.text
+        this.tagsEdit.Value := StrJoin(item.tags, "`n")
+        this.actionBtn.Text := "Update"
     }
 
     _saveItem() {
-        title := Trim(this._titleEdit.Value)
-        category := Trim(this._categoryEdit.Value)
-        text := Trim(this._textEdit.Value)
-        tagsStr := Trim(this._tagsEdit.Value)
+        title := Trim(this.titleEdit.Value)
+        category := Trim(this.categoryEdit.Value)
+        text := Trim(this.textEdit.Value)
+        tagsStr := Trim(this.tagsEdit.Value)
         tags := StrSplit(tagsStr, "`n", "`r")
 
         if (title = "") {
-            MsgBox("Title zorunlu!")
+            ShowTip("Title zorunlu!", TipType.Error, 2000)            
             return
         }
 
         if (this.workingItem = "") {
             newItem := Item(title, category, text, tags)
             this.AddItem(newItem)
-            ToolTip("Eklendi!")
+            ShowTip("Eklendi!", TipType.Success)            
         } else {
             this.UpdateItem(this.workingItem, title, category, text, tagsStr)
-            ToolTip("Güncellendi!")
+            ShowTip("Güncellendi!", TipType.Success)            
         }
-        SetTimer(() => ToolTip(), -1000)
         this._clearDetails()
     }
 
     _deleteSelectedItem() {
         if (this.workingItem = "") {
-            MsgBox("Silmek için item seçin!")
+            ShowTip("Silmek için item seçin!", TipType.Warning, 2000)
             return
         }
         this.DeleteItem(this.workingItem)
@@ -411,37 +414,37 @@ class singleRepository {
 
     _clearDetails() {
         this.workingItem := ""
-        this._uuidLabel.Text := "(Yeni)"
-        this._titleEdit.Value := ""
-        this._categoryEdit.Value := ""
-        this._textEdit.Value := ""
-        this._tagsEdit.Value := ""
-        this._actionBtn.Text := "Add"
+        this.uuidLabel.Text := "(Yeni)"
+        this.titleEdit.Value := ""
+        this.categoryEdit.Value := ""
+        this.textEdit.Value := ""
+        this.tagsEdit.Value := ""
+        this.actionBtn.Text := "Add"
     }
 
     _refreshGuiElements() {
         this.updateCategoriesAndTags()
-        this._categoryList.Delete()
-        this._categoryList.Add(this.categories)
-        this._tagList.Delete()
-        this._tagList.Add(this.tags)
+        this.categoryList.Delete()
+        this.categoryList.Add(this.categories)
+        this.tagList.Delete()
+        this.tagList.Add(this.tags)
         this._applyFilters()
     }
 
     _onGuiClose() {
         ; GUI kapanırken save YAPMA
-        this._gui.Destroy()
-        this._gui := ""
-        this._searchEdit := ""
-        this._categoryList := ""
-        this._tagList := ""
-        this._resultList := ""
-        this._uuidLabel := ""
-        this._titleEdit := ""
-        this._categoryEdit := ""
-        this._textEdit := ""
-        this._tagsEdit := ""
-        this._actionBtn := ""
+        this.gui.Destroy()
+        this.gui := ""
+        this.searchEdit := ""
+        this.categoryList := ""
+        this.tagList := ""
+        this.resultList := ""
+        this.uuidLabel := ""
+        this.titleEdit := ""
+        this.categoryEdit := ""
+        this.textEdit := ""
+        this.tagsEdit := ""
+        this.actionBtn := ""
     }
 }
 

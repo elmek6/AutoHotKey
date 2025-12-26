@@ -66,7 +66,7 @@ showF14menu() {
     menuF14.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
     menuF14.Add("Memory clip", (*) => gMemSlots.start())
     menuF14.Add()
-    menuF14.Add("Settings", menuSettings())    
+    menuF14.Add("Settings", menuSettings())
     menuF14.Add("Statistics " . gState.getVersion() . (gErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
     menuF14.Show()
 }
@@ -239,8 +239,16 @@ class TipType {
 
 ShowTip(msg, type := TipType.Info, duration := 800) {
     static tipGui := ""
-    if (tipGui) {
-        tipGui.Destroy()
+
+    ; Önceki tip varsa yok et
+    if (tipGui && IsObject(tipGui)) {
+        try tipGui.Destroy()
+        tipGui := ""
+    }
+
+    msg := Trim(msg, " `t`n`r") ; yalnizca bas ve sondaki boşlukları ve gereksiz enter'ları kaldırir (cok hizli)
+    if (StrLen(msg) > 5000) {
+        msg := "➡️" . SubStr(msg, 1, 5000) . "`n[..................]"
     }
 
     tipGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "CustomTip")
@@ -252,8 +260,8 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
         TipType.Error, { text: "DC3545", bg: "FFFFFF" },  ; Kırmızı/Beyaz
         TipType.Success, { text: "28A745", bg: "E6FFE6" },  ; Yeşil/Açık Yeşil
         TipType.Cut, { text: "6F42C1", bg: "F8F9FA" },  ; Mor/Gri
-        TipType.Copy, { text: "17A2B8", bg: "E3F2FD" },  ; Mavi/Açık Mavi
-        TipType.Paste, { text: "198754", bg: "D1E7DD" }  ; Yeşil/Açık Yeşil
+        TipType.Copy, { text: "0D6EFD", bg: "F8F9FA" },  ; Mavi/Açık Mavi
+        TipType.Paste, { text: "198754", bg: "F8F9FA" }  ; Yeşil/Açık Yeşil
     )
 
     ; Varsayılan renk (eğer type yoksa veya hatalıysa)
@@ -261,12 +269,17 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
 
     tipGui.BackColor := colorPair.bg
     tipGui.SetFont("s10 c" colorPair.text, "Segoe UI")  ; Text color'ı SetFont ile uygula
-    tipGui.MarginX := 6, tipGui.MarginY := 6
-
+    tipGui.MarginX := 4, tipGui.MarginY := 4
     tipGui.AddText("ReadOnly -E0x200", msg)
 
     MouseGetPos(&x, &y)
     tipGui.Show("x" (x + 16) " y" (y + 16) " AutoSize NoActivate")
 
-    SetTimer(() => (tipGui.Destroy(), tipGui := ""), -duration)
-}
+    SetTimer(() => DestroyTip(), -duration)
+
+    DestroyTip() {
+        if (tipGui && IsObject(tipGui)) {
+            try tipGui.Destroy()
+            tipGui := ""
+        }
+    } }

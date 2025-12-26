@@ -91,8 +91,8 @@ class singleState {
     loadStats() {
         if (gKeyCounts.get("DayCount") == "") {
             gKeyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
-            ToolTip(gKeyCounts.get("DayCount"))
-            SetTimer(() => ToolTip(), -3800)
+            ShowTip(gKeyCounts.get("DayCount"), TipType.Info, 3000)
+            ; ToolTip(gKeyCounts.get("DayCount")), SetTimer(() => ToolTip(), -3800)
         }
 
         if !FileExist(AppConst.FILE_LOG)
@@ -135,17 +135,24 @@ class singleState {
         local currentSince := FormatTime(A_Now, "yyyyMMdd")
         gKeyCounts.set("DayCount", gKeyCounts.get("DayCount") + DateDiff(currentSince, startDate, "Days"))
 
-        file := FileOpen(AppConst.FILE_LOG, "w")
-        if !file
-            return
-        for k, v in gKeyCounts.getAll() {
-            file.WriteLine(k "=" v)
+        try {
+            file := FileOpen(AppConst.FILE_LOG, "w")
+            if !file
+                throw Error("Dosya açılamadı: " . AppConst.FILE_LOG)  ; catch'e düş
+
+            for k, v in gKeyCounts.getAll() {
+                file.WriteLine(k "=" v)
+            }
+            file.WriteLine("*")
+            for timestamp, errorMessage in gErrHandler.errorMap {
+                file.WriteLine(timestamp "=" errorMessage)
+            }
+            file.Close()
+        } catch as err {
+            ; Verdiğiniz koda benzer hata yönetimi: Yedekle ve hatayı işle
+            gErrHandler.backupOnError("scriptState.saveStats! Log dosyası yazılamadı", AppConst.FILE_LOG)
         }
-        file.WriteLine("*")
-        for timestamp, errorMessage in gErrHandler.errorMap {
-            file.WriteLine(timestamp "=" errorMessage)
-        }
-        file.Close()
+
     }
 
     toggleOnTopWindow(hwnd, title) {

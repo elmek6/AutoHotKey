@@ -19,7 +19,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_147_b")
+global gState := singleState.getInstance("ver_148_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
@@ -74,8 +74,7 @@ LoadSettings() {
     if (A_ComputerName = "LAPTOP-UTN6L5PA") { ;work
         SetTimer(checkIdle, 1000)
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
-        ToolTip("Bus timer kuruldu")
-        SetTimer(() => ToolTip(), -1000)
+        ShowTip("Work profile active", TipType.Info, 1000)
         global gCurrentConfig := gStateConfig.work
     } else {
         TrayTip("AHK", "Home profile", 1)
@@ -312,25 +311,25 @@ AppsKey & a:: { ;work
 }
 */
 
-modActive := false
-lastX := 0
-lastY := 0
+; modActive := false
+; lastX := 0
+; lastY := 0
 
-F1:: {
-    global modActive
-    modActive := !modActive
+; F1:: {
+;     global modActive
+;     modActive := !modActive
 
-    if modActive {
-        SetTimer UpdateIndicator, 50  ; ~60 FPS
-        ToolTip "MOD AKTİF"
-        SetTimer () => ToolTip(), -1000
-    } else {
-        SetTimer UpdateIndicator, 0
-        try mouseIndicator.Destroy()
-        ToolTip "MOD KAPALI"
-        SetTimer () => ToolTip(), -1000
-    }
-}
+;     if modActive {
+;         SetTimer UpdateIndicator, 50  ; ~60 FPS
+;         ToolTip "MOD AKTİF"
+;         SetTimer () => ToolTip(), -1000
+;     } else {
+;         SetTimer UpdateIndicator, 0
+;         try mouseIndicator.Destroy()
+;         ToolTip "MOD KAPALI"
+;         SetTimer () => ToolTip(), -1000
+;     }
+; }
 
 UpdateIndicator() {
     global mouseIndicator, lastX, lastY
