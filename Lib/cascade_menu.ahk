@@ -22,7 +22,7 @@ class CascadeBuilder {
         return this
     }
 
-    pairs(key, desc, fn) {
+    combos(key, desc, fn) {
         this.pairsActions.Push({ key: key, desc: desc, action: fn })
         this.tips.Push(key ": " desc)
         return this
@@ -80,6 +80,19 @@ class singleCascadeHandler {
         }
     }
 
+    ; Yeni eklenen metod: Combo tuşlarını dinle (hook'suz, eski yöntem)
+    _checkCombo(pairsActions, duration, shortTime, longTime) {
+        for p in pairsActions {
+            if (GetKeyState(p.key, "P")) {
+                gState.setBusy(2)
+                KeyWait p.key
+                p.action.Call(this.getPressType(duration, shortTime, longTime))
+                return true ; basıldığı sürece tekrar çalışsın
+            }
+        }
+        return false
+    }
+
     cascadeKey(builder, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
         if (gState.getBusy() > 0) {
             return
@@ -104,24 +117,25 @@ class singleCascadeHandler {
                 duration := A_TickCount - startTime
 
                 ; NULLABLE LONG MODE: Short geçtiğinde hemen mainKey(1) çağır
-                if (longTime == "" && duration >= shortTime && !mainKeyExecuted) {
-                    if (mainKey != "" && IsObject(mainKey)) {
-                        mainKey.Call(1)
-                        mainKeyExecuted := true
-                    }
+                ; if (longTime == "" && duration >= shortTime && !mainKeyExecuted) {
+                ;     if (mainKey != "" && IsObject(mainKey)) {
+                ;         OutputDebug("NULLABLE LONG MODE: SHORT press detected (" duration " ms), calling mainKey(1)`n")
+                ;         mainKey.Call(1)
+                ;         mainKeyExecuted := true
+                ;     }
 
-                    if (exitOnPressType == 1) {
-                        return
-                    }
-                    break  ; While'dan çık, pairs'e geç
-                }
+                ;     if (exitOnPressType == 1) {
+                ;         return
+                ;     }
+                ;     break  ; While'dan çık, pairs'e geç
+                ; }
 
                 ; Medium beep (normal 3-level mode)
                 if (longTime != "" && duration >= shortTime && beepCount >= 1 && !mediumTriggered) {
                     SoundBeep(800, 50)
                     beepCount--
                     mediumTriggered := true
-                    ; OutputDebug("MEDIUM press detected (" duration " ms)`n")
+                    OutputDebug("MEDIUM press detected (" duration " ms)`n")
                 }
 
                 ; Long beep (sadece longTime varsa)
@@ -129,19 +143,15 @@ class singleCascadeHandler {
                     SoundBeep(800, 50)
                     beepCount--
                     longTriggered := true
-                    ; OutputDebug("LONG press detected (" duration " ms)`n")
+                    OutputDebug("LONG press detected (" duration " ms)`n")
                 }
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
                 OutputDebug("set busy 2`n")
                 gState.setBusy(2)
-                for p in pairsActions {
-                    if (GetKeyState(p.key, "P")) {
-                        KeyWait p.key
-                        p.action.Call(this.getPressType(A_TickCount - startTime, shortTime, longTime))
-                        return
-                    }
+                if (this._checkCombo(pairsActions, duration, shortTime, longTime)) {
+                    return
                 }
                 Sleep(30)
             }
@@ -177,30 +187,11 @@ class singleCascadeHandler {
             }
 
 
-            ; InputHook ile pair bekle
-            ih := InputHook()
-            ih.VisibleNonText := false
-            ih.KeyOpt("{All}", "E")
-            ih.Start()
-            ih.Wait()
-
-            ; Tooltip'i kapat (ESC veya tekrar basma durumu)
-            if (ih.EndKey = "Escape" || ih.EndKey = key) {
-                ToolTip("")
-                return
-            }
-
-            ; Pair action çalıştır
-            for p in pairsActions {
-                if (p.key = ih.EndKey) {
-                    p.action.Call(mainKeyExecuted ? 1 : this.getPressType(A_TickCount - startTime, shortTime, longTime))
-                    ToolTip("")
-                    return
-                }
-            }
-
-            SoundBeep(800)
-            ToolTip("")
+            ; ; Süre aşımı: timeOut sonunda menü kapanır
+            ; if (previewList.Length > 0) {
+            ;     ; OutputDebug("Menü süre aşımı (" timeOut "ms), kapanıyor`n")
+            ;     ToolTip()
+            ; }
 
         } catch Error as err {
             gErrHandler.handleError(err.Message " " key, err)
@@ -224,16 +215,16 @@ class singleCascadeHandler {
                 }
             })
             .setExitOnPressType(0)
-            .pairs("1", "Slot 1", (dt) => loadSave(dt, 1))
-            .pairs("2", "Slot 2", (dt) => loadSave(dt, 2))
-            .pairs("3", "Slot 3", (dt) => loadSave(dt, 3))
-            .pairs("4", "Slot 4", (dt) => loadSave(dt, 4))
-            .pairs("5", "Slot 5", (dt) => loadSave(dt, 5))
-            .pairs("6", "Slot 6", (dt) => loadSave(dt, 6))
-            .pairs("7", "Slot 7", (dt) => loadSave(dt, 7))
-            .pairs("8", "Slot 8", (dt) => loadSave(dt, 8))
-            .pairs("9", "Slot 9", (dt) => loadSave(dt, 9))
-            .pairs("0", "Slot 0", (dt) => loadSave(dt, 10))
+            .combos("1", "Slot 1", (dt) => loadSave(dt, 1))
+            .combos("2", "Slot 2", (dt) => loadSave(dt, 2))
+            .combos("3", "Slot 3", (dt) => loadSave(dt, 3))
+            .combos("4", "Slot 4", (dt) => loadSave(dt, 4))
+            .combos("5", "Slot 5", (dt) => loadSave(dt, 5))
+            .combos("6", "Slot 6", (dt) => loadSave(dt, 6))
+            .combos("7", "Slot 7", (dt) => loadSave(dt, 7))
+            .combos("8", "Slot 8", (dt) => loadSave(dt, 8))
+            .combos("9", "Slot 9", (dt) => loadSave(dt, 9))
+            .combos("0", "Slot 0", (dt) => loadSave(dt, 10))
         ; .setPreview((b, pressType) => gClipManager.getSlotsPreviewText())
 
         gCascade.cascadeKey(builder, "^")
@@ -250,15 +241,15 @@ class singleCascadeHandler {
                 }
             })
             .setExitOnPressType(0)
-            .pairs("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
-            .pairs("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
-            .pairs("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
-            .pairs("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
-            .pairs("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
-            .pairs("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
-            .pairs("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
-            .pairs("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
-            .pairs("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
+            .combos("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
+            .combos("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
+            .combos("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
+            .combos("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
+            .combos("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
+            .combos("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
+            .combos("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
+            .combos("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
+            .combos("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
         ; .setPreview((b, pressType) => gClipHist.getHistoryPreviewList())
         gCascade.cascadeKey(builder, "Tab")
     }
@@ -278,15 +269,15 @@ class singleCascadeHandler {
 
             })
             .setExitOnPressType(0)
-            .pairs("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
-            .pairs("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
-            .pairs("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
-            .pairs("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
-            .pairs("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
-            .pairs("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
-            .pairs("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
-            .pairs("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
-            .pairs("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
+            .combos("1", "History 1", (dt) => gClipHist.loadFromHistory(1))
+            .combos("2", "History 2", (dt) => gClipHist.loadFromHistory(2))
+            .combos("3", "History 3", (dt) => gClipHist.loadFromHistory(3))
+            .combos("4", "History 4", (dt) => gClipHist.loadFromHistory(4))
+            .combos("5", "History 5", (dt) => gClipHist.loadFromHistory(5))
+            .combos("6", "History 6", (dt) => gClipHist.loadFromHistory(6))
+            .combos("7", "History 7", (dt) => gClipHist.loadFromHistory(7))
+            .combos("8", "History 8", (dt) => gClipHist.loadFromHistory(8))
+            .combos("9", "History 9", (dt) => gClipHist.loadFromHistory(9))
         gCascade.cascadeKey(builder, "CapsLock")
     }
 }
