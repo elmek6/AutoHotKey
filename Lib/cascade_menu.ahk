@@ -110,7 +110,7 @@ class singleCascadeHandler {
                         mainKeyExecuted := true
                     }
 
-                    if (exitOnPressType = 1) {
+                    if (exitOnPressType == 1) {
                         return
                     }
                     break  ; While'dan çık, pairs'e geç
@@ -134,6 +134,7 @@ class singleCascadeHandler {
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
+                OutputDebug("set busy 2`n")
                 gState.setBusy(2)
                 for p in pairsActions {
                     if (GetKeyState(p.key, "P")) {
@@ -156,7 +157,7 @@ class singleCascadeHandler {
                 }
 
                 ; Exit threshold kontrolü
-                if (mainPressType = exitOnPressType) {
+                if (mainPressType == exitOnPressType) {
                     return
                 }
             }
@@ -174,6 +175,7 @@ class singleCascadeHandler {
                     ToolTip(previewText)
                 }
             }
+
 
             ; InputHook ile pair bekle
             ih := InputHook()
