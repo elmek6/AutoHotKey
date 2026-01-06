@@ -19,6 +19,7 @@ class KeyBuilder {
         this.enableVisual := false
         this.enableMouseProfile := ""
         this.gestures := []
+        this._extensions := []
     }
 
     ; Basım türü ayarları: short, long (opsiyonel), gap (double click için opsiyonel)
@@ -65,13 +66,11 @@ class KeyBuilder {
         return this
     }
 
-    ; Esnek genişletme: dışardan builder ı değiştir
-    extend(callback) {
-        if (IsObject(callback)) {
-            callback.Call(this)  ; builder nesnesini parametre olarak veriyoruz
-        }
-        return this
+    extend(extObj) {
+        this._extensions.Push(extObj)
+        return this ; Zincirleme kullanım için 'this' dönüyoruz
     }
+    extensions => this._extensions
 
     build() {
         return this

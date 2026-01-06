@@ -1,5 +1,18 @@
 #Include <HotGestures>
 
+class Ext {    
+    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4
+
+    ; Factory: Tek satırda objeyi damgalayıp döner
+    static Create(type, data) => { base: Ext.Prototype, type: type, data: data }
+
+    ; kısa yazmak için yardımcı metodlar
+    static visual(v) => Ext.Create(Ext.tVisual, v)
+    static gesture(p, a) => Ext.Create(Ext.tGesture, { pattern: p, action: a })
+    static enableDoubleClick(v) => Ext.Create(Ext.tDBClick, v)
+    static workOnlyOnCombo(v) => Ext.Create(Ext.tOnCombo, v)
+}
+
 class singleKeyHandlerMouse {
     static instance := ""
 
@@ -66,16 +79,28 @@ class singleKeyHandlerMouse {
     handle(builder) {
         mainStart := builder.main_start
         main_key := builder.main_key
-        mainEnd := builder.main_end
-        gestures := builder.gestures
+        mainEnd := builder.main_end        
         shortTime := builder.shortTime
         longTime := builder.longTime
         gapTime := builder.gapTime
         combos := builder.combos
         previewList := builder.tips
-        ; enableVisual := builder._enableVisual
-        ; onlyOnCombo := builder._mainEndOnlyCombo
-        ; enabledDoubleClick := builder._enableDoubleClick
+
+        enableVisual := false
+        onlyOnCombo := false
+        gestures := []
+        enabledDoubleClick := false
+        for item in builder.extensions {
+            if (item is Ext) {
+                switch item.type {
+                    case Ext.tVisual: enableVisual := item.data
+                    case Ext.tOnCombo: onlyOnCombo := item.data
+                    case Ext.tDBClick: enabledDoubleClick := item.data
+                    case Ext.tGesture: gestures.Push(item.data)
+                }
+            }
+        }
+
 
         _checkCombo(comboActions) {
             for p in comboActions {
@@ -119,8 +144,8 @@ class singleKeyHandlerMouse {
 
             if (gestures.Length > 0) {
                 this.hgsRight := HotGestures()
-                for g in gestures {
-                    this.hgsRight.Register(g.gesture, g.gesture.Name, g.action)
+                for g in gestures {                    
+                    this.hgsRight.Register(g.pattern, g.pattern.Name, g.action)
                 }
                 this.hgsRight.Start()
             }
@@ -155,7 +180,7 @@ class singleKeyHandlerMouse {
                 if (this.hgsRight.Result.Valid) {
                     detectedGesture := this.hgsRight.Result.MatchedGesture
                     for g in gestures {
-                        if (detectedGesture == g.gesture) {
+                        if (detectedGesture == g.pattern) {
                             g.action.Call()
                             return
                         }
@@ -168,21 +193,21 @@ class singleKeyHandlerMouse {
                 pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
 
                 ; ² Double-click kontrolü (sadece short press için)
-                ; if (pressType == 0 && enabledDoubleClick) {
-                ;     result := KeyWait(key, "D T0.1")
-                ;     if (result) {
-                ;         KeyWait(key)
-                ;         pressType := 4
-                ;     }
-                ; }
+                if (pressType == 0 && enabledDoubleClick) {
+                    result := KeyWait(key, "D T0.1")
+                    if (result) {
+                        KeyWait(key)
+                        pressType := 4
+                    }
+                }
 
                 main_key.Call(pressType)
             }
 
-            ;² handleRButton extend
-            ; if (mainEnd != "" && IsObject(mainEnd) && onlyOnCombo == 1 && gState.getBusy() == 2) {
-            ;     mainEnd.Call()
-            ; }
+            ; ² handleRButton extend
+            if (mainEnd != "" && IsObject(mainEnd) && onlyOnCombo == 1 && gState.getBusy() == 2) {
+                mainEnd.Call()
+            }
         } catch Error as err {
             gErrHandler.handleError(err.Message " " key, err)
         } finally {
@@ -199,13 +224,8 @@ class singleKeyHandlerMouse {
     handleLButton() {
         builder := KeyBuilder()
             .combo("F14", "LB + F14", () => Send("L F14"))
-            ; .combo("F15", "LB + F15", () => Send("L 15"))
-            ; .combo("F16", "LB + F16", () => Send("L 16"))
-            ; .combo("F17", "LB + F17", () => Send("L 17"))
-            ; .combo("F18", "LB + F18", () => Send("L 18"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Enter", () => Send("{Enter}"))
-            .extend((b) => b.enableVisual := false)
             .build()
         this.handle(builder)
     }
@@ -217,9 +237,11 @@ class singleKeyHandlerMouse {
                     case 0:
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
-                    case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
+                    ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
+                    default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
                 }
             })
+            .extend(Ext.enableDoubleClick(true))
             .combo("F14", "Show History Search", () => gClipHist.showHistorySearch())
             .combo("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
             .combo("F16", "Find & Paste", () => Send("^f{Sleep 100}^a^v"))
@@ -227,7 +249,6 @@ class singleKeyHandlerMouse {
             .combo("F18", "Send F18", () => Send("F18"))
             .combo("F19", "Paste & Enter", () => Send("^v{Enter}"))
             .combo("F20", "Enter", () => Send("{Enter}"))
-            .extend((b) => b.enableVisual := false)
             .build()
 
         this.handle(builder)
@@ -240,7 +261,7 @@ class singleKeyHandlerMouse {
             ; .combo("WheelUp", "Volume Up", () => Send("#{NumpadAdd}"))
             ; .combo("WheelDown", "Volume Down", () => Send("#{NumpadSub}"))
             .mainEnd(() => (Sleep(100), Send("{Escape}")))
-            .extend((b) => b.enableVisual := false)
+            .extend(Ext.workOnlyOnCombo(true))
             .build()
 
         this.handle(builder)
@@ -253,22 +274,19 @@ class singleKeyHandlerMouse {
                     case 0: showF13menu()
                     case 1: Send("#{NumpadAdd}")
                         ; case 2:
-                    case 3: Send("#{NumpadAdd}")
+                    case 4: Send("#{NumpadAdd}")
                 }
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
-            .extend((b) => (
-                b.enableVisual := true
-                ; b.gestures.({HotGestures.Gesture("Right-right:1,0"), action: () => Send("{Enter}") })
-            ))
-            ; .mainGesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}"))
-            ; .mainGesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}"))
-            ; .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}"))
-            ; .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}"))
-            ; .mainGesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A"))
+            .extend(Ext.visual(true))
+            .extend(Ext.enableDoubleClick(false))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}")))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A")))
             .build()
-
         this.handle(builder)
     }
 
@@ -280,14 +298,14 @@ class singleKeyHandlerMouse {
                     case 0: showF14menu()
                     case 1: Send("#{NumpadSub}")
                     case 2: Send("#{NumpadSub}{Sleep 100}#{NumpadSub}")
-                    case 3: Send("#{NumpadSub}")
+                    case 4: Send("#{NumpadSub}")
                 }
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
-            .extend((b) => b.enableVisual := true)
-            ; .mainGesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}"))
-            ; .mainGesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}"))
+            .extend(Ext.enableDoubleClick(false))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
+            .extend(Ext.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
             .build()
         this.handle(builder)
     }
