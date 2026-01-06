@@ -314,9 +314,9 @@ class singleClipSlot {
                 throw Error("Grup bulunamadı: " . groupName)
             }
             A_Clipboard := this.getContent(groupName, slotIndex)
-            ClipWait(1)
+            ClipWait(0.2)
             if (A_Clipboard == "") {
-                throw
+                ShowTip("Slot boş! Grup: " . gClipSlot.defaultGroupName, TipType.Warning, 2000)
             }
             Sleep(20)
             if (gState.isActiveClass("Qt5QWindowIcon")) {

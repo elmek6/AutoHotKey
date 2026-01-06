@@ -7,11 +7,13 @@
 #Include <script_state>
 #Include <menus>
 #Include <key_counter>
-#Include <hotkey_handler>
 #Include <clip_hist>
 #Include <clip_slot>
 #Include <memory_slots>
-#Include <cascade_menu>
+#Include <key_builder>
+#Include <key_handler_cascade>
+#Include <key_handler_mouse>
+#Include <key_handler_hook>
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
@@ -19,13 +21,14 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_149_h")
+global gState := singleState.getInstance("ver_150_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
 global gClipSlot := singleClipSlot.getInstance()
-global gKeyHandler := singleHotkeyHandler.getInstance()
-global gCascade := singleCascadeHandler.getInstance()
+global gKeyHandler := singleKeyHandlerMouse.getInstance()
+global gCascade := singleKeyHandlerCascade.getInstance()
+global gHook := singleKeyHandlerHook.getInstance()
 global gRecorder := singleMacroRecorder.getInstance(300)
 global gAppShorts := singleProfile.getInstance()
 global gMemSlots := singleMemorySlots.getInstance()
@@ -133,11 +136,11 @@ LButton:: {
 #HotIf gCurrentConfig = gStateConfig.work ; hotif olan tuslari override eder
 >#1:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 >#2:: gRecorder.playKeyAction(2, 1)
->#3:: getPressTypeTest( ;belki önüne birsey gelince olabilir?
-    (pressType) => pressType == 0
-        ? gRecorder.playKeyAction(3, 1)
-        : gRecorder.recordAction(3, singleMacroRecorder.recType.key)
-)
+; >#3:: getPressTypeTest( ;belki önüne birsey gelince olabilir?
+;     (pressType) => pressType == 0
+;         ? gRecorder.playKeyAction(3, 1)
+;         : gRecorder.recordAction(3, singleMacroRecorder.recType.key)
+; )
 #HotIf
 
 #HotIf gCurrentConfig = gStateConfig.home
@@ -160,7 +163,8 @@ F20:: gKeyHandler.handleF20()
 SC029:: gCascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
 SC00F:: gCascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
 SC03A:: gCascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
-SC00D:: hookCommands() ; ´ backtick SC00D VKDD
+SC00D:: gHook.sysCommands() ; ´ backtick SC00D VKDD
+; SC00D:: hookCommands() ; ´ backtick SC00D VKDD
 
 ~LButton:: gKeyHandler.handleLButton()
 ~MButton:: gKeyHandler.handleMButton()
