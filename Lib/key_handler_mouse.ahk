@@ -1,16 +1,17 @@
 #Include <HotGestures>
 
-class Ext {    
-    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4
+class EM {    ;Enhancements for KeyBuilder
+    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5
 
     ; Factory: Tek satırda objeyi damgalayıp döner
-    static Create(type, data) => { base: Ext.Prototype, type: type, data: data }
+    static Create(type, data) => { base: EM.Prototype, type: type, data: data }
 
     ; kısa yazmak için yardımcı metodlar
-    static visual(v) => Ext.Create(Ext.tVisual, v)
-    static gesture(p, a) => Ext.Create(Ext.tGesture, { pattern: p, action: a })
-    static enableDoubleClick(v) => Ext.Create(Ext.tDBClick, v)
-    static workOnlyOnCombo(v) => Ext.Create(Ext.tOnCombo, v)
+    static visual(v) => EM.Create(EM.tVisual, v)
+    static gesture(p, a) => EM.Create(EM.tGesture, { pattern: p, action: a })
+    static enableDoubleClick(v := true) => EM.Create(EM.tDBClick, v)
+    static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
+    static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v) ; basili tutma süresine göre hemen tetiklensin
 }
 
 class singleKeyHandlerMouse {
@@ -29,57 +30,11 @@ class singleKeyHandlerMouse {
         }
         this.hgsRight := ""
     }
-    /*
-        ; duration, pressType ve görsel feedback'i birlikte yönet
-        _detectPressWithVisual(duration, enableVisual, &visualShown) {
-            pressType := -1
-    
-            ; Short press (0-300ms)
-            if (duration < 300) {
-                pressType := 0
-            }
-            ; Medium press (300-1000ms) - Sarı göster
-            else if (duration < 1000) {
-                pressType := 1
-                if (enableVisual && !visualShown.medium) {
-                    this._showVisual("d4ff00")  ; Sarı
-                    visualShown.medium := true
-                }
-            }
-            ; Long press (1000ms+) - Turuncu göster
-            else {
-                pressType := 2
-                if (enableVisual && !visualShown.long) {
-                    this._showVisual("00ff9d")  ; Turuncu
-                    visualShown.long := true
-                }
-            }
-    
-            return pressType
-        }
-    
-        _showVisual(color) {
-            static feedbackGui := ""
-    
-            ; Önceki GUI'yi temizle
-            if (feedbackGui) {
-                try feedbackGui.Destroy()
-            }
-    
-            MouseGetPos(&x, &y)
-            feedbackGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
-            feedbackGui.BackColor := color
-            feedbackGui.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
-            feedbackGui.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
-    
-            ; 300ms sonra temizle (flicker'ı azalt)
-            SetTimer(() => (feedbackGui.Destroy(), feedbackGui := ""), -300)
-        }
-    */
+
     handle(builder) {
         mainStart := builder.main_start
         main_key := builder.main_key
-        mainEnd := builder.main_end        
+        mainEnd := builder.main_end
         shortTime := builder.shortTime
         longTime := builder.longTime
         gapTime := builder.gapTime
@@ -90,13 +45,15 @@ class singleKeyHandlerMouse {
         onlyOnCombo := false
         gestures := []
         enabledDoubleClick := false
+        triggerPressType := -1
         for item in builder.extensions {
-            if (item is Ext) {
+            if (item is EM) {
                 switch item.type {
-                    case Ext.tVisual: enableVisual := item.data
-                    case Ext.tOnCombo: onlyOnCombo := item.data
-                    case Ext.tDBClick: enabledDoubleClick := item.data
-                    case Ext.tGesture: gestures.Push(item.data)
+                    case EM.tVisual: enableVisual := item.data
+                    case EM.tOnCombo: onlyOnCombo := item.data
+                    case EM.tDBClick: enabledDoubleClick := item.data
+                    case EM.tGesture: gestures.Push(item.data)
+                    case EM.tTriggerPressType: triggerPressType := item.data
                 }
             }
         }
@@ -144,7 +101,7 @@ class singleKeyHandlerMouse {
 
             if (gestures.Length > 0) {
                 this.hgsRight := HotGestures()
-                for g in gestures {                    
+                for g in gestures {
                     this.hgsRight.Register(g.pattern, g.pattern.Name, g.action)
                 }
                 this.hgsRight.Start()
@@ -155,13 +112,18 @@ class singleKeyHandlerMouse {
 
             while GetKeyState(key, "P") {
                 duration := A_TickCount - startTime
+                pressType := KeyBuilder.getPressType(duration, builder.shortTime, builder.longTime)
 
                 ; Press type ve görsel feedback'i birlikte kontrol et
                 ; this._detectPressWithVisual(duration, enableVisual, &visualShown)
 
-                duration := A_TickCount - startTime
-                pressType := KeyBuilder.getPressType(duration, builder.shortTime, builder.longTime)
-
+                ; fikir: tus basili tuttukca artan bir yapi da eklenebilir see ve zoom icin
+                if (pressType == triggerPressType) {
+                    if (main_key != "" && IsObject(main_key)) {
+                        main_key.Call(pressType) ; Tuşu bırakmadan çalıştır
+                    }
+                    break
+                }
 
                 if (_checkCombo(combos)) {
                     if (gestures.Length > 0 && IsObject(this.hgsRight)) {
@@ -237,11 +199,11 @@ class singleKeyHandlerMouse {
                     case 0:
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
-                    ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
+                        ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
                     default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
                 }
             })
-            .extend(Ext.enableDoubleClick(true))
+            .extend(EM.enableDoubleClick())
             .combo("F14", "Show History Search", () => gClipHist.showHistorySearch())
             .combo("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
             .combo("F16", "Find & Paste", () => Send("^f{Sleep 100}^a^v"))
@@ -261,38 +223,39 @@ class singleKeyHandlerMouse {
             ; .combo("WheelUp", "Volume Up", () => Send("#{NumpadAdd}"))
             ; .combo("WheelDown", "Volume Down", () => Send("#{NumpadSub}"))
             .mainEnd(() => (Sleep(100), Send("{Escape}")))
-            .extend(Ext.workOnlyOnCombo(true))
+            .extend(EM.workOnlyOnCombo(true))
             .build()
 
         this.handle(builder)
     }
 
     handleF13() {
-        builder := KeyBuilder(350, 1500, 100)
+        builder := KeyBuilder(350)
             .mainKey((pt) {
                 switch (pt) {
                     case 0: showF13menu()
                     case 1: Send("#{NumpadAdd}")
-                        ; case 2:
+                    case 2: Send("#{NumpadAdd}{Sleep 100}#{NumpadAdd}")
                     case 4: Send("#{NumpadAdd}")
                 }
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
-            .extend(Ext.visual(true))
-            .extend(Ext.enableDoubleClick(false))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}")))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A")))
+            .extend(EM.visual(true))
+            .extend(EM.enableDoubleClick())
+            .extend(EM.triggerByPressType(1))
+            .extend(EM.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
+            .extend(EM.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
+            .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
+            .extend(EM.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{End}")))
+            .extend(EM.gesture(HotGestures.Gesture("Right-diagonal-down-left:-1,1"), () => WinMinimize("A")))
             .build()
         this.handle(builder)
     }
 
 
     handleF14() {
-        builder := KeyBuilder(350, 1500, 100)
+        builder := KeyBuilder(350)
             .mainKey((pt) {
                 switch (pt) {
                     case 0: showF14menu()
@@ -303,9 +266,10 @@ class singleKeyHandlerMouse {
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
-            .extend(Ext.enableDoubleClick(false))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
-            .extend(Ext.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
+            .extend(EM.enableDoubleClick())
+            .extend(EM.triggerByPressType(1))
+            .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
+            .extend(EM.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
             .build()
         this.handle(builder)
     }
@@ -488,6 +452,55 @@ class FKeyBuilder {
         return this
     }
 }
+*/
+
+/*
+    ; duration, pressType ve görsel feedback'i birlikte yönet
+    _detectPressWithVisual(duration, enableVisual, &visualShown) {
+        pressType := -1
+
+        ; Short press (0-300ms)
+        if (duration < 300) {
+            pressType := 0
+        }
+        ; Medium press (300-1000ms) - Sarı göster
+        else if (duration < 1000) {
+            pressType := 1
+            if (enableVisual && !visualShown.medium) {
+                this._showVisual("d4ff00")  ; Sarı
+                visualShown.medium := true
+            }
+        }
+        ; Long press (1000ms+) - Turuncu göster
+        else {
+            pressType := 2
+            if (enableVisual && !visualShown.long) {
+                this._showVisual("00ff9d")  ; Turuncu
+                visualShown.long := true
+            }
+        }
+
+        return pressType
+    }
+
+    _showVisual(color) {
+        static feedbackGui := ""
+
+        ; Önceki GUI'yi temizle
+        if (feedbackGui) {
+            try feedbackGui.Destroy()
+        }
+
+        MouseGetPos(&x, &y)
+        feedbackGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+        feedbackGui.BackColor := color
+        feedbackGui.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
+        feedbackGui.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
+
+        ; 300ms sonra temizle (flicker'ı azalt)
+        SetTimer(() => (feedbackGui.Destroy(), feedbackGui := ""), -300)
+    }
+
 */
 
 /*

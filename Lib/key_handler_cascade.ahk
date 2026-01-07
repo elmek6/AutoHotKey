@@ -1,3 +1,15 @@
+class EC {    ;Enhancements for KeyBuilder
+    static tSetExitOnPress := 1
+
+    ; Factory: Tek satırda objeyi damgalayıp döner
+    static Create(type, data) => { base: EC.Prototype, type: type, data: data }
+
+    ; kısa yazmak için yardımcı metodlar
+    static setExitOnPressType(v) => EC.Create(EC.tSetExitOnPress, v)
+}
+
+;mainStart mainEnd bu yapida yok
+
 ; tus icin 3 basim türüne izin verir (süreleri ayrıca belirtilmelidir)
 ; kisa basım: 0, orta basım: 1, (uzun basım: 2 opsiyonel)
 class singleKeyHandlerCascade {
