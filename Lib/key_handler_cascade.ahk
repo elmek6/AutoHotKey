@@ -157,11 +157,11 @@ class singleKeyHandlerCascade {
         builder := KeyBuilder(350)  ; 2 level mode
             .mainKey((dt) {
                 switch (dt) {
-                    case 0: SendInput("{SC029}")
-                    case 1: gClipSlot.showSlotsSearch()
+                    case 1: SendInput("{SC029}")
+                    case 2: gClipSlot.showSlotsSearch()
                 }
             })
-            .setExitOnPressType(0)
+            .setExitOnPressType(1)
             .combo("1", "Slot 1", () => loadSave(1))
             .combo("2", "Slot 2", () => loadSave(2))
             .combo("3", "Slot 3", () => loadSave(3))
@@ -184,11 +184,11 @@ class singleKeyHandlerCascade {
         builder := KeyBuilder(350)
             .mainKey((dt) {
                 switch (dt) {
-                    case 0: SendInput("{Tab}")
-                    case 1: gClipHist.showHistorySearch()
+                    case 1: SendInput("{Tab}")
+                    case 2: gClipHist.showHistorySearch()
                 }
             })
-            .setExitOnPressType(0)
+            .setExitOnPressType(1)
             .combo("1", "History 1", () => loadSave(1))
             .combo("2", "History 2", () => loadSave(2))
             .combo("3", "History 3", () => loadSave(3))
@@ -207,15 +207,15 @@ class singleKeyHandlerCascade {
         builder := KeyBuilder(350)
             .mainKey((dt) {
                 switch (dt) {
-                    case 0:
+                    case 1:
                         local caps := !GetKeyState("CapsLock", "T")
                         ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
                         SetCapsLockState(caps)
-                    case 1:
+                    case 2:
                         gClipHist.showHistorySearch()
                 }
             })
-            .setExitOnPressType(0)
+            .setExitOnPressType(1)
             .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
             .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
             .combo("3", "History 3", () => gClipHist.loadFromHistory(3))

@@ -88,14 +88,14 @@ class KeyBuilder {
     ; Static metod olarak getPressType
     static getPressType(duration, shortTime, longTime) {
         if (longTime == "") {
-            return (duration <= shortTime) ? 0 : 1
+            return (duration <= shortTime) ? 1 : 2
         }
         if (duration <= shortTime) {
-            return 0
+            return 1 ; Short press
         } else if (duration < longTime) {
-            return 1
+            return 2 ; Medium press
         } else {
-            return 2
+            return 3 ; Long press
         }
     }
 }

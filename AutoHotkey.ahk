@@ -21,7 +21,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_150_h")
+global gState := singleState.getInstance("ver_150_b")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
@@ -39,7 +39,7 @@ global gCurrentConfig := gStateConfig.none
 
 SetWorkingDir(A_ScriptDir)
 CoordMode("Mouse", "Screen")
-TraySetIcon("arrow.ico")
+TraySetIcon("ahk.ico")
 A_TrayMenu.Add("Control menu" . gState.getVersion(), (*) => DialogPauseGui())
 class AppConst {
     static FILES_DIR := "Files\"

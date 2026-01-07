@@ -1,5 +1,12 @@
-﻿; hookkey_handler.ahk - InputHook tabanlı sırayla tuş bekleyen menü sistemi
-; Ana tuş basım süresi ölçülür, ardından tek tuş beklenir (combo değil, sequential)
+﻿class EH {    ; Enhancements for Hook KeyBuilder
+    static tPreviewAuto := 1, tExitOnPress := 2, tTimeOut := 3
+
+    static Create(type, data) => { base: EH.Prototype, type: type, data: data }
+
+    static autoPreview(v := true) => EH.Create(EH.tPreviewAuto, v)
+    static setExitOnPressType(v) => EH.Create(EH.tExitOnPress, v)
+    static setTimeOut(v := 5000) => EH.Create(EH.tTimeOut, v)
+}
 
 class singleKeyHandlerHook {
     static instance := ""
@@ -29,6 +36,20 @@ class singleKeyHandlerHook {
         longTime := builder.longTime
         gapTime := builder.gapTime
         previewCallback := builder.previewCallback
+
+        ; Extensions'ı işle
+        autoPreview := false
+        timeOut := 5000
+        for item in builder.extensions {
+            if (item is EH) {
+                switch item.type {
+                    case EH.tPreviewAuto: autoPreview := item.data
+                    case EH.tExitOnPress: exitOnPressType := item.data
+                    case EH.tTimeOut: timeOut := item.data
+                }
+            }
+        }
+
         mainKeyExecuted := false
         pressType := 0
 
@@ -41,46 +62,53 @@ class singleKeyHandlerHook {
                 if (!result) {  ; İkinci basım geldi → double click
                     KeyWait(key)
                     if (mainKey && IsObject(mainKey)) {
-                        mainKey.Call(3)  ; pressType = 3 → double click
+                        mainKey.Call(4)  ; pressType = 4 → double click
                     }
                     ; OutputDebug("Double click detected on key: " key "`n")  ; Comment: Debug için double click tespit
                     return
                 }
             }
 
+            ; Ana tuş consume et (ilk tuş basımını yutmak için)
+            KeyWait(key)
+
             startTime := A_TickCount
-            ; beepCount := (longTime != "") ? 2 : 1  ; Comment: Beep devre dışı
             mediumTriggered := false
             longTriggered := false
 
+            ; ilk tus basimini while ile al tusun basim tipini belirle
+            ; kisa basim, orta basim, uzun basim ve cift basim icin farkli fonksiyonlar calistir
+            ; menü acilinca while döngüsü bitip hook devreye girer
             while (GetKeyState(key, "P")) {
                 duration := A_TickCount - startTime
 
-                ; Nullable long mod: short geçince orta çalışsın
+                ; Nullable long mod: short geçince orta çalışsın, menü açılsın
                 if (longTime == "" && duration >= shortTime && !mainKeyExecuted) {
                     if (mainKey && IsObject(mainKey)) {
                         mainKey.Call(1)
                         mainKeyExecuted := true
                     }
+
+                    ; Kısa basımda çık modundaysa return
                     if (exitOnPressType == 1) {
                         return
                     }
-                    break
+                    break  ; Menüye geç
                 }
 
-                ; Beep feedback
+                ; Medium beep (3-level mode)
                 if (longTime != "" && duration >= shortTime && !mediumTriggered) {
-                    ;SoundBeep(800, 50)
-                    beepCount--
+                    SoundBeep(800, 50)
                     mediumTriggered := true
                 }
+
+                ; Long beep
                 if (longTime != "" && duration >= longTime && !longTriggered) {
-                    ;SoundBeep(800, 50)
-                    beepCount--
+                    SoundBeep(600, 50)
                     longTriggered := true
                 }
 
-                Sleep(40)  ; While döngüsünde Sleep güncellendi
+                Sleep(40)
             }
 
             ; Ana tuş bırakıldı → pressType hesapla ve mainKey çalıştır
@@ -92,72 +120,73 @@ class singleKeyHandlerHook {
                     mainKey.Call(pressType)
                 }
 
+                ; Exit threshold kontrolü
                 if (pressType == exitOnPressType) {
                     return
                 }
             }
 
-            ; Preview göster (ToolTip ile menü gibi)
-            gState.setBusy(2)
+            ; Eğer combo yoksa menü açmaya gerek yok
+            if (combos.Length == 0) {
+                return
+            }
+
+            ; Preview göster (busy 2 kaldırıldı - hook zaten consume ediyor)
             previewText := ""
-            if (IsObject(previewCallback)) {
+
+            ; Otomatik preview oluştur
+            if (autoPreview) {
+                previewText := "━━━ MENÜ ━━━`n`n"
+                for p in combos {
+                    previewText .= p.key ": " p.desc "`n"
+                }
+                previewText .= "`nESC: İptal"
+            }
+            ; Özel preview callback varsa onu kullan
+            else if (IsObject(previewCallback)) {
                 finalPressType := mainKeyExecuted ? 1 : pressType
                 previewList := previewCallback.Call(builder, finalPressType)
                 if (previewList && previewList.Length > 0) {
                     for item in previewList {
                         previewText .= item "`n"
                     }
-                    ToolTip(previewText, , , 1)  ; Stil 1 ile sabit konumda gösterebilirsin
                 }
-            } else if (combos.Length > 0) {
-                ; Default preview: tuş + açıklama
-                for p in combos {
-                    previewText .= p.key ": " p.desc "`n"
-                }
-                ToolTip(previewText)
+            }
+
+            ; Preview göster
+            if (previewText != "") {
+                ToolTip(previewText, , , 1)
             }
 
             ; InputHook ile tek tuş bekle
-            ih := InputHook("V")  ; Visible off, sadece tuş yakala
-            ih.VisibleNonText := false
-            ih.KeyOpt("{All}", "N")  ; Notify (EndKey ile yakala)
-
-            ; Sadece tanımlı tuşları kabul et + Esc
-            allowedKeys := ["Escape"]
-            for p in combos {
-                allowedKeys.Push(p.key)
-            }
-
-            ; ✅ FIX: Her tuşu ayrı ayrı EndKey yap
-            for k in allowedKeys {
-                ih.KeyOpt("{" k "}", "E")
-            }
-
+            ih := InputHook("L1 T" (timeOut / 1000), "{Esc}")
+            ih.KeyOpt("{All}", "E")  ; Tüm tuşları yakalayabilmek için
             ih.Start()
             ih.Wait()
+            key := ih.Input != "" ? ih.Input : ih.EndKey
 
-            ToolTip("")  ; Her durumda kapat
+            ToolTip()  ; Preview'ı kapat
 
-            if (ih.EndKey = "Escape") {
+            ; Timeout kontrolü
+            if (ih.EndReason == "Timeout") {
                 return
             }
 
-            ; Ana tuş tekrar basıldıysa iptal
-            if (ih.EndKey = key) {
+            ; ESC kontrolü
+            if (key == "Escape") {
                 return
             }
 
             ; Eşleşen action'ı çalıştır
             for p in combos {
-                if (p.key = ih.EndKey) {
-                    finalPressType := mainKeyExecuted ? 1 : pressType
-                    p.action.Call(finalPressType)
+                if (p.key = key) {
+                    p.action.Call()
                     return
                 }
             }
 
-            ; Bilinmeyen tuş → uyarı beep - Comment: Beep devre dışı
-            ; SoundBeep(1000, 100)
+            ; Tanımsız tuş basıldı
+            SoundBeep(1000, 100)
 
         } catch as err {
             gErrHandler.handleError("HookKeyHandler hata: " key, err)
@@ -167,17 +196,16 @@ class singleKeyHandlerHook {
         }
     }
 
-    ; Örnek kullanım: hookCommands tarzı bir menü (F14 gibi bir tuşla açılan komut merkezi)
+    ; Örnek: hookCommands tarzı bir menü (backtick ile açılan komut merkezi)
     sysCommands() {
-        builder := KeyBuilder()
-            .setPressType(350)  ; sadece kısa/uzun (2 seviye)
+        builder := KeyBuilder(350)  ; 2-level mode
             .mainKey((dt) {
                 switch (dt) {
-                    ; case 0: SendInput("{Tab}")
-                    case 1: SendInput("´")
+                    case 1: SendInput("´")  ; Kısa basım: normal karakter
+                        ; case 2: ; Uzun basım: menüyü aç (otomatik)
                 }
             })
-            .setExitOnPressType(0)  ; kısa basımda hook beklemesin
+            .setExitOnPressType(2)  ; Kısa basımda hook beklemesin
             .combo("1", "Reload script", () => reloadScript())
             .combo("2", "Show stats", () => getStatsArray(true))
             .combo("3", "Profile manager", () => gAppShorts.showManagerGui())
@@ -189,50 +217,85 @@ class singleKeyHandlerHook {
             .combo("9", "Pause script", () => DialogPauseGui())
             .combo("0", "Exit script", () => ExitApp())
             .combo("r", "Repository GUI", () => gRepo.showGui())
-            .combo("a", "Show TrayTip", () => TrayTip("Başlık", "Mesaj içeriği", 1))
-            .combo("q", "quit", () => Sleep(10))
-            .setPreview((b, pt) => (
-                pt = 0 ? [] : [
-                    "🔥 HOOK KOMUT MERKEZİ 🔥",
-                    "",
-                    "1: Reload",
-                    "2: Stats",
-                    "3: Profile manager",
-                    "4: Key history",
-                    "5: Memory slots",
-                    "6: Macro recorder",
-                    "7: F13 menü",
-                    "8: F14 menü",
-                    "9: Pause script",
-                    "",
-                    "ESC: İptal"
-                ]
-            ))
+            .combo("a", "TrayTip test", () => TrayTip("Başlık", "Mesaj içeriği", 1))
+            .extend(EH.autoPreview(true))  ; Otomatik preview oluştur
+            .extend(EH.setTimeOut(30000))  ; 30 saniye timeout
             .build()
+
         this.handle(builder)
     }
 
-    ; Başka bir örnek: Uygulama kısayolları için hook (CapsLock + sayı gibi)
+    ; Örnek 2: Uygulama kısayolları (CapsLock gibi bir tuşla)
     hookAppShortcuts() {
         builder := KeyBuilder(400)
-            .mainKey((pt) => (
-                pt = 0 ? SetCapsLockState(!GetKeyState("CapsLock", "T"))
-                : 0
-            ))
-            .setExitOnPressType(0)
+            .mainKey((pt) {
+                if (pt == 1) {  ; Kısa basım: CapsLock toggle
+                    caps := !GetKeyState("CapsLock", "T")
+                    SetCapsLockState(caps)
+                    ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
+                }
+                ; pt == 2: Uzun basım → menü aç (otomatik)
+            })
+            .setExitOnPressType(1)
             .combo("1", "VS Code", () => Run("code"))
             .combo("2", "Chrome", () => Run("chrome"))
             .combo("3", "Explorer", () => Run("explorer"))
-            .setPreview((b, pt) => (
-                pt = 0 ? [] : [
-                    "🚀 Uygulama Kısayolları",
-                    "1: Visual Studio Code",
-                    "2: Google Chrome",
-                    "3: Dosya Gezgini"
-                ]
-            ))
+            .combo("4", "Terminal", () => Run("wt.exe"))
+            .combo("5", "Notepad", () => Run("notepad"))
+            .extend(EH.autoPreview(true))
             .build()
 
         this.handle(builder, "CapsLock")
+    }
+
+    ; Örnek 3
+    hookTabMenu() {
+        builder := KeyBuilder(350)
+            .mainKey((dt) {
+                switch (dt) {
+                    case 1: SendInput("{Tab}")
+                        ; case 2: menü aç (otomatik)
+                }
+            })
+            .setExitOnPressType(1)
+            .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
+            .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
+            .combo("3", "History 3", () => gClipHist.loadFromHistory(3))
+            .combo("4", "History 4", () => gClipHist.loadFromHistory(4))
+            .combo("5", "History 5", () => gClipHist.loadFromHistory(5))
+            .combo("6", "History 6", () => gClipHist.loadFromHistory(6))
+            .combo("7", "History 7", () => gClipHist.loadFromHistory(7))
+            .combo("8", "History 8", () => gClipHist.loadFromHistory(8))
+            .combo("9", "History 9", () => gClipHist.loadFromHistory(9))
+            .combo("h", "Show history GUI", () => gClipHist.showHistorySearch())
+            .extend(EH.autoPreview(true))
+            .build()
+
+        this.handle(builder, "Tab")
+    }
+
+    hookCaretSlots() {
+        builder := KeyBuilder(350)
+            .mainKey((dt) {
+                if (dt == 1) {
+                    SendInput("^")
+                }
+            })
+            .setExitOnPressType(1)
+            .combo("1", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
+            .combo("2", "Slot 2", () => gClipSlot.loadFromSlot("", 2))
+            .combo("3", "Slot 3", () => gClipSlot.loadFromSlot("", 3))
+            .combo("4", "Slot 4", () => gClipSlot.loadFromSlot("", 4))
+            .combo("5", "Slot 5", () => gClipSlot.loadFromSlot("", 5))
+            .combo("6", "Slot 6", () => gClipSlot.loadFromSlot("", 6))
+            .combo("7", "Slot 7", () => gClipSlot.loadFromSlot("", 7))
+            .combo("8", "Slot 8", () => gClipSlot.loadFromSlot("", 8))
+            .combo("9", "Slot 9", () => gClipSlot.loadFromSlot("", 9))
+            .combo("0", "Slot 10", () => gClipSlot.loadFromSlot("", 10))
+            .combo("s", "Slot GUI", () => gClipSlot.showSlotsSearch())
+            .extend(EH.autoPreview(true))
+            .build()
+
+        this.handle(builder, "^")
     }
 }

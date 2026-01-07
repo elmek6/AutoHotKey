@@ -45,7 +45,7 @@ class singleKeyHandlerMouse {
         onlyOnCombo := false
         gestures := []
         enabledDoubleClick := false
-        triggerPressType := -1
+        triggerPressType := 0
         for item in builder.extensions {
             if (item is EM) {
                 switch item.type {
@@ -152,10 +152,11 @@ class singleKeyHandlerMouse {
 
             if (gState.getBusy() == 1 && main_key != "" && IsObject(main_key)) {
                 ; Final press type belirleme
-                pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
+                ; pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
+                pressType := KeyBuilder.getPressType(totalDuration, shortTime, longTime)
 
                 ; ² Double-click kontrolü (sadece short press için)
-                if (pressType == 0 && enabledDoubleClick) {
+                if (pressType == 1 && enabledDoubleClick) {
                     result := KeyWait(key, "D T0.1")
                     if (result) {
                         KeyWait(key)
@@ -196,7 +197,7 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0:
+                    case 1:
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
                         ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
@@ -233,9 +234,9 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder(350)
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: showF13menu()
-                    case 1: Send("#{NumpadAdd}")
-                    case 2: Send("#{NumpadAdd}{Sleep 100}#{NumpadAdd}")
+                    case 1: showF13menu()
+                    case 2: Send("#{NumpadAdd}")
+                    case 3: Send("#{NumpadAdd}{Sleep 100}#{NumpadAdd}")
                     case 4: Send("#{NumpadAdd}")
                 }
             })
@@ -243,7 +244,7 @@ class singleKeyHandlerMouse {
             .combo("F20", "Copy", () => Send("^c"))
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
-            .extend(EM.triggerByPressType(1))
+            .extend(EM.triggerByPressType(2))
             .extend(EM.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
@@ -258,16 +259,16 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder(350)
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: showF14menu()
-                    case 1: Send("#{NumpadSub}")
-                    case 2: Send("#{NumpadSub}{Sleep 100}#{NumpadSub}")
+                    case 1: showF14menu()
+                    case 2: Send("#{NumpadSub}")
+                    case 3: Send("#{NumpadSub}{Sleep 100}#{NumpadSub}")
                     case 4: Send("#{NumpadSub}")
                 }
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
             .extend(EM.enableDoubleClick())
-            .extend(EM.triggerByPressType(1))
+            .extend(EM.triggerByPressType(2))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
             .build()
@@ -278,8 +279,8 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: Send("^y")
-                    case 1: Send("{Escape}")
+                    case 1: Send("^y")
+                    case 2: Send("{Escape}")
                 }
             })
             .combo("F13", "Delete", () => Send("{Delete}"))
@@ -294,8 +295,8 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: Send("^z")
-                    case 1: Send("{Enter}")
+                    case 1: Send("^z")
+                    case 2: Send("{Enter}")
                 }
             })
             .combo("F13", "Send F13", () => Send("F13 bos"))
@@ -308,15 +309,14 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: Send("!{Right}")
-                    case 1: Send("{Home}")
+                    case 1: Send("!{Right}")
+                    case 2: Send("{Home}")
                 }
             })
             .combo("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
             .combo("F18", "Delete", () => Send("{Delete}"))
             .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
             .combo("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
-            .extend((b) => b.enableVisual := true)
             .build()
 
         this.handle(builder)
@@ -327,15 +327,14 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: Send("!{Left}")
-                    case 1: Send("{End}")
+                    case 1: Send("!{Left}")
+                    case 2: Send("{End}")
                 }
             })
             .combo("F17", "Cut", () => Send("^x"))
             .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
             .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
-            ; .extend((b) => b.enableVisual := true)
             .build()
         this.handle(builder)
     }
@@ -344,13 +343,9 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 0:
-                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot) {
-                            gMemSlots.smartPaste()
-                        } else {
-                            Send("^v")
-                        }
-                    case 1: Send("^a^v")
+                    case 1: gState.getClipHandler() == gState.clipStatusEnum.memSlot
+                        ? gMemSlots.smartPaste() : Send("^v")
+                    case 2: Send("^a^v")
                 }
             })
             .mainEnd(() => ShowTip(A_Clipboard, TipType.Paste))
@@ -359,7 +354,6 @@ class singleKeyHandlerMouse {
             .combo("F20", "Select All & Paste", () => Send("^a^v"))
             .combo("LButton", "Click & Paste", () => (Click("Left", 1), Send("^v")))
             .combo("MButton", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
-            .extend((b) => (b.enableVisual := true))
             .build()
 
         this.handle(builder)
@@ -370,9 +364,9 @@ class singleKeyHandlerMouse {
             .setPressType(300, 800)
             .mainKey((pt) {
                 switch (pt) {
-                    case 0: Send("^c")
-                    case 1: Send("^x")
-                    case 2: gMemSlots.start()
+                    case 1: Send("^c")
+                    case 2: Send("^x")
+                    case 3: gMemSlots.start()
                 }
             })
             .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
@@ -382,7 +376,6 @@ class singleKeyHandlerMouse {
             .combo("F18", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Click & Copy", () => (Click("Left", 1), Send("^c")))
             .combo("MButton", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-            .extend((b) => b.enableVisual := true)
             .build()
 
         this.handle(builder)
