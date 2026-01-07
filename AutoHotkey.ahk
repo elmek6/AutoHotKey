@@ -21,7 +21,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_150_b")
+global gState := singleState.getInstance("ver_151_h")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize

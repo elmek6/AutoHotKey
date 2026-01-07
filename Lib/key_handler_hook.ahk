@@ -24,23 +24,25 @@ class singleKeyHandlerHook {
         }
     }
 
-    handle(builder, key := A_ThisHotkey) {
+    handle(b, key := A_ThisHotkey) {
         if (gState.getBusy() > 0) {
             return
         }
 
-        mainKey := builder.main_key
-        exitOnPressType := builder.exitOnPressType
-        combos := builder.combos
-        shortTime := builder.shortTime
-        longTime := builder.longTime
-        gapTime := builder.gapTime
-        previewCallback := builder.previewCallback
+        /*
+                mainKey := b.main_key
+                exitOnPressType := b.exitOnPressType
+                combos := b.combos
+                shortTime := b.shortTime
+                longTime := b.longTime
+                gapTime := b.gapTime
+                previewCallback := b.previewCallback
+        */
 
-        ; Extensions'ı işle
+        exitOnPressType := b.exitOnPressType ; y adisarcan gelsin ya burdan
         autoPreview := false
         timeOut := 5000
-        for item in builder.extensions {
+        for item in b.extensions {
             if (item is EH) {
                 switch item.type {
                     case EH.tPreviewAuto: autoPreview := item.data
@@ -57,12 +59,12 @@ class singleKeyHandlerHook {
             gState.setBusy(1)
 
             ; Double click kontrolü (gap varsa)
-            if (gapTime != "") {
-                result := KeyWait(key, "D T" (gapTime / 1000))
+            if (b.gapTime != "") {
+                result := KeyWait(key, "D T" (b.gapTime / 1000))
                 if (!result) {  ; İkinci basım geldi → double click
                     KeyWait(key)
-                    if (mainKey && IsObject(mainKey)) {
-                        mainKey.Call(4)  ; pressType = 4 → double click
+                    if (b.main_key && IsObject(b.main_key)) {
+                        b.main_key.Call(4)  ; pressType = 4 → double click
                     }
                     ; OutputDebug("Double click detected on key: " key "`n")  ; Comment: Debug için double click tespit
                     return
@@ -83,9 +85,9 @@ class singleKeyHandlerHook {
                 duration := A_TickCount - startTime
 
                 ; Nullable long mod: short geçince orta çalışsın, menü açılsın
-                if (longTime == "" && duration >= shortTime && !mainKeyExecuted) {
-                    if (mainKey && IsObject(mainKey)) {
-                        mainKey.Call(1)
+                if (b.longTime == "" && duration >= b.shortTime && !mainKeyExecuted) {
+                    if (b.main_key && IsObject(b.main_key)) {
+                        b.main_key.Call(1)
                         mainKeyExecuted := true
                     }
 
@@ -97,13 +99,13 @@ class singleKeyHandlerHook {
                 }
 
                 ; Medium beep (3-level mode)
-                if (longTime != "" && duration >= shortTime && !mediumTriggered) {
+                if (b.longTime != "" && duration >= b.shortTime && !mediumTriggered) {
                     SoundBeep(800, 50)
                     mediumTriggered := true
                 }
 
                 ; Long beep
-                if (longTime != "" && duration >= longTime && !longTriggered) {
+                if (b.longTime != "" && duration >= b.longTime && !longTriggered) {
                     SoundBeep(600, 50)
                     longTriggered := true
                 }
@@ -114,10 +116,10 @@ class singleKeyHandlerHook {
             ; Ana tuş bırakıldı → pressType hesapla ve mainKey çalıştır
             if (!mainKeyExecuted) {
                 holdTime := A_TickCount - startTime
-                pressType := KeyBuilder.getPressType(holdTime, shortTime, longTime)
+                pressType := KeyBuilder.getPressType(holdTime, b.shortTime, b.longTime)
 
-                if (mainKey && IsObject(mainKey)) {
-                    mainKey.Call(pressType)
+                if (b.main_key && IsObject(b.main_key)) {
+                    b.main_key.Call(pressType)
                 }
 
                 ; Exit threshold kontrolü
@@ -127,7 +129,7 @@ class singleKeyHandlerHook {
             }
 
             ; Eğer combo yoksa menü açmaya gerek yok
-            if (combos.Length == 0) {
+            if (b.combos.Length == 0) {
                 return
             }
 
@@ -137,15 +139,15 @@ class singleKeyHandlerHook {
             ; Otomatik preview oluştur
             if (autoPreview) {
                 previewText := "━━━ MENÜ ━━━`n`n"
-                for p in combos {
+                for p in b.combos {
                     previewText .= p.key ": " p.desc "`n"
                 }
                 previewText .= "`nESC: İptal"
             }
             ; Özel preview callback varsa onu kullan
-            else if (IsObject(previewCallback)) {
+            else if (IsObject(b.previewCallback)) {
                 finalPressType := mainKeyExecuted ? 1 : pressType
-                previewList := previewCallback.Call(builder, finalPressType)
+                previewList := b.previewCallback.Call(b, finalPressType)
                 if (previewList && previewList.Length > 0) {
                     for item in previewList {
                         previewText .= item "`n"
@@ -178,7 +180,7 @@ class singleKeyHandlerHook {
             }
 
             ; Eşleşen action'ı çalıştır
-            for p in combos {
+            for p in b.combos {
                 if (p.key = key) {
                     p.action.Call()
                     return

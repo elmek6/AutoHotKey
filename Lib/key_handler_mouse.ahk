@@ -1,7 +1,7 @@
 #Include <HotGestures>
 
 class EM {    ;Enhancements for KeyBuilder
-    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5
+    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6
 
     ; Factory: Tek satırda objeyi damgalayıp döner
     static Create(type, data) => { base: EM.Prototype, type: type, data: data }
@@ -11,7 +11,8 @@ class EM {    ;Enhancements for KeyBuilder
     static gesture(p, a) => EM.Create(EM.tGesture, { pattern: p, action: a })
     static enableDoubleClick(v := true) => EM.Create(EM.tDBClick, v)
     static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
-    static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v) ; basili tutma süresine göre hemen tetiklensin
+    static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v)
+    static repeatKey(interval := 500) => EM.Create(EM.tRepeatKey, interval)
 }
 
 class singleKeyHandlerMouse {
@@ -26,27 +27,32 @@ class singleKeyHandlerMouse {
 
     __New() {
         if (singleKeyHandlerMouse.instance) {
-            throw Error("HotkeyHandler zaten oluşturulmuş! getInstance kullan.")
+            throw Error("singleKeyHandlerMouse zaten oluşturulmuş! getInstance kullan.")
         }
         this.hgsRight := ""
     }
 
-    handle(builder) {
-        mainStart := builder.main_start
-        main_key := builder.main_key
-        mainEnd := builder.main_end
-        shortTime := builder.shortTime
-        longTime := builder.longTime
-        gapTime := builder.gapTime
-        combos := builder.combos
-        previewList := builder.tips
+    handle(b) { ; builderlerin hepsi b. ile baslıyor
+        /*
+            builder yapisini kullanmak daha mantikli
+            mainStart := builder.main_start
+            main_key := builder.main_key
+            mainEnd := builder.main_end
+            shortTime := builder.shortTime
+            longTime := builder.longTime
+            gapTime := builder.gapTime
+            combos := builder.combos
+            previewList := builder.tips
+        */
 
         enableVisual := false
         onlyOnCombo := false
         gestures := []
         enabledDoubleClick := false
         triggerPressType := 0
-        for item in builder.extensions {
+        repeatInterval := 0
+
+        for item in b.extensions {
             if (item is EM) {
                 switch item.type {
                     case EM.tVisual: enableVisual := item.data
@@ -54,6 +60,7 @@ class singleKeyHandlerMouse {
                     case EM.tDBClick: enabledDoubleClick := item.data
                     case EM.tGesture: gestures.Push(item.data)
                     case EM.tTriggerPressType: triggerPressType := item.data
+                    case EM.tRepeatKey: repeatInterval := item.data
                 }
             }
         }
@@ -88,15 +95,15 @@ class singleKeyHandlerMouse {
 
             ; simdilik kapattim calisiyor mouse icin basilan tuslarin
             ; combolarini liste olarak veriyor
-            ; if (previewList.Length > 0) {
+            ; if (builder.tips.Length > 0) {
             ;     text := ""
-            ;     for i, item in previewList
+            ;     for i, item in builder.tips
             ;         text .= item "`n"
             ;     ToolTip(text)
             ; }
 
-            if (mainStart != "" && IsObject(mainStart)) {
-                mainStart.Call()
+            if (b.main_start != "" && IsObject(b.main_start)) {
+                b.main_start.Call()
             }
 
             if (gestures.Length > 0) {
@@ -108,24 +115,34 @@ class singleKeyHandlerMouse {
             }
 
             startTime := A_TickCount
+            lastRepeatTime := 0
             visualShown := { medium: false, long: false }
 
             while GetKeyState(key, "P") {
                 duration := A_TickCount - startTime
-                pressType := KeyBuilder.getPressType(duration, builder.shortTime, builder.longTime)
+                pressType := KeyBuilder.getPressType(duration, b.shortTime, b.longTime)
 
-                ; Press type ve görsel feedback'i birlikte kontrol et
-                ; this._detectPressWithVisual(duration, enableVisual, &visualShown)
+                ; Repeat kontrolü
+                if (repeatInterval > 0 && duration > repeatInterval) {
+                    timeSinceLastRepeat := A_TickCount - lastRepeatTime
+                    ; İlk repeat veya interval geçtiyse
+                    if (lastRepeatTime == 0 || timeSinceLastRepeat >= repeatInterval) {
+                        if (b.main_key != "" && IsObject(b.main_key)) {
+                            b.main_key.Call(pressType)
+                        }
+                        lastRepeatTime := A_TickCount
+                    }
+                }
 
-                ; fikir: tus basili tuttukca artan bir yapi da eklenebilir see ve zoom icin
+                ; Trigger kontrolü
                 if (pressType == triggerPressType) {
-                    if (main_key != "" && IsObject(main_key)) {
-                        main_key.Call(pressType) ; Tuşu bırakmadan çalıştır
+                    if (b.main_key != "" && IsObject(b.main_key)) {
+                        b.main_key.Call(pressType) ; Tuşu bırakmadan çalıştır
                     }
                     break
                 }
 
-                if (_checkCombo(combos)) {
+                if (_checkCombo(b.combos)) {
                     if (gestures.Length > 0 && IsObject(this.hgsRight)) {
                         this.hgsRight.Stop()
                     }
@@ -150,12 +167,11 @@ class singleKeyHandlerMouse {
                 }
             }
 
-            if (gState.getBusy() == 1 && main_key != "" && IsObject(main_key)) {
-                ; Final press type belirleme
-                ; pressType := (totalDuration < 300) ? 0 : (totalDuration < 1000) ? 1 : 2
-                pressType := KeyBuilder.getPressType(totalDuration, shortTime, longTime)
+            ; Repeat yoksa veya ilk basımsa normal çalışsın
+            if (gState.getBusy() == 1 && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
+                pressType := KeyBuilder.getPressType(totalDuration, b.shortTime, b.longTime)
 
-                ; ² Double-click kontrolü (sadece short press için)
+                ;Double-click kontrolü (sadece short press için)
                 if (pressType == 1 && enabledDoubleClick) {
                     result := KeyWait(key, "D T0.1")
                     if (result) {
@@ -164,17 +180,18 @@ class singleKeyHandlerMouse {
                     }
                 }
 
-                main_key.Call(pressType)
+                b.main_key.Call(pressType)
             }
 
-            ; ² handleRButton extend
-            if (mainEnd != "" && IsObject(mainEnd) && onlyOnCombo == 1 && gState.getBusy() == 2) {
-                mainEnd.Call()
+            ; only on combo -> handleRButton icin sag tusu iptal etmeye yariyor
+            if (onlyOnCombo == 1 && b.main_end != "" && IsObject(b.main_end) && gState.getBusy() == 2) {
+                b.main_end.Call()
             }
+
         } catch Error as err {
             gErrHandler.handleError(err.Message " " key, err)
         } finally {
-            if (previewList.Length > 0) {
+            if (b.tips.Length > 0) {
                 ToolTip()
             }
             if (gestures.Length > 0 && IsObject(this.hgsRight)) {
@@ -235,8 +252,7 @@ class singleKeyHandlerMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF13menu()
-                    case 2: Send("#{NumpadAdd}")
-                    case 3: Send("#{NumpadAdd}{Sleep 100}#{NumpadAdd}")
+                    case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
                     case 4: Send("#{NumpadAdd}")
                 }
             })
@@ -244,7 +260,7 @@ class singleKeyHandlerMouse {
             .combo("F20", "Copy", () => Send("^c"))
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
-            .extend(EM.triggerByPressType(2))
+            .extend(EM.repeatKey(500))
             .extend(EM.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
@@ -260,15 +276,14 @@ class singleKeyHandlerMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF14menu()
-                    case 2: Send("#{NumpadSub}")
-                    case 3: Send("#{NumpadSub}{Sleep 100}#{NumpadSub}")
+                    case 2: Send("#{NumpadSub}")  ; Repeat ile çalışacak
                     case 4: Send("#{NumpadSub}")
                 }
             })
             .combo("F19", "Paste", () => Send("^v"))
             .combo("F20", "Copy", () => Send("^c"))
             .extend(EM.enableDoubleClick())
-            .extend(EM.triggerByPressType(2))
+            .extend(EM.repeatKey(500))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
             .build()

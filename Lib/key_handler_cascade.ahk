@@ -42,23 +42,24 @@ class singleKeyHandlerCascade {
     }
 
 
-    handle(builder, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
+    handle(b, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
         if (gState.getBusy() > 0) {
             return
         }
-
-        mainKey := builder.main_key
-        exitOnPressType := builder.exitOnPressType
-        combos := builder.combos
-        previewList := builder.tips
-        shortTime := builder.shortTime
-        longTime := builder.longTime
+        /*
+                mainKey := b.main_key
+                exitOnPressType := b.exitOnPressType
+                combos := b.combos
+                previewList := b.tips
+                shortTime := b.shortTime
+                longTime := b.longTime
+        */
         mainKeyExecuted := false
 
         try {
             gState.setBusy(1)
             startTime := A_TickCount
-            beepCount := (longTime != "") ? 2 : 1
+            beepCount := (b.longTime != "") ? 2 : 1
             mediumTriggered := false
             longTriggered := false
 
@@ -80,7 +81,7 @@ class singleKeyHandlerCascade {
                 ; }
 
                 ; Medium beep (normal 3-level mode)
-                if (longTime != "" && duration >= shortTime && beepCount >= 1 && !mediumTriggered) {
+                if (b.longTime != "" && duration >= b.shortTime && beepCount >= 1 && !mediumTriggered) {
                     SoundBeep(800, 50)
                     beepCount--
                     mediumTriggered := true
@@ -88,7 +89,7 @@ class singleKeyHandlerCascade {
                 }
 
                 ; Long beep (sadece longTime varsa)
-                if (longTime != "" && duration >= longTime && beepCount >= 1 && !longTriggered) {
+                if (b.longTime != "" && duration >= b.longTime && beepCount >= 1 && !longTriggered) {
                     SoundBeep(800, 50)
                     beepCount--
                     longTriggered := true
@@ -99,7 +100,7 @@ class singleKeyHandlerCascade {
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
                 OutputDebug("set busy 2`n")
                 gState.setBusy(2)
-                if (this._checkCombo(combos)) {
+                if (this._checkCombo(b.combos)) {
                     return
                 }
                 Sleep(30)
@@ -108,15 +109,15 @@ class singleKeyHandlerCascade {
             ; NORMAL MODE veya SHORT PRESS
             if (!mainKeyExecuted) {
                 mainHoldTime := A_TickCount - startTime
-                mainPressType := KeyBuilder.getPressType(mainHoldTime, shortTime, longTime)
+                mainPressType := KeyBuilder.getPressType(mainHoldTime, b.shortTime, b.longTime)
 
                 ; Ana tuş aksiyonu
-                if (mainKey != "" && IsObject(mainKey)) {
-                    mainKey.Call(mainPressType)
+                if (b.main_key != "" && IsObject(b.main_key)) {
+                    b.main_key.Call(mainPressType)
                 }
 
                 ; Exit threshold kontrolü
-                if (mainPressType == exitOnPressType) {
+                if (mainPressType == b.exitOnPressType) {
                     return
                 }
             }
@@ -124,9 +125,9 @@ class singleKeyHandlerCascade {
             ; Preview göster
             gState.setBusy(1)
             previewText := ""
-            if (IsObject(builder.previewCallback)) {
-                currentPressType := mainKeyExecuted ? 1 : KeyBuilder.getPressType(A_TickCount - startTime, shortTime, longTime)
-                previewList := builder.previewCallback.Call(this, currentPressType)
+            if (IsObject(b.previewCallback)) {
+                currentPressType := mainKeyExecuted ? 1 : KeyBuilder.getPressType(A_TickCount - startTime, b.shortTime, b.longTime)
+                previewList := b.previewCallback.Call(this, currentPressType)
                 if (previewList.Length > 0) {
                     for item in previewList {
                         previewText .= item "`n"
