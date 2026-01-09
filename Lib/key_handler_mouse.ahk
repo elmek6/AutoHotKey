@@ -206,6 +206,7 @@ class singleKeyHandlerMouse {
             .combo("F14", "LB + F14", () => Send("L F14"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Enter", () => Send("{Enter}"))
+            .combo("F15", "###", () => (gClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}^v{Enter}"))
             .build()
         this.handle(builder)
     }
@@ -346,6 +347,8 @@ class singleKeyHandlerMouse {
                     case 2: Send("{End}")
                 }
             })
+            ; .combo("WheelUp", "Volume Up", () => Send("{Volume_Up}"))
+            ; .combo("WheelDown", "Volume Down", () => Send("{Volume_Down}"))
             .combo("F17", "Cut", () => Send("^x"))
             .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
