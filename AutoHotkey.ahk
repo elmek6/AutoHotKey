@@ -21,7 +21,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_151_h")
+global gState := singleState.getInstance("ver_150_b")
 global gKeyCounts := singleKeyCounter.getInstance()
 global gErrHandler := singleErrorHandler.getInstance()
 global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
@@ -147,12 +147,6 @@ LButton:: {
 SC132:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 SC16C:: gRecorder.playKeyAction(2, 1)
 #HotIf
-
-; F18 basılıyken tekerlek → Volume kontrolü
-; #HotIf GetKeyState("F18", "P")  ; F18 fiziksel basılıysa aktif olsun
-; WheelUp:: Send("{Volume_Up}")
-; WheelDown:: Send("{Volume_Down}")
-; #HotIf
 
 ;Fare tuslari haritasi
 F13:: gKeyHandler.handleF13()

@@ -212,6 +212,17 @@ class singleKeyHandlerMouse {
     }
 
     handleMButton() {
+        smartPaste(no) {
+            ; eger memSlot aciksa F20 1 numarali gözü paste yapacak F19 2 ...
+            ; normalde F19 paste bu sorunua cözüm lazim
+            if (gState.getClipHandler() == gState.clipStatusEnum.memSlot) {
+                ; Memory Slots modundaysa direkt slot numarasından paste yap
+                gMemSlots.pasteFromSlot(no)
+            } else {
+                ; Normal modda ClipSlot'tan yükle
+                gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, no)
+            }
+        }
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
@@ -219,17 +230,21 @@ class singleKeyHandlerMouse {
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
                         ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
+                    case 2:
+                        gMemSlots.start()
+                    case 4:
+                        gClipHist.showHistorySearch()
                     default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
                 }
             })
             .extend(EM.enableDoubleClick())
             .combo("F14", "Show History Search", () => gClipHist.showHistorySearch())
-            .combo("F15", "Delete Word", () => Send("{RControl down}{vkBF}{RControl up}"))
-            .combo("F16", "Find & Paste", () => Send("^f{Sleep 100}^a^v"))
-            .combo("F17", "Send F17", () => Send("F17"))
-            .combo("F18", "Send F18", () => Send("F18"))
-            .combo("F19", "Paste & Enter", () => Send("^v{Enter}"))
-            .combo("F20", "Enter", () => Send("{Enter}"))
+            .combo("F15", "Smart Paste 6", () => smartPaste(6))
+            .combo("F16", "Smart Paste 5", () => smartPaste(5))
+            .combo("F17", "Smart Paste 4", () => smartPaste(4))
+            .combo("F18", "Smart Paste 3", () => smartPaste(3))
+            .combo("F19", "Smart Paste 2", () => smartPaste(2))
+            .combo("F20", "Smart Paste 1", () => smartPaste(1))
             .build()
 
         this.handle(builder)
@@ -254,11 +269,15 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF13menu()
                     case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
-                    case 4: Send("#{NumpadAdd}")
+                    case 4: gClipSlot.showSlotsSearch() ; default group olarak ayrilabilir
                 }
             })
-            .combo("F19", "Paste", () => Send("^v"))
-            .combo("F20", "Copy", () => Send("^c"))
+            .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 6))
+            .combo("F16", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 5))
+            .combo("F17", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 4))
+            .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 3))
+            .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 2))
+            .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 1))
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(500))
@@ -278,11 +297,16 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF14menu()
                     case 2: Send("#{NumpadSub}")  ; Repeat ile çalışacak
-                    case 4: Send("#{NumpadSub}")
+                    case 4: gClipSlot.showSlotsSearch() ; default group olarak ayrilabilir
                 }
             })
-            .combo("F19", "Paste", () => Send("^v"))
-            .combo("F20", "Copy", () => Send("^c"))
+            .combo("LButton", "test", () => OutputDebug("test"))
+            .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot("", 6))
+            .combo("F16", "Slot 1", () => gClipSlot.loadFromSlot("", 5))
+            .combo("F17", "Slot 1", () => gClipSlot.loadFromSlot("", 4))
+            .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot("", 3))
+            .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot("", 2))
+            .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(500))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))

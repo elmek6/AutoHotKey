@@ -146,14 +146,14 @@ class singleMemorySlots {
     _handleFKey(index) {
         type := this.detectPressType("F" index, 300, 100)
         switch type {
-            case 1: this._pasteFromSlot(index), this._selectSlotViewer(index)
+            case 1: this.pasteFromSlot(index), this._selectSlotViewer(index)
             case 2: this._pasteFromHistory(index), this._selectHistoryViewer(index)
             case 4: this._saveToSlot(index)
         }
     }
 
     ; Kısa basım: o slotu yapıştır
-    _pasteFromSlot(index) {
+    pasteFromSlot(index) {
         if (index > this.slotsLength || this.slots[index] == "") {
             ShowTip("⚠️ Slot " . index . " boş!", TipType.Warning, 800)
             return
@@ -364,7 +364,7 @@ class singleMemorySlots {
 
         if (!middlePressed) {
             if (this.activeList == this.activeViewerEnum.slots) {
-                this._pasteFromSlot(this.currentSlotIndex)
+                this.pasteFromSlot(this.currentSlotIndex)
             } else {
                 this._pasteFromHistory(this.currentHistoryIndex)
             }
@@ -373,7 +373,7 @@ class singleMemorySlots {
 
 
         if (this.activeList == this.activeViewerEnum.slots) {
-            this._pasteFromSlot(this.currentSlotIndex)            
+            this.pasteFromSlot(this.currentSlotIndex)            
             if (this.currentSlotIndex < this.slotsLength) {
                 this.currentSlotIndex++
             } else {
