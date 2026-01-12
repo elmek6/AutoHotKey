@@ -8,7 +8,7 @@ class EC {    ;Enhancements for KeyBuilder
     static setExitOnPressType(v) => EC.Create(EC.tSetExitOnPress, v)
 }
 
-;mainStart mainEnd bu yapida yok
+; mainStart mainEnd bu yapida yok
 
 ; tus icin 3 basim türüne izin verir (süreleri ayrıca belirtilmelidir)
 ; kisa basım: 0, orta basım: 1, (uzun basım: 2 opsiyonel)

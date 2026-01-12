@@ -249,16 +249,15 @@ class singleClipSlot {
     ;     }
     ;     return previews
     ; }
-    showSlotsSearch() {
+    showSlotsSearch(groupName := "") {
         local slotsArray := []
-        local defaultName := ""
-        local values := this.groups[defaultName]["values"]
+        local values := this.groups[groupName]["values"]
         Loop Min(9, values.Length) {
-            if (StrLen(this.getContent(defaultName, A_Index)) > 0) {
+            if (StrLen(this.getContent(groupName, A_Index)) > 0) {
                 slotsArray.Push(Map(
                     "slotNumber", A_Index,
-                    "name", this.getName(defaultName, A_Index),
-                    "content", this.getContent(defaultName, A_Index)
+                    "name", this.getName(groupName, A_Index),
+                    "content", this.getContent(groupName, A_Index)
                 ))
             }
         }

@@ -123,14 +123,17 @@ class singleKeyHandlerMouse {
                 pressType := KeyBuilder.getPressType(duration, b.shortTime, b.longTime)
 
                 ; Repeat kontrolü
-                if (repeatInterval > 0 && duration > repeatInterval) {
-                    timeSinceLastRepeat := A_TickCount - lastRepeatTime
-                    ; İlk repeat veya interval geçtiyse
-                    if (lastRepeatTime == 0 || timeSinceLastRepeat >= repeatInterval) {
-                        if (b.main_key != "" && IsObject(b.main_key)) {
-                            b.main_key.Call(pressType)
-                        }
+                if (repeatInterval > 0 && b.main_key != "" && IsObject(b.main_key)) {
+                    if (lastRepeatTime == 0 && duration >= b.shortTime) { ; İlk repeat: shortTime 'dan hemen sonra başlasın
+                        b.main_key.Call(pressType)
                         lastRepeatTime := A_TickCount
+                    }
+                    else if (lastRepeatTime > 0) { ; Sonraki repeat 'ler: interval kadar bekle
+                        timeSinceLastRepeat := A_TickCount - lastRepeatTime
+                        if (timeSinceLastRepeat >= repeatInterval) {
+                            b.main_key.Call(pressType)
+                            lastRepeatTime := A_TickCount
+                        }
                     }
                 }
 
@@ -206,7 +209,7 @@ class singleKeyHandlerMouse {
             .combo("F14", "LB + F14", () => Send("L F14"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Enter", () => Send("{Enter}"))
-            .combo("F15", "###", () => (gClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}^v{Enter}"))
+            .combo("F15", "###", () => (gClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}{Enter}"))
             .build()
         this.handle(builder)
     }
@@ -229,12 +232,10 @@ class singleKeyHandlerMouse {
                     case 1:
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
-                        ; case 3: SendInput("{LWin down}-{Sleep 500}-{Sleep 500}-{LWin up}")
-                    case 2:
-                        gMemSlots.start()
-                    case 4:
-                        gClipHist.showHistorySearch()
-                    default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
+                        ; belki extend stationaryPress gibi birsey ekleyerek eger hareket etmediyse uzun basildiysa olabilir
+                        ; case 2: gMemSlots.start()
+                    case 4: gClipHist.showHistorySearch()
+                        ; default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
                 }
             })
             .extend(EM.enableDoubleClick())
@@ -269,7 +270,7 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF13menu()
                     case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
-                    case 4: gClipSlot.showSlotsSearch() ; default group olarak ayrilabilir
+                    case 4: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName) ; default group olarak ayrilabilir
                 }
             })
             .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 6))
@@ -325,7 +326,6 @@ class singleKeyHandlerMouse {
             })
             .combo("F13", "Delete", () => Send("{Delete}"))
             .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
-            .extend((b) => b.enableVisual := true)
             .build()
 
         this.handle(builder)
@@ -340,7 +340,6 @@ class singleKeyHandlerMouse {
                 }
             })
             .combo("F13", "Send F13", () => Send("F13 bos"))
-            .extend((b) => b.enableVisual := true)
             .build()
         this.handle(builder)
     }
