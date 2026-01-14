@@ -1,7 +1,7 @@
 #Include <HotGestures>
 
 class EM {    ;Enhancements for KeyBuilder
-    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6
+    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6, tStationaryPress := 7
 
     ; Factory: Tek satırda objeyi damgalayıp döner
     static Create(type, data) => { base: EM.Prototype, type: type, data: data }
@@ -13,6 +13,7 @@ class EM {    ;Enhancements for KeyBuilder
     static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
     static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v)
     static repeatKey(interval := 500) => EM.Create(EM.tRepeatKey, interval)
+    static detectStaticHold(v := 3) => EM.Create(EM.tStationaryPress, v) ;tolerance olabilir simdilik kullanmiyorum
 }
 
 class singleKeyHandlerMouse {
@@ -226,19 +227,27 @@ class singleKeyHandlerMouse {
                 gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, no)
             }
         }
-        builder := KeyBuilder()
+        local initialPos := { x: 0, y: 0 }
+        builder := KeyBuilder(350, 1000)
+            .mainStart((*) {
+                MouseGetPos &x, &y
+                initialPos.x := x
+                initialPos.y := y
+            })
             .mainKey((pt) {
+                MouseGetPos &endX, &endY
+                mouseMoved := (Abs(endX - initialPos.x) > 4) || (Abs(endY - initialPos.y) > 4)
                 switch (pt) {
                     case 1:
                         if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
                             gMemSlots.smartPaste(true)
-                        ; belki extend stationaryPress gibi birsey ekleyerek eger hareket etmediyse uzun basildiysa olabilir
-                        ; case 2: gMemSlots.start()
-                    case 4: gClipHist.showHistorySearch()
-                        ; default: ShowTip("Middle Button pressed. Press type: " . pt, TipType.Info)
+                    case 2: if (!mouseMoved)
+                        gMemSlots.start()
+                    case 3: if (!mouseMoved)
+                        gClipHist.showHistorySearch()
                 }
             })
-            .extend(EM.enableDoubleClick())
+            .extend(EM.detectStaticHold())
             .combo("F14", "Show History Search", () => gClipHist.showHistorySearch())
             .combo("F15", "Smart Paste 6", () => smartPaste(6))
             .combo("F16", "Smart Paste 5", () => smartPaste(5))
@@ -255,8 +264,6 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .combo("F13", "Zoom+", () => Send("#{NumpadAdd}"))
             .combo("F14", "Zoom-", () => Send("#{NumpadSub}"))
-            ; .combo("WheelUp", "Volume Up", () => Send("#{NumpadAdd}"))
-            ; .combo("WheelDown", "Volume Down", () => Send("#{NumpadSub}"))
             .mainEnd(() => (Sleep(100), Send("{Escape}")))
             .extend(EM.workOnlyOnCombo(true))
             .build()
@@ -270,7 +277,7 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF13menu()
                     case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
-                    case 4: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName) ; default group olarak ayrilabilir
+                    case 4: gClipHist.showHistorySearch() ; gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName)
                 }
             })
             .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 6))
@@ -281,7 +288,7 @@ class singleKeyHandlerMouse {
             .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 1))
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
-            .extend(EM.repeatKey(500))
+            .extend(EM.repeatKey(350))
             .extend(EM.gesture(HotGestures.Gesture("Right-right:1,0"), () => Send("{Enter}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-left:-1,0"), () => Send("{Escape}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Home}")))
@@ -298,7 +305,7 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF14menu()
                     case 2: Send("#{NumpadSub}")  ; Repeat ile çalışacak
-                    case 4: gClipSlot.showSlotsSearch() ; default group olarak ayrilabilir
+                    case 4: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName) ; default group varsa onu göster
                 }
             })
             .combo("LButton", "test", () => OutputDebug("test"))
@@ -309,7 +316,7 @@ class singleKeyHandlerMouse {
             .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot("", 2))
             .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
             .extend(EM.enableDoubleClick())
-            .extend(EM.repeatKey(500))
+            .extend(EM.repeatKey(250))
             .extend(EM.gesture(HotGestures.Gesture("Right-up:0,-1"), () => Send("{Delete}")))
             .extend(EM.gesture(HotGestures.Gesture("Right-down:0,1"), () => Send("{Backspace}")))
             .build()
@@ -370,8 +377,6 @@ class singleKeyHandlerMouse {
                     case 2: Send("{End}")
                 }
             })
-            ; .combo("WheelUp", "Volume Up", () => Send("{Volume_Up}"))
-            ; .combo("WheelDown", "Volume Down", () => Send("{Volume_Down}"))
             .combo("F17", "Cut", () => Send("^x"))
             .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
