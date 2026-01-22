@@ -98,7 +98,7 @@ class singleKeyHandlerCascade {
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
-                OutputDebug("set busy 2`n")
+                ; OutputDebug("set busy 2`n")
                 gState.setBusy(2)
                 if (this._checkCombo(b.combos)) {
                     return
@@ -186,7 +186,7 @@ class singleKeyHandlerCascade {
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{Tab}")
-                    case 2: gClipHist.showHistorySearch()
+                    case 2: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName)
                 }
             })
             .setExitOnPressType(1)
