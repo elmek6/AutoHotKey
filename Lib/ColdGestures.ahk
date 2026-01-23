@@ -1,22 +1,41 @@
 ﻿/************************************************************************
- * @description Eksen kilitli mouse slider sistemi - Register destekli
- * @author Assistant
- * @date 2026/01/21
- * @version 2.0
+ * @description Eksen kilitli mouse slider sistemi - 8-way direction detection
+ * @author Benim Assistan
+ * @date 2026/01/23
+ * @version 3.1
  ***********************************************************************/
 
 class ColdGestures {
-    static AXIS_THRESHOLD := 8      ; İlk 8 pixel'de yön belirleme
-    static STEP_SIZE := 10            ; Her 10 pixel'de bir callback tetikle
+    static DIRECTION_THRESHOLD := 10    ; İlk 10 pixel'de yön belirleme
+    static STEP_SIZE := 10              ; Her 10 pixel'de bir callback tetikle
 
-    ; Binary direction flags
+    ; Binary direction flags (public API)
     static bDir := {
         none: 0,
-        once: 1,      ; Bir kere tetikle
+        once: 1,        ; Bir kere tetikle
         up: 2,
         down: 4,
         left: 8,
-        right: 16
+        right: 16,
+        upDown: 2 | 4,      ; 6
+        leftRight: 8 | 16,  ; 24
+        upRight: 32,
+        upLeft: 64,
+        downRight: 128,
+        downLeft: 256
+    }
+
+    ; Internal direction types (8-way detection result)
+    static __dirType := {
+        none: 0,
+        strictUp: 1,
+        strictDown: 2,
+        strictLeft: 3,
+        strictRight: 4,
+        upRight: 5,
+        upLeft: 6,
+        downRight: 7,
+        downLeft: 8
     }
 
     __mouseHook := ""
@@ -25,23 +44,43 @@ class ColdGestures {
     __originX := 0
     __originY := 0
     __lastStep := 0
-    __axisLocked := false
-    __lockedAxis := 0  ; 1=Vertical, 2=Horizontal
+    __directionLocked := false
+    __lockedDirection := 0      ; __dirType enum value
     __registrations := []
-    __activeGestures := []  ; Axis belirlenince sadece uygun olanlar
-    __onceTriggered := Map()  ; Once flag'li gesture'lar için
+    __activeGestures := []      ; Direction belirlenince sadece uygun olanlar
+    __onceTriggered := Map()    ; Once flag'li gesture'lar için
+    __gestureFired := false     ; Gesture tetiklendi mi?
 
     __New(penColor := 0x00FF88) {
         this.__penColor := penColor
     }
 
     Register(direction, callback) {
+        ; Çakışma kontrolü: Aynı direction için birden fazla gesture YASAK
+        cleanDir := direction & ~ColdGestures.bDir.once
+
+        for reg in this.__registrations {
+            existingDir := reg.direction & ~ColdGestures.bDir.once
+
+            ; Tam eşleşme kontrolü
+            if (existingDir == cleanDir) {
+                throw Error("Duplicate gesture registration: Direction already registered!")
+            }
+
+            ; Çakışma kontrolü: up ve upDown birlikte olamaz
+            if (this.__CheckDirectionConflict(cleanDir, existingDir)) {
+                throw Error("Conflicting gesture directions: Cannot register overlapping directions!")
+            }
+        }
+
         this.__registrations.Push({ direction: direction, callback: callback })
     }
 
     Clear() {
         this.__registrations := []
     }
+
+    WasGestureFired() => this.__gestureFired
 
     Start(keyName) {
         if (this.__registrations.Length == 0)
@@ -54,10 +93,11 @@ class ColdGestures {
         this.__originX := x
         this.__originY := y
         this.__lastStep := 0
-        this.__axisLocked := false
-        this.__lockedAxis := 0
+        this.__directionLocked := false
+        this.__lockedDirection := ColdGestures.__dirType.none
         this.__activeGestures := []
         this.__onceTriggered := Map()
+        this.__gestureFired := false
 
         ; Drawing board oluştur
         this.__drawingBoard := ColdGestures.DrawingBoard(this.__penColor)
@@ -73,6 +113,12 @@ class ColdGestures {
     }
 
     Stop() {
+        ; Tuş bırakıldığında once ile işaretlenmiş gesture'ları çalıştır
+        for objPtr, callback in this.__onceTriggered {
+            callback.Call(1)
+            this.__gestureFired := true
+        }
+
         this.__mouseHook := ""
         if (this.__drawingBoard) {
             this.__drawingBoard.Hide()
@@ -85,15 +131,18 @@ class ColdGestures {
         dx := x - this.__originX
         dy := this.__originY - y  ; Y ekseni ters (yukarı pozitif)
 
-        ; Eksen kilidi yoksa, ilk 8 pixel'de yönü belirle
-        if (!this.__axisLocked) {
-            if (Abs(dx) > ColdGestures.AXIS_THRESHOLD || Abs(dy) > ColdGestures.AXIS_THRESHOLD) {
-                ; Hangi eksen daha baskın?
-                this.__lockedAxis := (Abs(dy) >= Abs(dx)) ? 1 : 2
-                this.__axisLocked := true
+        ; Direction kilidi yoksa, ilk 10 pixel'de yönü belirle
+        if (!this.__directionLocked) {
+            absDx := Abs(dx)
+            absDy := Abs(dy)
 
-                ; Sadece bu axis'e uygun gesture'ları filtrele
-                this.__FilterGesturesByAxis()
+            if (absDx > ColdGestures.DIRECTION_THRESHOLD || absDy > ColdGestures.DIRECTION_THRESHOLD) {
+                ; 8-way direction detection
+                this.__lockedDirection := this.__Detect8WayDirection(dx, dy, absDx, absDy)
+                this.__directionLocked := true
+
+                ; Sadece bu direction'a uygun gesture'ları filtrele
+                this.__FilterGesturesByDirection()
 
                 if (this.__activeGestures.Length == 0) {
                     ; Uygun gesture yok, çık
@@ -103,8 +152,22 @@ class ColdGestures {
             return
         }
 
-        ; Kilitli eksendeki değeri al
-        value := (this.__lockedAxis == 1) ? dy : dx
+        ; Hangi eksende ilerliyoruz?
+        value := 0
+        switch this.__lockedDirection {
+            case ColdGestures.__dirType.strictUp, ColdGestures.__dirType.strictDown:
+                value := dy
+            case ColdGestures.__dirType.strictLeft, ColdGestures.__dirType.strictRight:
+                value := dx
+            case ColdGestures.__dirType.upRight:
+                value := (dx + dy) // 2  ; Diagonal ortalama
+            case ColdGestures.__dirType.upLeft:
+                value := (-dx + dy) // 2
+            case ColdGestures.__dirType.downRight:
+                value := (dx - dy) // 2
+            case ColdGestures.__dirType.downLeft:
+                value := (-dx - dy) // 2
+        }
 
         ; Kaç adım (step) geçildi?
         currentStep := value // ColdGestures.STEP_SIZE
@@ -126,16 +189,19 @@ class ColdGestures {
                 isOnce := (g.direction & ColdGestures.bDir.once)
                 gestureKey := ObjPtr(g)
 
-                if (isOnce && this.__onceTriggered.Has(gestureKey)) {
-                    continue  ; Zaten tetiklendi, atla
-                }
-
-                g.callback.Call(diff)
-                label := this.__GetDirectionLabel(g.direction, currentStep)
-
                 if (isOnce) {
-                    this.__onceTriggered[gestureKey] := true
+                    ; Once ise hemen çalıştırma, listeye ekle (Stop'ta çalışacak)
+                    if (!this.__onceTriggered.Has(gestureKey)) {
+                        this.__onceTriggered[gestureKey] := g.callback
+                    }
+                } else {
+                    ; Normal gesture ise hemen çalıştır
+                    g.callback.Call(diff)
+                    this.__gestureFired := true
                 }
+
+                ; Etiket için o anki diff'e göre yön belirle
+                label := this.__GetDirectionLabel(this.__lockedDirection, diff, currentStep)
             }
         }
 
@@ -147,96 +213,164 @@ class ColdGestures {
         this.__drawingBoard.DrawLineTo(x, y)
     }
 
-    __FilterGesturesByAxis() {
-        ; Axis'e göre uygun gesture'ları filtrele
+    __Detect8WayDirection(dx, dy, absDx, absDy) {
+        ; STRICT HORIZONTAL (< 3 pixel dikey sapma)
+        if (absDy < 3 && absDx > 6) {
+            return (dx > 0) ? ColdGestures.__dirType.strictRight : ColdGestures.__dirType.strictLeft
+        }
+
+        ; STRICT VERTICAL (< 3 pixel yatay sapma)
+        if (absDx < 3 && absDy > 6) {
+            return (dy > 0) ? ColdGestures.__dirType.strictUp : ColdGestures.__dirType.strictDown
+        }
+
+        ; DIAGONAL (45° civarı, her iki eksen de 4+ pixel)
+        if (absDx > 4 && absDy > 4) {
+            if (dx > 0 && dy > 0)
+                return ColdGestures.__dirType.upRight
+            if (dx < 0 && dy > 0)
+                return ColdGestures.__dirType.upLeft
+            if (dx > 0 && dy < 0)
+                return ColdGestures.__dirType.downRight
+            if (dx < 0 && dy < 0)
+                return ColdGestures.__dirType.downLeft
+        }
+
+        ; BIASED durumlar: Dominant eksen kazanır
+        if (absDy > absDx) {
+            ; Vertical dominant
+            return (dy > 0) ? ColdGestures.__dirType.strictUp : ColdGestures.__dirType.strictDown
+        } else {
+            ; Horizontal dominant
+            return (dx > 0) ? ColdGestures.__dirType.strictRight : ColdGestures.__dirType.strictLeft
+        }
+    }
+
+    __FilterGesturesByDirection() {
+        ; STRICT MATCHING: Direction flag TAMAMEN eşleşmeli
         for reg in this.__registrations {
             dir := reg.direction & ~ColdGestures.bDir.once  ; Once flag'i çıkar
 
-            isVertical := (dir & (ColdGestures.bDir.up | ColdGestures.bDir.down))
-            isHorizontal := (dir & (ColdGestures.bDir.left | ColdGestures.bDir.right))
-
-            ; Vertical axis kilitliyse sadece vertical gesture'lar
-            if (this.__lockedAxis == 1 && isVertical) {
-                this.__activeGestures.Push(reg)
-            }
-            ; Horizontal axis kilitliyse sadece horizontal gesture'lar
-            else if (this.__lockedAxis == 2 && isHorizontal) {
+            if (this.__IsDirectionMatch(dir, this.__lockedDirection)) {
                 this.__activeGestures.Push(reg)
             }
         }
     }
 
-    __CheckDirection(direction, diff, currentStep) {
-        dir := direction & ~ColdGestures.bDir.once  ; Once flag'i çıkar
+    __IsDirectionMatch(bDirFlags, detectedDir) {
+        ; Detected direction'a göre hangi flag'ler kabul edilir?
+        switch detectedDir {
+            case ColdGestures.__dirType.strictUp:
+                return (bDirFlags == ColdGestures.bDir.up) || (bDirFlags == ColdGestures.bDir.upDown)
 
-        ; Vertical kontrolü
-        if (this.__lockedAxis == 1) {
-            hasUp := (dir & ColdGestures.bDir.up)
-            hasDown := (dir & ColdGestures.bDir.down)
+            case ColdGestures.__dirType.strictDown:
+                return (bDirFlags == ColdGestures.bDir.down) || (bDirFlags == ColdGestures.bDir.upDown)
 
-            if (hasUp && hasDown) {
-                return true  ; Her iki yön de kabul
-            }
-            if (hasUp && diff > 0) {
-                return true
-            }
-            if (hasDown && diff < 0) {
-                return true
-            }
+            case ColdGestures.__dirType.strictLeft:
+                return (bDirFlags == ColdGestures.bDir.left) || (bDirFlags == ColdGestures.bDir.leftRight)
+
+            case ColdGestures.__dirType.strictRight:
+                return (bDirFlags == ColdGestures.bDir.right) || (bDirFlags == ColdGestures.bDir.leftRight)
+
+            case ColdGestures.__dirType.upRight:
+                return (bDirFlags == ColdGestures.bDir.upRight)
+
+            case ColdGestures.__dirType.upLeft:
+                return (bDirFlags == ColdGestures.bDir.upLeft)
+
+            case ColdGestures.__dirType.downRight:
+                return (bDirFlags == ColdGestures.bDir.downRight)
+
+            case ColdGestures.__dirType.downLeft:
+                return (bDirFlags == ColdGestures.bDir.downLeft)
+        }
+        return false
+    }
+
+    __CheckDirectionConflict(dir1, dir2) {
+        ; Çakışma kontrolü: Aynı temel yönleri paylaşıyorlar mı?
+
+        ; up ve upDown çakışır
+        if ((dir1 == ColdGestures.bDir.up || dir1 == ColdGestures.bDir.upDown) &&
+            (dir2 == ColdGestures.bDir.up || dir2 == ColdGestures.bDir.upDown)) {
+            return true
         }
 
-        ; Horizontal kontrolü
-        if (this.__lockedAxis == 2) {
-            hasRight := (dir & ColdGestures.bDir.right)
-            hasLeft := (dir & ColdGestures.bDir.left)
+        ; down ve upDown çakışır
+        if ((dir1 == ColdGestures.bDir.down || dir1 == ColdGestures.bDir.upDown) &&
+            (dir2 == ColdGestures.bDir.down || dir2 == ColdGestures.bDir.upDown)) {
+            return true
+        }
 
-            if (hasRight && hasLeft) {
-                return true  ; Her iki yön de kabul
-            }
-            if (hasRight && diff > 0) {
-                return true
-            }
-            if (hasLeft && diff < 0) {
-                return true
-            }
+        ; left ve leftRight çakışır
+        if ((dir1 == ColdGestures.bDir.left || dir1 == ColdGestures.bDir.leftRight) &&
+            (dir2 == ColdGestures.bDir.left || dir2 == ColdGestures.bDir.leftRight)) {
+            return true
+        }
+
+        ; right ve leftRight çakışır
+        if ((dir1 == ColdGestures.bDir.right || dir1 == ColdGestures.bDir.leftRight) &&
+            (dir2 == ColdGestures.bDir.right || dir2 == ColdGestures.bDir.leftRight)) {
+            return true
         }
 
         return false
     }
 
-    __GetDirectionLabel(direction, currentStep) {
+    __CheckDirection(direction, diff, currentStep) {
         dir := direction & ~ColdGestures.bDir.once
 
-        if (this.__lockedAxis == 1) {
-            hasUp := (dir & ColdGestures.bDir.up)
-            hasDown := (dir & ColdGestures.bDir.down)
+        switch this.__lockedDirection {
+            case ColdGestures.__dirType.strictUp, ColdGestures.__dirType.strictDown:
+                ; upDown her hareketi kabul eder, up sadece pozitif, down sadece negatif diff kabul eder
+                if (dir == ColdGestures.bDir.upDown) {
+                    return true
+                }
+                if (dir == ColdGestures.bDir.up) {
+                    return diff > 0
+                }
+                if (dir == ColdGestures.bDir.down) {
+                    return diff < 0
+                }
 
-            if (hasUp && hasDown) {
-                return (currentStep >= 0) ? "UP: " . currentStep : "DN: " . currentStep
-            }
-            if (hasUp) {
-                return "UP: " . currentStep
-            }
-            if (hasDown) {
-                return "DN: " . currentStep
-            }
+            case ColdGestures.__dirType.strictLeft, ColdGestures.__dirType.strictRight:
+                ; leftRight her hareketi kabul eder
+                if (dir == ColdGestures.bDir.leftRight) {
+                    return true
+                }
+                if (dir == ColdGestures.bDir.right) {
+                    return diff > 0
+                }
+                if (dir == ColdGestures.bDir.left) {
+                    return diff < 0
+                }
+            default:
+                ; Çapraz gesture'lar (sadece ileri yönde tetiklenir)
+                return diff > 0
+        }
+        return false
+    }
+
+    __GetDirectionLabel(lockedDir, diff, currentStep) {
+        absStep := Abs(currentStep)
+
+        ; Eğer dikey bir eksendeysek, o anki diff'e göre UP/DN yaz
+        if (lockedDir == ColdGestures.__dirType.strictUp || lockedDir == ColdGestures.__dirType.strictDown) {
+            return (diff > 0 ? "UP: " : "DN: ") . absStep
         }
 
-        if (this.__lockedAxis == 2) {
-            hasRight := (dir & ColdGestures.bDir.right)
-            hasLeft := (dir & ColdGestures.bDir.left)
-
-            if (hasRight && hasLeft) {
-                return (currentStep >= 0) ? "RT: " . currentStep : "LF: " . currentStep
-            }
-            if (hasRight) {
-                return "RT: " . currentStep
-            }
-            if (hasLeft) {
-                return "LF: " . currentStep
-            }
+        ; Eğer yatay bir eksendeysek, o anki diff'e göre RT/LF yaz
+        if (lockedDir == ColdGestures.__dirType.strictLeft || lockedDir == ColdGestures.__dirType.strictRight) {
+            return (diff > 0 ? "RT: " : "LF: ") . absStep
         }
 
+        ; Çaprazlar için sabit kilitli yönü yaz (çünkü çaprazda ters yön kontrolü yapmıyoruz)
+        switch lockedDir {
+            case ColdGestures.__dirType.upRight: return "UR: " . absStep
+            case ColdGestures.__dirType.upLeft: return "UL: " . absStep
+            case ColdGestures.__dirType.downRight: return "DR: " . absStep
+            case ColdGestures.__dirType.downLeft: return "DL: " . absStep
+        }
         return ""
     }
 

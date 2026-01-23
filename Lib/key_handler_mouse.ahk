@@ -34,7 +34,7 @@ class singleKeyHandlerMouse {
         this.cgs := ""  ; ColdGestures instance
     }
 
-    handle(b) {
+    handle(b) { ; builderlerin hepsi b. ile baslıyor
         enableVisual := false
         onlyOnCombo := false
         gestures := []
@@ -103,7 +103,9 @@ class singleKeyHandlerMouse {
                     this.cgs.Register(g.Direction, g.Callback)
                 }
                 this.cgs.Start(key)
-                return
+                if (this.cgs.WasGestureFired()) {
+                    return
+                }
             }
 
             startTime := A_TickCount
@@ -157,7 +159,6 @@ class singleKeyHandlerMouse {
             ; Repeat yoksa veya ilk basımsa normal çalışsın
             if (gState.getBusy() == 1 && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
                 pressType := KeyBuilder.getPressType(totalDuration, b.shortTime, b.longTime)
-
                 ; Double-click kontrolü (sadece short press için)
                 if (pressType == 1 && enabledDoubleClick) {
                     result := KeyWait(key, "D T0.1")
@@ -166,7 +167,6 @@ class singleKeyHandlerMouse {
                         pressType := 4
                     }
                 }
-
                 b.main_key.Call(pressType)
             }
 
@@ -272,9 +272,9 @@ class singleKeyHandlerMouse {
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(350))
-            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.up | ColdGestures.bDir.down, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
-            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.left | ColdGestures.bDir.right, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
-            ; .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.once | ColdGestures.bDir.down | ColdGestures.bDir.right, (pos) => WinMinimize("A"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.upDown, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.leftRight, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.once | ColdGestures.bDir.downLeft, (pos) => WinMinimize("A"))))
             .build()
         this.handle(builder)
     }
@@ -296,6 +296,10 @@ class singleKeyHandlerMouse {
             .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot("", 3))
             .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot("", 2))
             .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.left, (pos) => Send("{BackSpace}"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.right, (pos) => Send("{Delete}"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.once | ColdGestures.bDir.up, (pos) => Send("{Escape}"))))
+            .extend(EM.gesture(ColdGestures.Gesture(ColdGestures.bDir.once | ColdGestures.bDir.down, (pos) => Send("{Enter}"))))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(250))
             .build()
