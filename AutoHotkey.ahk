@@ -80,7 +80,7 @@ LoadSettings() {
         ShowTip("Work profile active", TipType.Info, 1000)
         global gCurrentConfig := gStateConfig.work
     } else {
-        TrayTip("AHK", "Home profile", 1)
+        TrayTip("AHK", "Home profile " . gState.getVersion(), 1)
         global gCurrentConfig := gStateConfig.home
     }
     AppConst.initDirectory()
@@ -147,6 +147,12 @@ LButton:: {
 SC132:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 SC16C:: gRecorder.playKeyAction(2, 1)
 #HotIf
+
+; F18 basılıyken tekerlek → Volume kont
+; #HotIf GetKeyState("F18", "P")  ; F18 fiziksel basılıysa aktif olsun
+; WheelUp:: Send("{Volume_Up}")
+; WheelDown:: Send("{Volume_Down}")
+; #HotIf
 
 ;Fare tuslari haritasi
 F13:: gKeyHandler.handleF13()
@@ -245,7 +251,6 @@ AppsKey & a:: { ;work
     ;     if InStr(title, "Hekim") {
     ;         WinMinimize("ahk_id " this_id)
     ;     }
-
     ; }
 }
 
