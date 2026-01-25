@@ -30,7 +30,8 @@ class singleKeyHandlerMouse {
         if (singleKeyHandlerMouse.instance) {
             throw Error("singleKeyHandlerMouse zaten oluşturulmuş! getInstance kullan.")
         }
-        this.hgs := ""  ; Hot_Gestures instance
+        ; HotGestures'ı singleton olarak al - BİR KERE OLUŞTURULUR
+        this.hgs := HotGestures.getInstance()
     }
 
     handle(b) { ; builderlerin hepsi b. ile baslıyor
@@ -97,7 +98,8 @@ class singleKeyHandlerMouse {
 
             ; === HotGestures başlat ===
             if (gestures.Length > 0) {
-                this.hgs := HotGestures()
+                this.hgs.ClearRegistrations()  ; Önceki gesture'ları temizle
+
                 for g in gestures {
                     this.hgs.Register(g.Direction, g.Callback)
                 }
@@ -180,7 +182,7 @@ class singleKeyHandlerMouse {
             if (b.tips.Length > 0) {
                 ToolTip()
             }
-            if (gestures.Length > 0 && IsObject(this.hgs)) {
+            if (gestures.Length > 0) {
                 this.hgs.Stop()
             }
             gState.setBusy(0)
@@ -295,118 +297,123 @@ class singleKeyHandlerMouse {
             .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot("", 3))
             .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot("", 2))
             .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-                .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
-                ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.up, (pos) => Send("{Escape}"))))
-                .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.down, (pos) => Send("{Enter}"))))
-                .extend(EM.enableDoubleClick())
-                .extend(EM.repeatKey(250))
-                .build()
-                this.handle(builder)
-            }
-
-        handleF15() {
-            builder := KeyBuilder()
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: Send("^y")
-                        case 2: Send("{Escape}")
-                    }
-                })
-                .combo("F13", "Delete", () => Send("{Delete}"))
-                .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
-                .build()
-
-            this.handle(builder)
-        }
-
-        handleF16() {
-            builder := KeyBuilder()
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: Send("^z")
-                        case 2: Send("{Enter}")
-                    }
-                })
-                .combo("F13", "Send F13", () => Send("F13 bos"))
-                .build()
-            this.handle(builder)
-        }
-
-        handleF17() {
-            builder := KeyBuilder()
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: Send("!{Right}")
-                        case 2: Send("{Home}")
-                    }
-                })
-                .combo("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
-                .combo("F18", "Delete", () => Send("{Delete}"))
-                .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
-                .combo("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
-                .build()
-
-            this.handle(builder)
-        }
-
-
-        handleF18() {
-            builder := KeyBuilder()
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: Send("!{Left}")
-                        case 2: Send("{End}")
-                    }
-                })
-                .combo("F17", "Cut", () => Send("^x"))
-                .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-                .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
-                .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
-                .build()
-            this.handle(builder)
-        }
-
-        handleF19() {
-            builder := KeyBuilder()
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: gState.getClipHandler() == gState.clipStatusEnum.memSlot
-                            ? gMemSlots.smartPaste() : Send("^v")
-                        case 2: Send("^a^v")
-                    }
-                })
-                .mainEnd(() => ShowTip(A_Clipboard, TipType.Paste))
-                .combo("F13", "Select All & Paste", () => Send("^a^v"))
-                .combo("F14", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
-                .combo("F20", "Select All & Paste", () => Send("^a^v"))
-                .combo("LButton", "Click & Paste", () => (Click("Left", 1), Send("^v")))
-                .combo("MButton", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
-                .build()
-
-            this.handle(builder)
-        }
-
-        handleF20() {
-            builder := KeyBuilder()
-                .setPressType(300, 800)
-                .mainKey((pt) {
-                    switch (pt) {
-                        case 1: Send("^c")
-                        case 2: Send("^x")
-                        case 3: gMemSlots.start()
-                    }
-                })
-                .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
-                .combo("F13", "Select All & Copy", () => Send("^a^c"))
-                .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-                .combo("F19", "Select All & Copy", () => Send("^a^c"))
-                .combo("F18", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-                .combo("LButton", "Click & Copy", () => (Click("Left", 1), Send("^c")))
-                .combo("MButton", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-                .build()
-
-            this.handle(builder)
-        }
+            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
+            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.up, (pos) => Send("{Escape}"))))
+            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.down, (pos) => Send("{Enter}"))))
+            .extend(EM.enableDoubleClick())
+            .extend(EM.repeatKey(250))
+            .build()
+        this.handle(builder)
     }
+
+    handleF15() {
+        builder := KeyBuilder()
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: Send("^y")
+                    case 2: Send("{Escape}")
+                }
+            })
+            .combo("F13", "Delete", () => Send("{Delete}"))
+            .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
+            .build()
+
+        this.handle(builder)
+    }
+
+    handleF16() {
+        builder := KeyBuilder()
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: Send("^z")
+                    case 2: Send("{Enter}")
+                }
+            })
+            .combo("F13", "Send F13", () => Send("F13 bos"))
+            .build()
+        this.handle(builder)
+    }
+
+    handleF17() {
+        builder := KeyBuilder()
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: Send("!{Right}")
+                    case 2: Send("{Home}")
+                }
+            })
+            .combo("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
+            .combo("F18", "Delete", () => Send("{Delete}"))
+            .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
+            .combo("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
+            .build()
+
+        this.handle(builder)
+    }
+
+
+    handleF18() {
+        builder := KeyBuilder()
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: Send("!{Left}")
+                    case 2: Send("{End}")
+                }
+            })
+            .combo("F17", "Cut", () => Send("^x"))
+            .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
+            .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Send("{Delete}"))))
+            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
+            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            .build()
+        this.handle(builder)
+    }
+
+    handleF19() {
+        builder := KeyBuilder()
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: gState.getClipHandler() == gState.clipStatusEnum.memSlot
+                        ? gMemSlots.smartPaste() : Send("^v")
+                    case 2: Send("^a^v")
+                }
+            })
+            .mainEnd(() => ShowTip(A_Clipboard, TipType.Paste))
+            .combo("F13", "Select All & Paste", () => Send("^a^v"))
+            .combo("F14", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
+            .combo("F20", "Select All & Paste", () => Send("^a^v"))
+            .combo("LButton", "Click & Paste", () => (Click("Left", 1), Send("^v")))
+            .combo("MButton", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
+            .build()
+
+        this.handle(builder)
+    }
+
+    handleF20() {
+        builder := KeyBuilder()
+            .setPressType(300, 800)
+            .mainKey((pt) {
+                switch (pt) {
+                    case 1: Send("^c")
+                    case 2: Send("^x")
+                    case 3: gMemSlots.start()
+                }
+            })
+            .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
+            .combo("F13", "Select All & Copy", () => Send("^a^c"))
+            .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            .combo("F19", "Select All & Copy", () => Send("^a^c"))
+            .combo("F18", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            .combo("LButton", "Click & Copy", () => (Click("Left", 1), Send("^c")))
+            .combo("MButton", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            .build()
+
+        this.handle(builder)
+    }
+}

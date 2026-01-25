@@ -1,8 +1,8 @@
 ﻿/************************************************************************
  * @description Eksen kilitli mouse slider sistemi - 8-way direction detection
  * @author Benim Assistan
- * @date 2026/01/23
- * @version 3.2
+ * @date 2026/01/24
+ * @version 3.3 - SINGLETON PATTERN
  ***********************************************************************/
 
 class HotGestures {
@@ -39,22 +39,41 @@ class HotGestures {
         downLeft: 8
     }
 
-    __mouseHook := ""
-    __drawingBoard := ""
+    ; === SINGLETON PATTERN ===
+    static instance := ""
 
-    __originX := 0
-    __originY := 0
-    __lastStep := 0
-    __directionLocked := false
-    __lockedDirection := 0      ; __dirType enum value
-    __registrations := []
-    __activeGestures := []      ; Direction belirlenince sadece uygun olanlar
-    __onceTriggered := Map()    ; Once flag'li gesture'lar için
-    __gestureFired := false     ; Gesture tetiklendi mi?
-    __totalDrawLength := 0      ; Toplam çizim uzunluğu (güvenlik)
+    static getInstance() {
+        if (!HotGestures.instance) {
+            HotGestures.instance := HotGestures()
+        }
+        return HotGestures.instance
+    }
 
-    __New(penColor := 0x00FF88) {
-        this.__penColor := penColor
+    __New() {
+        if (HotGestures.instance) {
+            throw Error("HotGestures already exists! Use getInstance()")
+        }
+        
+        ; DrawingBoard'u baştan oluştur (bir kere)
+        this.__drawingBoard := HotGestures.DrawingBoard(0x00FF88)
+        
+        ; State variables
+        this.__mouseHook := ""
+        this.__originX := 0
+        this.__originY := 0
+        this.__lastStep := 0
+        this.__directionLocked := false
+        this.__lockedDirection := 0      ; __dirType enum value
+        this.__registrations := []
+        this.__activeGestures := []      ; Direction belirlenince sadece uygun olanlar
+        this.__onceTriggered := Map()    ; Once flag'li gesture'lar için
+        this.__gestureFired := false     ; Gesture tetiklendi mi?
+        this.__totalDrawLength := 0      ; Toplam çizim uzunluğu (güvenlik)
+    }
+
+    ; Clear registrations before new gesture session
+    ClearRegistrations() {
+        this.__registrations := []
     }
 
     Register(direction, callback) {
@@ -71,10 +90,6 @@ class HotGestures {
         this.__registrations.Push({ direction: direction, callback: callback })
     }
 
-    Clear() {
-        this.__registrations := []
-    }
-
     WasGestureFired() => this.__gestureFired
 
     Start(keyName) {
@@ -83,6 +98,7 @@ class HotGestures {
 
         keyName := RegExReplace(keyName, "[\$\*\~\!\^\+]")
 
+        ; Reset state
         CoordMode("Mouse", "Screen")
         MouseGetPos(&x, &y)
         this.__originX := x
@@ -95,8 +111,7 @@ class HotGestures {
         this.__gestureFired := false
         this.__totalDrawLength := 0  ; Çizim sayacını sıfırla
 
-        ; Drawing board oluştur
-        this.__drawingBoard := HotGestures.DrawingBoard(this.__penColor)
+        ; DrawingBoard'u hazırla (yeniden oluşturma, sadece reset)
         this.__drawingBoard.MoveTo(x, y)
         this.__drawingBoard.Show()
 
@@ -109,7 +124,7 @@ class HotGestures {
     }
 
     Stop() {
-        ; Tuş bırakıldığında once ile işaretlenmiş gesture'ları çalıştır
+        ; Once ile işaretlenmiş gesture'ları çalıştır
         for objPtr, callback in this.__onceTriggered {
             callback.Call(1)
             this.__gestureFired := true
@@ -118,14 +133,13 @@ class HotGestures {
         this.__mouseHook := ""
         if (this.__drawingBoard) {
             this.__drawingBoard.Hide()
-            this.__drawingBoard := ""
         }
     }
 
     __OnMouseMove(x, y) {
         ; Başlangıç noktasından fark
         dx := x - this.__originX
-        dy := this.__originY - y  ; Y ekseni ters (yukarı pozitif)
+        dy := this.__originY - y
 
         ; Direction kilidi yoksa, ilk 10 pixel'de yönü belirle
         if (!this.__directionLocked) {
@@ -208,7 +222,7 @@ class HotGestures {
 
         this.__lastStep := currentStep
         
-        ; GÜVENLIK: 2000 pixel limitini aşma kontrolü (loop koruma)
+        ; Güvenlik limiti
         this.__totalDrawLength += Abs(diff * HotGestures.STEP_SIZE)
         if (this.__totalDrawLength > HotGestures.MAX_DRAW_LENGTH) {
             SoundBeep(1000, 200)  ; Uyarı sesi
@@ -391,6 +405,8 @@ class HotGestures {
         }
 
         Hide() {
+            ; Canvas'ı temizle
+            DllCall("InvalidateRect", "ptr", this.Hwnd, "ptr", 0, "int", 1)
             super.Hide()
         }
 
