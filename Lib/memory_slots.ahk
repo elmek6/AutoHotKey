@@ -1,15 +1,15 @@
-class singleMemorySlots {
+class singleMemorySlot {
     static instance := ""
 
     static getInstance() {
-        if (!singleMemorySlots.instance) {
-            singleMemorySlots.instance := singleMemorySlots()
+        if (!singleMemorySlot.instance) {
+            singleMemorySlot.instance := singleMemorySlot()
         }
-        return singleMemorySlots.instance
+        return singleMemorySlot.instance
     }
 
     __New() {
-        if (singleMemorySlots.instance) {
+        if (singleMemorySlot.instance) {
             throw Error("MemorySlotsManager zaten oluşturulmuş! getInstance kullan.")
         }
     }
@@ -22,8 +22,8 @@ class singleMemorySlots {
                 return
             }
         }
-        this.previousState := gState.getClipHandler()
-        gState.setClipHandler(gState.clipStatusEnum.memSlot)
+        this.previousState := App.state.getClipHandler()
+        App.state.setClipHandler(App.state.clipStatusEnum.memSlot)
 
         this.slots := Array()
         Loop 10 {
@@ -48,7 +48,7 @@ class singleMemorySlots {
         this.ignoreNextClip := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
-        fullHistory := gClipHist.getHistory()
+        fullHistory := App.ClipHist.getHistory()
         count := Min(10, fullHistory.Length)
         this.clipHistory := []
         Loop count {
@@ -102,7 +102,7 @@ class singleMemorySlots {
             this._populateHistory()
             this._activeViewerBackground()
         } catch as err {
-            gErrHandler.handleError("GUI oluşturma hatası", err)
+            App.ErrHandler.handleError("GUI oluşturma hatası", err)
         }
     }
 
@@ -277,7 +277,7 @@ class singleMemorySlots {
     }
 
     clipboardWatcher(type) {
-        if (gState.getClipHandler() != gState.clipStatusEnum.memSlot) {
+        if (App.state.getClipHandler() != App.state.clipStatusEnum.memSlot) {
             return
         }
 
@@ -354,7 +354,7 @@ class singleMemorySlots {
     }
 
     smartPaste(middlePressed := false) {
-        if (gState.getClipHandler() != gState.clipStatusEnum.memSlot) {
+        if (App.state.getClipHandler() != App.state.clipStatusEnum.memSlot) {
             return
         }
 
@@ -403,11 +403,11 @@ class singleMemorySlots {
     _destroy() {
         this.isDestroyed := true
         this.changeHotKeyMode(false)
-        gState.setClipHandler(this.previousState)
+        App.state.setClipHandler(this.previousState)
         if (this.gui) {
             this.gui.Destroy()
             this.gui := ""
         }
-        singleMemorySlots.instance := ""
+        singleMemorySlot.instance := ""
     }
 }

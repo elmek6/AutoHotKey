@@ -12,18 +12,18 @@ class EC {    ;Enhancements for KeyBuilder
 
 ; tus icin 3 basim türüne izin verir (süreleri ayrıca belirtilmelidir)
 ; kisa basım: 0, orta basım: 1, (uzun basım: 2 opsiyonel)
-class singleKeyHandlerCascade {
+class singleHotCascade {
     static instance := ""
 
     static getInstance() {
-        if (!singleKeyHandlerCascade.instance) {
-            singleKeyHandlerCascade.instance := singleKeyHandlerCascade()
+        if (!singleHotCascade.instance) {
+            singleHotCascade.instance := singleHotCascade()
         }
-        return singleKeyHandlerCascade.instance
+        return singleHotCascade.instance
     }
 
     __New() {
-        if (singleKeyHandlerCascade.instance) {
+        if (singleHotCascade.instance) {
             throw Error("CascadeMenu zaten oluşturulmuş! getInstance kullan.")
         }
     }
@@ -32,7 +32,7 @@ class singleKeyHandlerCascade {
     _checkCombo(pairs) {
         for p in pairs {
             if (GetKeyState(p.key, "P")) {
-                gState.setBusy(2)
+                App.state.setBusy(2)
                 KeyWait p.key
                 p.action.Call()
                 return true
@@ -43,7 +43,7 @@ class singleKeyHandlerCascade {
 
 
     handle(b, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
-        if (gState.getBusy() > 0) {
+        if (App.state.getBusy() > 0) {
             return
         }
         /*
@@ -57,7 +57,7 @@ class singleKeyHandlerCascade {
         mainKeyExecuted := false
 
         try {
-            gState.setBusy(1)
+            App.state.setBusy(1)
             startTime := A_TickCount
             beepCount := (b.longTime != "") ? 2 : 1
             mediumTriggered := false
@@ -99,7 +99,7 @@ class singleKeyHandlerCascade {
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
                 ; OutputDebug("set busy 2`n")
-                gState.setBusy(2)
+                App.state.setBusy(2)
                 if (this._checkCombo(b.combos)) {
                     return
                 }
@@ -123,7 +123,7 @@ class singleKeyHandlerCascade {
             }
 
             ; Preview göster
-            gState.setBusy(1)
+            App.state.setBusy(1)
             previewText := ""
             if (IsObject(b.previewCallback)) {
                 currentPressType := mainKeyExecuted ? 1 : KeyBuilder.getPressType(A_TickCount - startTime, b.shortTime, b.longTime)
@@ -144,22 +144,22 @@ class singleKeyHandlerCascade {
             ; }
 
         } catch Error as err {
-            gErrHandler.handleError(err.Message " " key, err)
+            App.ErrHandler.handleError(err.Message " " key, err)
         } finally {
-            gState.setBusy(0)
+            App.state.setBusy(0)
         }
     }
 
     cascadeCaret() {
         loadSave(no) {
-            gClipSlot.loadFromSlot("", no)
+            App.ClipSlot.loadFromSlot("", no)
         }
 
         builder := KeyBuilder(350)  ; 2 level mode
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{SC029}")
-                    case 2: gClipSlot.showSlotsSearch()
+                    case 2: App.ClipSlot.showSlotsSearch()
                 }
             })
             .setExitOnPressType(1)
@@ -179,14 +179,14 @@ class singleKeyHandlerCascade {
 
     cascadeTab() {
         loadSave(no) {
-            gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, no)
+            App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, no)
         }
 
         builder := KeyBuilder(350)
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{Tab}")
-                    case 2: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName)
+                    case 2: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
                 }
             })
             .setExitOnPressType(1)
@@ -213,155 +213,20 @@ class singleKeyHandlerCascade {
                         ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
                         SetCapsLockState(caps)
                     case 2:
-                        gClipHist.showHistorySearch()
+                        App.ClipHist.showHistorySearch()
                 }
             })
             .setExitOnPressType(1)
-            .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
-            .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
-            .combo("3", "History 3", () => gClipHist.loadFromHistory(3))
-            .combo("4", "History 4", () => gClipHist.loadFromHistory(4))
-            .combo("5", "History 5", () => gClipHist.loadFromHistory(5))
-            .combo("6", "History 6", () => gClipHist.loadFromHistory(6))
-            .combo("7", "History 7", () => gClipHist.loadFromHistory(7))
-            .combo("8", "History 8", () => gClipHist.loadFromHistory(8))
-            .combo("9", "History 9", () => gClipHist.loadFromHistory(9))
+            .combo("1", "History 1", () => App.ClipHist.loadFromHistory(1))
+            .combo("2", "History 2", () => App.ClipHist.loadFromHistory(2))
+            .combo("3", "History 3", () => App.ClipHist.loadFromHistory(3))
+            .combo("4", "History 4", () => App.ClipHist.loadFromHistory(4))
+            .combo("5", "History 5", () => App.ClipHist.loadFromHistory(5))
+            .combo("6", "History 6", () => App.ClipHist.loadFromHistory(6))
+            .combo("7", "History 7", () => App.ClipHist.loadFromHistory(7))
+            .combo("8", "History 8", () => App.ClipHist.loadFromHistory(8))
+            .combo("9", "History 9", () => App.ClipHist.loadFromHistory(9))
             .build()
         this.handle(builder, "CapsLock")
     }
 }
-
-/*
-class CascadeBuilder {
-    __New(shortTime := 500, longTime := "") {
-        this.shortTime := shortTime
-        this.longTime := (longTime != "") ? longTime : ""
-        this.exitOnPressType := -1
-        this.durationType := -1
-        this._mainKey := ""
-        this.previewCallback := ""
-        this.combos := []
-        this.tips := []
-    }
-
-    mainKey(fn) {
-        this._mainKey := fn
-        return this
-    }
-
-    setExitOnPressType(ms) { ;0 hata mi?
-        this.exitOnPressType := ms
-        return this
-    }
-
-    combo(key, desc, fn) {
-        this.combos.Push({ key: key, desc: desc, action: fn })
-        this.tips.Push(key ": " desc)
-        return this
-    }
-
-    getDurationType() => this.durationType
-
-    getPairsTips() {
-        currentTips := []
-        for pair in this.combos {
-            currentTips.Push(pair.key ": " pair.desc)
-        }
-        return currentTips
-    }
-
-    setPreview(callback) {
-        if (IsObject(callback)) {
-            this.previewCallback := callback ; Callback'i sakla
-        } else {
-            throw Error("setPreview: Callback bir fonksiyon olmalı!")
-        }
-        return this
-    }
-}
-*/
-
-
-/*
-    cascadeCaret() {
-        loadSave(number) {
-            gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, number)
-        }
-
-        builder := CascadeBuilder(350)  ; 2 level mode
-            .mainKey((dt) {
-                switch (dt) {
-                    case 0:
-                        SendInput("{SC029}")
-                    case 1:
-                        gClipSlot.showSlotsSearch()
-                }
-            })
-            .setExitOnPressType(0)
-            .combos("1", "Slot 1", () => loadSave(1))
-            .combos("2", "Slot 2", () => loadSave(2))
-            .combos("3", "Slot 3", () => loadSave(3))
-            .combos("4", "Slot 4", () => loadSave(4))
-            .combos("5", "Slot 5", () => loadSave(5))
-            .combos("6", "Slot 6", () => loadSave(6))
-            .combos("7", "Slot 7", () => loadSave(7))
-            .combos("8", "Slot 8", () => loadSave(8))
-            .combos("9", "Slot 9", () => loadSave(9))
-            .combos("0", "Slot 0", () => loadSave(10))
-        ; .setPreview((b, pressType) => gClipManager.getSlotsPreviewText())
-
-        gCascade.cascadeKey(builder, "^")
-    }
-
-        cascadeTab() {
-            builder := CascadeBuilder(350)  ; 2 level mode
-                .mainKey((dt) {
-                    switch (dt) {
-                        case 0:
-                            SendInput("{Tab}")
-                        case 1:
-                            gClipHist.showHistorySearch()
-                    }
-                })
-                .setExitOnPressType(0)
-                .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
-                .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
-                .combo("3", "History 3", () => gClipHist.loadFromHistory(3))
-                .combo("4", "History 4", () => gClipHist.loadFromHistory(4))
-                .combo("5", "History 5", () => gClipHist.loadFromHistory(5))
-                .combo("6", "History 6", () => gClipHist.loadFromHistory(6))
-                .combo("7", "History 7", () => gClipHist.loadFromHistory(7))
-                .combo("8", "History 8", () => gClipHist.loadFromHistory(8))
-                .combo("9", "History 9", () => gClipHist.loadFromHistory(9))
-            ; .setPreview((b, pressType) => gClipHist.getHistoryPreviewList())
-
-            this.handle(builder, "Tab")
-        }
-
-    cascadeCaps() {
-        builder := CascadeBuilder(350)  ; 2 level mode
-            .mainKey((dt) {
-                switch (dt) {
-                    case 0:
-                        local caps := !GetKeyState("CapsLock", "T")
-                        ShowTip(caps ? "CAPSLOCK " : "capsLock")
-                        SetCapsLockState(caps)
-                    case 1:
-                        gClipHist.showHistorySearch()
-                }
-            })
-            .setExitOnPressType(0)
-            .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
-            .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
-            .combo("3", "History 3", () => gClipHist.loadFromHistory(3))
-            .combo("4", "History 4", () => gClipHist.loadFromHistory(4))
-            .combo("5", "History 5", () => gClipHist.loadFromHistory(5))
-            .combo("6", "History 6", () => gClipHist.loadFromHistory(6))
-            .combo("7", "History 7", () => gClipHist.loadFromHistory(7))
-            .combo("8", "History 8", () => gClipHist.loadFromHistory(8))
-            .combo("9", "History 9", () => gClipHist.loadFromHistory(9))
-
-        this.handle(builder, "CapsLock")
-    }
-}
-*/

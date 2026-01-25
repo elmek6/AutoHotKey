@@ -105,7 +105,7 @@ class SingleRepository {
             }
             return true
         } catch as err {
-            gErrHandler.handleError("Repository yükleme başarısız: " . err.Message, err)
+            App.ErrHandler.handleError("Repository yükleme başarısız: " . err.Message, err)
             this.items := []
             return false
         }
@@ -136,7 +136,7 @@ class SingleRepository {
             file.Close()
             return true
         } catch as err {
-            gErrHandler.backupOnError("Repository.saveAll!", AppConst.FILE_REPO)
+            App.ErrHandler.backupOnError("Repository.saveAll!", AppConst.FILE_REPO)
             return false
         }
     }

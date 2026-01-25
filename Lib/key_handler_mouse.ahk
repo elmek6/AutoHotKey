@@ -16,22 +16,21 @@ class EM {    ; Enhancements for KeyBuilder
     static detectStaticHold(v := 3) => EM.Create(EM.tStationaryPress, v) ;tolerance olabilir simdilik kullanmiyorum
 }
 
-class singleKeyHandlerMouse {
+class singleHotMouse {
     static instance := ""
 
     static getInstance() {
-        if (!singleKeyHandlerMouse.instance) {
-            singleKeyHandlerMouse.instance := singleKeyHandlerMouse()
+        if (!singleHotMouse.instance) {
+            singleHotMouse.instance := singleHotMouse()
         }
-        return singleKeyHandlerMouse.instance
+        return singleHotMouse.instance
     }
 
     __New() {
-        if (singleKeyHandlerMouse.instance) {
+        if (singleHotMouse.instance) {
             throw Error("singleKeyHandlerMouse zaten oluşturulmuş! getInstance kullan.")
-        }
-        ; HotGestures'ı singleton olarak al - BİR KERE OLUŞTURULUR
-        this.hgs := HotGestures.getInstance()
+        }        
+        this.hgs := HotGestures()
     }
 
     handle(b) { ; builderlerin hepsi b. ile baslıyor
@@ -59,9 +58,9 @@ class singleKeyHandlerMouse {
         _checkCombo(comboActions) {
             for p in comboActions {
                 if (GetKeyState(p.key, "P")) {
-                    gState.setBusy(2)
+                    App.state.setBusy(2)
                     KeyWait p.key
-                    gKeyCounts.inc(p.key)
+                    App.KeyCounts.inc(p.key)
                     p.action.Call()
                     ; return true ; basıldığı sürece tekrar çalışsın
                 }
@@ -69,18 +68,18 @@ class singleKeyHandlerMouse {
             return false
         }
 
-        if (gState.getBusy() > 0) {
+        if (App.state.getBusy() > 0) {
             return
         }
 
         try {
-            gState.setBusy(1)
+            App.state.setBusy(1)
             key := A_ThisHotkey
             if (SubStr(key, 1, 1) == "~") {
                 key := SubStr(key, 2)
             }
 
-            gKeyCounts.inc(key)
+            App.KeyCounts.inc(key)
 
 
             ; simdilik kapattim calisiyor mouse icin basilan tuslarin
@@ -158,7 +157,7 @@ class singleKeyHandlerMouse {
             }
 
             ; Repeat yoksa veya ilk basımsa normal çalışsın
-            if (gState.getBusy() == 1 && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
+            if (App.state.getBusy() == 1 && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
                 pressType := KeyBuilder.getPressType(totalDuration, b.shortTime, b.longTime)
                 ; Double-click kontrolü (sadece short press için)
                 if (pressType == 1 && enabledDoubleClick) {
@@ -172,12 +171,12 @@ class singleKeyHandlerMouse {
             }
 
             ; only on combo -> handleRButton icin sag tusu iptal etmeye yariyor
-            if (onlyOnCombo == 1 && b.main_end != "" && IsObject(b.main_end) && gState.getBusy() == 2) {
+            if (onlyOnCombo == 1 && b.main_end != "" && IsObject(b.main_end) && App.state.getBusy() == 2) {
                 b.main_end.Call()
             }
 
         } catch Error as err {
-            gErrHandler.handleError(err.Message " " key, err)
+            App.ErrHandler.handleError(err.Message " " key, err)
         } finally {
             if (b.tips.Length > 0) {
                 ToolTip()
@@ -185,7 +184,7 @@ class singleKeyHandlerMouse {
             if (gestures.Length > 0) {
                 this.hgs.Stop()
             }
-            gState.setBusy(0)
+            App.state.setBusy(0)
         }
     }
 
@@ -194,7 +193,7 @@ class singleKeyHandlerMouse {
             .combo("F14", "LB + F14", () => Send("L F14"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Copy all", () => Send("^a^c"))
-            .combo("F15", "###", () => (gClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}{Enter}"))
+            .combo("F15", "###", () => (App.ClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}{Enter}"))
             .build()
         this.handle(builder)
     }
@@ -203,12 +202,12 @@ class singleKeyHandlerMouse {
         smartPaste(no) {
             ; eger memSlot aciksa F20 1 numarali gözü paste yapacak F19 2 ...
             ; normalde F19 paste bu sorunua cözüm lazim
-            if (gState.getClipHandler() == gState.clipStatusEnum.memSlot) {
+            if (App.state.getClipHandler() == App.state.clipStatusEnum.memSlot) {
                 ; Memory Slots modundaysa direkt slot numarasından paste yap
-                gMemSlots.pasteFromSlot(no)
+                App.MemSlots.pasteFromSlot(no)
             } else {
                 ; Normal modda ClipSlot'tan yükle
-                gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, no)
+                App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, no)
             }
         }
         local initialPos := { x: 0, y: 0 }
@@ -223,16 +222,16 @@ class singleKeyHandlerMouse {
                 mouseMoved := (Abs(endX - initialPos.x) > 4) || (Abs(endY - initialPos.y) > 4)
                 switch (pt) {
                     case 1:
-                        if (gState.getClipHandler() == gState.clipStatusEnum.memSlot)
-                            gMemSlots.smartPaste(true)
+                        if (App.state.getClipHandler() == App.state.clipStatusEnum.memSlot)
+                            App.MemSlots.smartPaste(true)
                     case 2: if (!mouseMoved)
-                        gMemSlots.start()
+                        App.MemSlots.start()
                     case 3: if (!mouseMoved)
-                        gClipHist.showHistorySearch()
+                        App.ClipHist.showHistorySearch()
                 }
             })
             .extend(EM.detectStaticHold())
-            .combo("F14", "Show History Search", () => gClipHist.showHistorySearch())
+            .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())
             .combo("F15", "Smart Paste 6", () => smartPaste(6))
             .combo("F16", "Smart Paste 5", () => smartPaste(5))
             .combo("F17", "Smart Paste 4", () => smartPaste(4))
@@ -261,15 +260,15 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF13menu()
                         ; case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
-                    case 4: gClipHist.showHistorySearch() ; gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName)
+                    case 4: App.ClipHist.showHistorySearch() ; App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
                 }
             })
-            .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 6))
-            .combo("F16", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 5))
-            .combo("F17", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 4))
-            .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 3))
-            .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 2))
-            .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot(gClipSlot.defaultGroupName, 1))
+            .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 6))
+            .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 5))
+            .combo("F17", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 4))
+            .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 3))
+            .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 2))
+            .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 1))
             .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(350))
@@ -287,16 +286,16 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: showF14menu()
                         ; case 2: Send("#{NumpadSub}")  ; Repeat ile çalışacak
-                    case 4: gClipSlot.showSlotsSearch(gClipSlot.defaultGroupName) ; default group varsa onu göster
+                    case 4: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName) ; default group varsa onu göster
                 }
             })
             .combo("LButton", "test", () => OutputDebug("test"))
-            .combo("F15", "Slot 1", () => gClipSlot.loadFromSlot("", 6))
-            .combo("F16", "Slot 1", () => gClipSlot.loadFromSlot("", 5))
-            .combo("F17", "Slot 1", () => gClipSlot.loadFromSlot("", 4))
-            .combo("F18", "Slot 1", () => gClipSlot.loadFromSlot("", 3))
-            .combo("F19", "Slot 1", () => gClipSlot.loadFromSlot("", 2))
-            .combo("F20", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
+            .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot("", 6))
+            .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot("", 5))
+            .combo("F17", "Slot 1", () => App.ClipSlot.loadFromSlot("", 4))
+            .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot("", 3))
+            .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot("", 2))
+            .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
             .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
             ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
@@ -369,8 +368,8 @@ class singleKeyHandlerMouse {
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
             .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
             ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Send("{Delete}"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
+            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
             .build()
         this.handle(builder)
     }
@@ -379,8 +378,8 @@ class singleKeyHandlerMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 1: gState.getClipHandler() == gState.clipStatusEnum.memSlot
-                        ? gMemSlots.smartPaste() : Send("^v")
+                    case 1: App.state.getClipHandler() == App.state.clipStatusEnum.memSlot
+                        ? App.MemSlots.smartPaste() : Send("^v")
                     case 2: Send("^a^v")
                 }
             })
@@ -402,7 +401,7 @@ class singleKeyHandlerMouse {
                 switch (pt) {
                     case 1: Send("^c")
                     case 2: Send("^x")
-                    case 3: gMemSlots.start()
+                    case 3: App.MemSlots.start()
                 }
             })
             .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))

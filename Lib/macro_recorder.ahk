@@ -1,4 +1,4 @@
-class singleMacroRecorder {
+class singleMacroRec {
     static instance := ""
     static RecordingControl := ""
     static bak := ""
@@ -19,25 +19,25 @@ class singleMacroRecorder {
     }
 
     static getInstance(maxRecordTime := 300, maxLines := 500) {
-        if (!singleMacroRecorder.instance) {
-            singleMacroRecorder.instance := singleMacroRecorder(maxRecordTime, maxLines)
+        if (!singleMacroRec.instance) {
+            singleMacroRec.instance := singleMacroRec(maxRecordTime, maxLines)
         }
-        return singleMacroRecorder.instance
+        return singleMacroRec.instance
     }
 
     __New(maxRecordTime, maxLines) {
-        if (singleMacroRecorder.instance) {
+        if (singleMacroRec.instance) {
             throw Error("MacroRecorder zaten oluşturulmuş! getInstance kullan.")
         }
         this.maxRecordTime := maxRecordTime
         this.maxLines := maxLines
         this.isStrokeOnlyMode := false
-        this.recordType := singleMacroRecorder.recType.key
+        this.recordType := singleMacroRec.recType.key
         this.outputFile := "rec1.ahk"
         this.logFile := AppConst.FILES_DIR . this.outputFile
         this.recording := false
         this.playing := false
-        this.status := singleMacroRecorder.macroStatusType.ready
+        this.status := singleMacroRec.macroStatusType.ready
         this.logArr := []
         this.oldid := ""
         this.oldtitle := ""
@@ -72,7 +72,7 @@ class singleMacroRecorder {
         this.oldid := ""
         this.oldtitle := ""
         this.recording := true
-        this.status := singleMacroRecorder.macroStatusType.record
+        this.status := singleMacroRec.macroStatusType.record
         this.catchPressedHotkey(true, isStrokeOnly)
         CoordMode("Mouse", "Screen")
         MouseGetPos(&x, &y)
@@ -84,15 +84,15 @@ class singleMacroRecorder {
     }
 
     playPause() {
-        if (this.status == singleMacroRecorder.macroStatusType.record) {
+        if (this.status == singleMacroRec.macroStatusType.record) {
             this.recording := false
-            this.status := singleMacroRecorder.macroStatusType.pause
+            this.status := singleMacroRec.macroStatusType.pause
             this.catchPressedHotkey(false, this.isStrokeOnlyMode)
             SetTimer(ObjBindMethod(this, "stopRecording"), 0)
             this.showCustomTip("Paused")
-        } else if (this.status == singleMacroRecorder.macroStatusType.pause) {
+        } else if (this.status == singleMacroRec.macroStatusType.pause) {
             this.recording := true
-            this.status := singleMacroRecorder.macroStatusType.record
+            this.status := singleMacroRec.macroStatusType.record
             this.catchPressedHotkey(true, this.isStrokeOnlyMode)
             this.showCustomTip(this.isStrokeOnlyMode ? "Recording strokes..." : "Recording")
             SetTimer(ObjBindMethod(this, "stopRecording"), -this.maxRecordTime * 1000)
@@ -110,7 +110,7 @@ class singleMacroRecorder {
             return returnOnly ? "" : ""
 
         this.recording := false
-        this.status := singleMacroRecorder.macroStatusType.ready
+        this.status := singleMacroRec.macroStatusType.ready
         this.catchPressedHotkey(false, this.isStrokeOnlyMode)
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
         this.showCustomTip()
@@ -195,14 +195,14 @@ class singleMacroRecorder {
             return
         }
         this.playing := true
-        this.status := singleMacroRecorder.macroStatusType.play
+        this.status := singleMacroRec.macroStatusType.play
         this.showCustomTip("Playing " . this.outputFile, "y35", "Green|00FFFF")
         ahk := A_AhkPath
         if (!FileExist(ahk)) {
             this.showCustomTip()
             MsgBox("AutoHotkey bulunamadı: " ahk "!", "Hata", 4096)
             this.playing := false
-            this.status := singleMacroRecorder.macroStatusType.ready
+            this.status := singleMacroRec.macroStatusType.ready
             return
         }
         ; command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
@@ -211,10 +211,10 @@ class singleMacroRecorder {
         command := ahk . " `"" . this.logFile . "`" " . params
         scriptExitCode := RunWait(command)
         this.playing := false
-        this.status := singleMacroRecorder.macroStatusType.ready
+        this.status := singleMacroRec.macroStatusType.ready
         this.showCustomTip()
         if (scriptExitCode != 0) {
-            gErrHandler.handleError("Script Error in " this.outputFile ": - Exit code :" scriptExitCode)
+            App.ErrHandler.handleError("Script Error in " this.outputFile ": - Exit code :" scriptExitCode)
         }
     }
 
@@ -232,7 +232,7 @@ class singleMacroRecorder {
         }
 
         ; Fare hotkey'leri sadece stroke-only DEĞİLSE aktif
-        if (!isStrokeOnly && this.recordType != singleMacroRecorder.recType.key) {
+        if (!isStrokeOnly && this.recordType != singleMacroRec.recType.key) {
             Hotkey("$~*LButton", (*) => this.logKeyMouse("LButton"), f)
             Hotkey("$~*RButton", (*) => this.logKeyMouse("RButton"), f)
             Hotkey("$~*MButton", (*) => this.logKeyMouse("MButton"), f)
@@ -271,16 +271,16 @@ class singleMacroRecorder {
         if (r ~= "^(?i:Alt|Ctrl|Shift|Win)$")
             this.logKeyControl(k)
         else if (k ~= "^(?i:LButton|RButton|MButton)$") {
-            if (this.recordType != singleMacroRecorder.recType.key && !this.isStrokeOnlyMode)
+            if (this.recordType != singleMacroRec.recType.key && !this.isStrokeOnlyMode)
                 this.logKeyMouse(k)
         } else {
-            if (this.recordType != singleMacroRecorder.recType.mouse)
+            if (this.recordType != singleMacroRec.recType.mouse)
                 this.logKeyboard(k, vksc)
         }
     }
 
     logKeyControl(key) {
-        if (this.recordType = singleMacroRecorder.recType.mouse || this.isStrokeOnlyMode)
+        if (this.recordType = singleMacroRec.recType.mouse || this.isStrokeOnlyMode)
             return
         k := InStr(key, "Win") ? key : SubStr(key, 2)
         this.log("{" k " Down}", true)
@@ -291,7 +291,7 @@ class singleMacroRecorder {
     }
 
     logKeyMouse(key) {
-        if (this.recordType = singleMacroRecorder.recType.key || this.isStrokeOnlyMode)
+        if (this.recordType = singleMacroRec.recType.key || this.isStrokeOnlyMode)
             return
         k := SubStr(key, 1, 1)
         CoordMode("Mouse", "Screen")
@@ -395,7 +395,7 @@ class singleMacroRecorder {
             this.logArr[i] := SubStr(r, 1, -1) . str "`""
             return
         }
-        if (this.logArr.Length >= this.maxLines && this.recordType != singleMacroRecorder.recType.mouse) {
+        if (this.logArr.Length >= this.maxLines && this.recordType != singleMacroRec.recType.mouse) {
             this.stopRecording()
             return
         }
@@ -406,12 +406,12 @@ class singleMacroRecorder {
 
     showCustomTip(s := "", pos := "y35", color := "Red|00FFFF") {
         static ShowTip := Gui()
-        if (singleMacroRecorder.bak = color "," pos "," s)
+        if (singleMacroRec.bak = color "," pos "," s)
             return
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
-        singleMacroRecorder.bak := color "," pos "," s
+        singleMacroRec.bak := color "," pos "," s
         ShowTip.Destroy()
-        singleMacroRecorder.RecordingControl := ""
+        singleMacroRec.RecordingControl := ""
         if (s = "")
             return
         ShowTip := Gui("+LastFound +AlwaysOnTop +ToolWindow -Caption +E0x08000020", "ShowTip")
@@ -420,18 +420,18 @@ class singleMacroRecorder {
         ShowTip.MarginX := 10
         ShowTip.MarginY := 5
         ShowTip.SetFont("q3 s20 bold c" . (InStr(s, "Playing") ? "Green" : "Red"))
-        singleMacroRecorder.RecordingControl := ShowTip.Add("Text", , s)
+        singleMacroRec.RecordingControl := ShowTip.Add("Text", , s)
         ShowTip.Show("NA " . pos)
         SetTimer(ObjBindMethod(this, "showTipChangeColor"), 1000)
     }
 
     showTipChangeColor() {
-        if (!singleMacroRecorder.RecordingControl || !IsObject(singleMacroRecorder.RecordingControl)) {
+        if (!singleMacroRec.RecordingControl || !IsObject(singleMacroRec.RecordingControl)) {
             SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
             return
         }
-        r := StrSplit(SubStr(singleMacroRecorder.bak, 1, InStr(singleMacroRecorder.bak, ",") - 1), "|")
-        singleMacroRecorder.RecordingControl.SetFont("q3 c" r[singleMacroRecorder.idx := Mod(Round(singleMacroRecorder.idx), r.Length) + 1])
+        r := StrSplit(SubStr(singleMacroRec.bak, 1, InStr(singleMacroRec.bak, ",") - 1), "|")
+        singleMacroRec.RecordingControl.SetFont("q3 c" r[singleMacroRec.idx := Mod(Round(singleMacroRec.idx), r.Length) + 1])
     }
 
     showButtons() {
@@ -458,7 +458,7 @@ class singleMacroRecorder {
         recordBtn := pauseGui.Add("Button", "w80 h25 x10 y40", "🛑")
         recordBtn.OnEvent("Click", (*) => (
             fileNumber := SubStr(fileCombo.Text, 4, 1),
-            recordType := typeCombo.Text = "key" ? singleMacroRecorder.recType.key : (typeCombo.Text = "mouse" ? singleMacroRecorder.recType.mouse : singleMacroRecorder.recType.hybrid),
+            recordType := typeCombo.Text = "key" ? singleMacroRec.recType.key : (typeCombo.Text = "mouse" ? singleMacroRec.recType.mouse : singleMacroRec.recType.hybrid),
             this.recordAction(fileNumber, recordType)
         ))
 

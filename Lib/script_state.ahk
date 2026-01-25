@@ -89,10 +89,10 @@ class singleState {
     }
 
     loadStats() {
-        if (gKeyCounts.get("DayCount") == "") {
-            gKeyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
-            ShowTip(gKeyCounts.get("DayCount"), TipType.Info, 3000)
-            ; ToolTip(gKeyCounts.get("DayCount")), SetTimer(() => ToolTip(), -3800)
+        if (App.KeyCounts.get("DayCount") == "") {
+            App.KeyCounts.set("DayCount", FormatTime(A_Now, "yyyyMMdd"))
+            ShowTip(App.KeyCounts.get("DayCount"), TipType.Info, 3000)
+            ; ToolTip(App.KeyCounts.get("DayCount")), SetTimer(() => ToolTip(), -3800)
         }
 
         if !FileExist(AppConst.FILE_LOG)
@@ -108,8 +108,8 @@ class singleState {
             parts := StrSplit(line, "=")
             key := Trim(parts[1])
             val := Trim(parts[2])
-            if (gKeyCounts.has(key)) {
-                gKeyCounts.set(key, val)
+            if (App.KeyCounts.has(key)) {
+                App.KeyCounts.set(key, val)
             }
         }
 
@@ -120,7 +120,7 @@ class singleState {
                 continue
             timestamp := Trim(parts[1])
             errorMessage := Trim(parts[2])
-            gErrHandler.errorMap[timestamp] := errorMessage
+            App.ErrHandler.errorMap[timestamp] := errorMessage
         }
         file.Close()
     }
@@ -129,28 +129,28 @@ class singleState {
         if (!this.shouldSaveStats)
             return
 
-        gKeyCounts.inc("WriteCount")
+        App.KeyCounts.inc("WriteCount")
 
         local startDate := FormatTime(scriptStartTime, "yyyyMMdd")
         local currentSince := FormatTime(A_Now, "yyyyMMdd")
-        gKeyCounts.set("DayCount", gKeyCounts.get("DayCount") + DateDiff(currentSince, startDate, "Days"))
+        App.KeyCounts.set("DayCount", App.KeyCounts.get("DayCount") + DateDiff(currentSince, startDate, "Days"))
 
         try {
             file := FileOpen(AppConst.FILE_LOG, "w")
             if !file
                 throw Error("Dosya açılamadı: " . AppConst.FILE_LOG)  ; catch'e düş
 
-            for k, v in gKeyCounts.getAll() {
+            for k, v in App.KeyCounts.getAll() {
                 file.WriteLine(k "=" v)
             }
             file.WriteLine("*")
-            for timestamp, errorMessage in gErrHandler.errorMap {
+            for timestamp, errorMessage in App.ErrHandler.errorMap {
                 file.WriteLine(timestamp "=" errorMessage)
             }
             file.Close()
         } catch as err {
             ; Verdiğiniz koda benzer hata yönetimi: Yedekle ve hatayı işle
-            gErrHandler.backupOnError("scriptState.saveStats! Log dosyası yazılamadı", AppConst.FILE_LOG)
+            App.ErrHandler.backupOnError("scriptState.saveStats! Log dosyası yazılamadı", AppConst.FILE_LOG)
         }
 
     }
@@ -167,7 +167,7 @@ class singleState {
                 WinSetAlwaysOnTop 1, title ;prantez kullanma
             }
         } catch as err {
-            gErrHandler.handleError("Always on top toggle hatası", err)
+            App.ErrHandler.handleError("Always on top toggle hatası", err)
         }
     }
 
@@ -180,7 +180,7 @@ class singleState {
             }
             this.onTopWindowsList.Clear()
         } catch as err {
-            gErrHandler.handleError("Tüm always on top kaldırma hatası", err)
+            App.ErrHandler.handleError("Tüm always on top kaldırma hatası", err)
         }
     }
 

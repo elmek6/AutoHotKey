@@ -16,12 +16,12 @@
         this.lastClip := ""
         this.clipLength := 0
         this.autoSaveEvery := 100
-        gState.setClipHandler(gState.clipStatusEnum.clipHist)
+        App.state.setClipHandler(App.state.clipStatusEnum.clipHist)
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this.loadHistory()
     }
     clipboardWatcher(Type) {
-        if (gState.getClipHandler() != gState.clipStatusEnum.clipHist) {
+        if (App.state.getClipHandler() != App.state.clipStatusEnum.clipHist) {
             return
         }
         if (Type == 0) {
@@ -57,11 +57,12 @@
         this.clipLength := this.history.Length
         this.lastClip := text
 
-        this.autoSaveEvery--
         if (this.autoSaveEvery <= 0) {
-            this.saveHistory()
             this.autoSaveEvery := 100
+            this.saveHistory()
             ; OutputDebug("Autosave yapıldı. Sayaç sıfırlandı.")
+        } else {
+            ; OutputDebug("Autosave sayacı: " . this.autoSaveEvery)
         }
     }
     getHistory() {
@@ -92,7 +93,7 @@
                 throw Error("Geçmişte " . index . " numaralı kayıt yok.")
             }
         } catch as err {
-            gErrHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
+            App.ErrHandler.handleError("loadFromHistory! History yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -107,7 +108,7 @@
             file.Close()
             return true
         } catch as err {
-            gErrHandler.backupOnError("ClipHist.saveHistory!", AppConst.FILE_CLIPBOARD)
+            App.ErrHandler.backupOnError("ClipHist.saveHistory!", AppConst.FILE_CLIPBOARD)
             return false
         }
     }
@@ -129,7 +130,7 @@
             }
             return true
         } catch as err {
-            gErrHandler.handleError("History yükleme başarısız: " . err.Message)
+            App.ErrHandler.handleError("History yükleme başarısız: " . err.Message)
             return false
         }
     }
@@ -205,7 +206,7 @@
                 Send(commands)
             }
         } catch as err {
-            gErrHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
+            App.ErrHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
         }
     }
     showClipboardPreview() {
@@ -213,7 +214,7 @@
     }
 
     __Delete() {
-        if (gState.getShouldSaveOnExit) {
+        if (App.state.getShouldSaveOnExit) {
             this.saveHistory()
         }
     }

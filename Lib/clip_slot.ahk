@@ -52,7 +52,7 @@ class singleClipSlot {
             this.loadSlots()
             return true
         } catch as err {
-            gErrHandler.backupOnError("ClipSlot.setDefaultGroup!", AppConst.FILE_SLOT)
+            App.ErrHandler.backupOnError("ClipSlot.setDefaultGroup!", AppConst.FILE_SLOT)
             return false
         }
     }
@@ -141,7 +141,7 @@ class singleClipSlot {
             file.Close()
             return true
         } catch as err {
-            gErrHandler.backupOnError("ClipSlot.saveSlots!", AppConst.FILE_SLOT)
+            App.ErrHandler.backupOnError("ClipSlot.saveSlots!", AppConst.FILE_SLOT)
             return false
         }
     }
@@ -158,8 +158,8 @@ class singleClipSlot {
             file.Close()
             return jsongo.Parse(data)
         } catch as err {
-            gErrHandler.backupOnError("ClipSlot.readFullJson!", AppConst.FILE_SLOT)
-            gErrHandler.handleError("readFullJson! JSON okunamadı: " . err.Message, err)
+            App.ErrHandler.backupOnError("ClipSlot.readFullJson!", AppConst.FILE_SLOT)
+            App.ErrHandler.handleError("readFullJson! JSON okunamadı: " . err.Message, err)
             return Map("defaultGroupName", "", "groups", [])
         }
     }
@@ -176,7 +176,7 @@ class singleClipSlot {
             }
             return true
         } catch as err {
-            gErrHandler.handleError("loadSlots! Slot yükleme başarısız: " . err.Message, err)
+            App.ErrHandler.handleError("loadSlots! Slot yükleme başarısız: " . err.Message, err)
             return false
         }
     }
@@ -300,11 +300,11 @@ class singleClipSlot {
                 return false
             }
         } catch as err {
-            gErrHandler.handleError("promptAndSaveSlot! Slot kaydetme başarısız: " . err.Message, err)
+            App.ErrHandler.handleError("promptAndSaveSlot! Slot kaydetme başarısız: " . err.Message, err)
             return false
         }
     }
-    loadFromSlot(groupName := this.defaultGroupName, slotIndex) {
+    loadFromSlot(groupName, slotIndex) {
         try {
             if (groupName == "" || !this.groups.Has(groupName)) {
                 groupName := ""  ; Base grup
@@ -315,17 +315,17 @@ class singleClipSlot {
             A_Clipboard := this.getContent(groupName, slotIndex)
             ClipWait(0.2)
             if (A_Clipboard == "") {
-                ShowTip("Slot boş! Grup: " . gClipSlot.defaultGroupName, TipType.Warning, 2000)
+                ShowTip("Slot boş! Grup: " . App.ClipSlot.defaultGroupName, TipType.Warning, 2000)
             }
             Sleep(20)
-            if (gState.isActiveClass("Qt5QWindowIcon")) {
+            if (App.state.isActiveClass("Qt5QWindowIcon")) {
                 SendText(A_Clipboard)
             } else {
                 SendInput("^v")
             }
             return true
         } catch as err {
-            gErrHandler.handleError("loadFromSlot! Komut çalıştırma başarısız: " . err.Message, err)
+            App.ErrHandler.handleError("loadFromSlot! Komut çalıştırma başarısız: " . err.Message, err)
             return false
         }
     }
@@ -351,7 +351,7 @@ class singleClipSlot {
         return groupMenu
     }
     __Delete() {
-        if (gState.getShouldSaveOnExit) {
+        if (App.state.getShouldSaveOnExit) {
             this.saveSlots()
         }
     }

@@ -2,7 +2,7 @@
  * @description Eksen kilitli mouse slider sistemi - 8-way direction detection
  * @author Benim Assistan
  * @date 2026/01/24
- * @version 3.3 - SINGLETON PATTERN
+ * @version 3.4 - SINGLETON PATTERN not anymore
  ***********************************************************************/
 
 class HotGestures {
@@ -39,20 +39,8 @@ class HotGestures {
         downLeft: 8
     }
 
-    ; === SINGLETON PATTERN ===
-    static instance := ""
-
-    static getInstance() {
-        if (!HotGestures.instance) {
-            HotGestures.instance := HotGestures()
-        }
-        return HotGestures.instance
-    }
-
     __New() {
-        if (HotGestures.instance) {
-            throw Error("HotGestures already exists! Use getInstance()")
-        }
+
         
         ; DrawingBoard'u baştan oluştur (bir kere)
         this.__drawingBoard := HotGestures.DrawingBoard(0x00FF88)

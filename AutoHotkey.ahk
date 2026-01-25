@@ -21,34 +21,35 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global gState := singleState.getInstance("ver_151_b")
-global gKeyCounts := singleKeyCounter.getInstance()
-global gErrHandler := singleErrorHandler.getInstance()
-global gClipHist := singleClipHist.getInstance(1000, 2000) ;maxHistory, maxClipSize
-global gClipSlot := singleClipSlot.getInstance()
-global gKeyHandler := singleKeyHandlerMouse.getInstance()
-global gCascade := singleKeyHandlerCascade.getInstance()
-global gHook := singleKeyHandlerHook.getInstance()
-global gRecorder := singleMacroRecorder.getInstance(300)
-global gAppShorts := singleProfile.getInstance()
-global gMemSlots := singleMemorySlots.getInstance()
-global gRepo := singleRepository.getInstance()
-global gScriptStartTime := A_Now
-global gStateConfig := { none: 0, home: 1, work: 2 }
-global gCurrentConfig := gStateConfig.none
-
+class App {
+    static State := singleState.getInstance("ver_153_h")
+    static ErrHandler := singleErrorHandler.getInstance()
+    static HotMouse := singleHotMouse.getInstance()
+    static HotCascade := singleHotCascade.getInstance()
+    static HotHook := singleHotHook.getInstance()
+    static KeyCounts := singleKeyCounter.getInstance()
+    static ClipHist := singleClipHist.getInstance(1000, 2000) ; maxHistory, maxClipSize
+    static ClipSlot := singleClipSlot.getInstance()
+    static MemSlots := singleMemorySlot.getInstance()
+    static Recorder := singleMacroRec.getInstance(300) ; maxRecordTime
+    static AppShorts := singleProfile.getInstance()
+    static Repo := singleRepository.getInstance()    
+    static scriptStartTime := A_Now
+    static stateConfig := { none: 0, home: 1, work: 2 }
+    static currentConfig := App.stateConfig.none
+}
 SetWorkingDir(A_ScriptDir)
 CoordMode("Mouse", "Screen")
 TraySetIcon("ahk.ico")
-A_TrayMenu.Add("Control menu" . gState.getVersion(), (*) => DialogPauseGui())
+A_TrayMenu.Add("Control menu" . App.state.getVersion(), (*) => DialogPauseGui())
 class AppConst {
-    static FILES_DIR := "Files\"
-    static FILE_CLIPBOARD := "Files\clipboards.json"
-    static FILE_LOG := "Files\log.txt"
-    static FILE_SLOT := "Files\slots.json"
-    static FILE_PROFILE := "Files\profiles.json"
-    static FILE_POS := "Files\positions.json"
-    static FILE_REPO := "Files\repository.json"
+    static FILES_DIR := "Files\"    
+    static FILE_CLIPBOARD := AppConst.FILES_DIR "clipboards.json"
+    static FILE_LOG := AppConst.FILES_DIR "log.txt"
+    static FILE_SLOT := AppConst.FILES_DIR "slots.json"
+    static FILE_PROFILE := AppConst.FILES_DIR "profiles.json"
+    static FILE_POS := AppConst.FILES_DIR "positions.json"
+    static FILE_REPO := AppConst.FILES_DIR "repository.json"
     static initDirectory() {
         if !DirExist(AppConst.FILES_DIR) {
             DirCreate(AppConst.FILES_DIR)
@@ -72,27 +73,27 @@ OnExit ExitSettings
 ;-------------------------------------------------------------------
 
 LoadSettings() {
-    OutputDebug "Script " gState.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-    gState.loadStats()
+    OutputDebug "Script " App.state.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
+    App.state.loadStats()
     if (A_ComputerName = "LAPTOP-UTN6L5PA") { ;work
         SetTimer(checkIdle, 1000)
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
         ShowTip("Work profile active", TipType.Info, 1000)
-        global gCurrentConfig := gStateConfig.work
+        App.currentConfig := App.stateConfig.work
     } else {
-        TrayTip("AHK", "Home profile " . gState.getVersion(), 1)
-        global gCurrentConfig := gStateConfig.home
+        TrayTip("AHK", "Home profile " . App.state.getVersion(), 1)
+        App.currentConfig := App.stateConfig.home
     }
     AppConst.initDirectory()
 }
 ExitSettings(ExitReason, ExitCode) {
-    gState.saveStats(gScriptStartTime)
-    gClipHist.__Delete()
-    gClipSlot.__Delete()
-    gState.clearAllOnTopWindows()
+    App.state.saveStats(App.scriptStartTime)
+    App.ClipHist.__Delete()
+    App.ClipSlot.__Delete()
+    App.state.clearAllOnTopWindows()
 }
 reloadScript() {
-    gState.saveStats(gScriptStartTime)
+    App.state.saveStats(App.scriptStartTime)
     SoundBeep(500)
     Reload
 }
@@ -101,14 +102,14 @@ reloadScript() {
 
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
-    gKeyCounts.inc("DoubleCount")
-    gErrHandler.handleError("double click: " A_TimeSincePriorHotkey)
+    App.KeyCounts.inc("DoubleCount")
+    App.ErrHandler.handleError("double click: " A_TimeSincePriorHotkey)
     SoundBeep(1000, 100)
     Return
 }
 #HotIf
 
-#HotIf gState.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
+#HotIf App.state.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
 *3:: return
@@ -133,19 +134,19 @@ LButton:: {
 ; Pause & 2:: recorder.stop()  ; Kayıt durdur
 ; Pause & 3:: recorder.playKeyAction(1, 1)  ; rec1.ahk’yı 1 kez oynat
 
-#HotIf gCurrentConfig = gStateConfig.work ; hotif olan tuslari override eder
->#1:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
->#2:: gRecorder.playKeyAction(2, 1)
+#HotIf App.currentConfig = App.stateConfig.work ; hotif olan tuslari override eder
+>#1:: App.Recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+>#2:: App.Recorder.playKeyAction(2, 1)
 ; >#3:: getPressTypeTest( ;belki önüne birsey gelince olabilir?
 ;     (pressType) => pressType == 0
-;         ? gRecorder.playKeyAction(3, 1)
-;         : gRecorder.recordAction(3, singleMacroRecorder.recType.key)
+;         ? App.Recorder.playKeyAction(3, 1)
+;         : App.Recorder.recordAction(3, singleMacroRecorder.recType.key)
 ; )
 #HotIf
 
-#HotIf gCurrentConfig = gStateConfig.home
-SC132:: gRecorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
-SC16C:: gRecorder.playKeyAction(2, 1)
+#HotIf App.currentConfig = App.stateConfig.home
+SC132:: App.Recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
+SC16C:: App.Recorder.playKeyAction(2, 1)
 #HotIf
 
 ; F18 basılıyken tekerlek → Volume kont
@@ -155,56 +156,56 @@ SC16C:: gRecorder.playKeyAction(2, 1)
 ; #HotIf
 
 ;Fare tuslari haritasi
-F13:: gKeyHandler.handleF13()
-F14:: gKeyHandler.handleF14()
-F15:: gKeyHandler.handleF15()
-F16:: gKeyHandler.handleF16()
-F17:: gKeyHandler.handleF17()
-F18:: gKeyHandler.handleF18()
-F19:: gKeyHandler.handleF19()
-F20:: gKeyHandler.handleF20()
+F13:: App.HotMouse.handleF13()
+F14:: App.HotMouse.handleF14()
+F15:: App.HotMouse.handleF15()
+F16:: App.HotMouse.handleF16()
+F17:: App.HotMouse.handleF17()
+F18:: App.HotMouse.handleF18()
+F19:: App.HotMouse.handleF19()
+F20:: App.HotMouse.handleF20()
 
 ;^::^ ;caret tuşu halen işlevsel SC029  vkC0
 
-SC029:: gCascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
-SC00F:: gCascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
-SC03A:: gCascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
-SC00D:: gHook.sysCommands() ; ´ backtick SC00D VKDD
+SC029:: App.HotCascade.cascadeCaret() ; Caret VKDC SC029  ^ != ^
+SC00F:: App.HotCascade.cascadeTab()   ; Tab VK09 SC00F  (for not kill  Tab::Tab)
+SC03A:: App.HotCascade.cascadeCaps() ; SC03A:: cascade.cascadeCaps()
+SC00D:: App.HotHook.sysCommands() ; ´ backtick SC00D VKDD
 ; SC00D:: hookCommands() ; ´ backtick SC00D VKDD
 
-~LButton:: gKeyHandler.handleLButton()
-~MButton:: gKeyHandler.handleMButton()
-~RButton:: gKeyHandler.handleRButton()
-; ~RButton:: gKeyCounts.inc("RButton")
+~LButton:: App.HotMouse.handleLButton()
+~MButton:: App.HotMouse.handleMButton()
+~RButton:: App.HotMouse.handleRButton()
+; ~RButton:: App.KeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {
-    if (gState.getLastWheelTime())
+    if (App.state.getLastWheelTime())
         Send("#{NumpadAdd}")
 }
 ~MButton & WheelDown:: {
-    if (gState.getLastWheelTime())
+    if (App.state.getLastWheelTime())
         Send("#{NumpadSub}")
 }
 
 RButton & WheelUp:: {
-    gState.setRightClickActive(true)
-    if (gState.getLastWheelTime()) {
+    App.state.setRightClickActive(true)
+    if (App.state.getLastWheelTime()) {
         Send("{Volume_Up}")
     }
 }
 
 RButton & WheelDown:: {
-    gState.setRightClickActive(true)
-    if (gState.getLastWheelTime()) {
+    App.state.setRightClickActive(true)
+    if (App.state.getLastWheelTime()) {
         Send("{Volume_Down}")
     }
 }
 
 ~RButton Up:: {
-    if (gState.getRightClickActive()) {
+    if (App.state.getRightClickActive()) {
         Sleep 50
         Send ("{ESC}")
-        gState.setRightClickActive(false)
+        App.state.setRightClickActive(false)
     }
 }
 

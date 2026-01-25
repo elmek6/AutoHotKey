@@ -11,7 +11,7 @@ class ShortCut {
             try {
                 Send(stroke)
             } catch as err {
-                gErrHandler.handleError("AppProfile.play! hatali satir: " stroke, err)
+                App.ErrHandler.handleError("AppProfile.play! hatali satir: " stroke, err)
             }
         }
     }
@@ -38,7 +38,7 @@ class AppProfile {
     }
     playAt(index) {
         if (index < 1 || index > this.shortCuts.Length) {
-            gErrHandler.handleError("Geçersiz shortCut index: " . index)
+            App.ErrHandler.handleError("Geçersiz shortCut index: " . index)
             SoundBeep(800)  ; Uyarı sesi
             return false
         }
@@ -161,8 +161,8 @@ class singleProfile {
             this.showManagerGui()
             ; Aktif pencere bilgilerini otomatik doldur
             try {
-                local title := gState.getActiveTitle()
-                local className := gState.getActiveClassName()
+                local title := App.state.getActiveTitle()
+                local className := App.state.getActiveClassName()
                 this._classNameEdit.Value := className
                 this._titleEdit.Value := title
                 this._profileNameEdit.Value := "New Profile"
@@ -354,10 +354,10 @@ class singleProfile {
     }
     ; Makro kaydet
     _recordMacro() {
-        recorder := singleMacroRecorder.getInstance()
+        recorder := singleMacroRec.getInstance()
         ShowTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan", TipType.Info, 3000)
         recorder.recordScreen(true)  ; Strokes modunda kaydet
-        while (recorder.recording || recorder.status == singleMacroRecorder.macroStatusType.pause) {
+        while (recorder.recording || recorder.status == singleMacroRec.macroStatusType.pause) {
             Sleep(100)
         }
         keyStrokes := recorder.stop(true)  ; logArr al
@@ -410,9 +410,9 @@ class singleProfile {
     }
     ; Mevcut metodlar (değişmedi)
     findProfileByWindow() {
-        local title := gState.getActiveTitle()
-        local hwnd := gState.getActiveHwnd()
-        local className := gState.getActiveClassName()
+        local title := App.state.getActiveTitle()
+        local hwnd := App.state.getActiveHwnd()
+        local className := App.state.getActiveClassName()
         try {
             if (title == "") {
                 return
@@ -427,7 +427,7 @@ class singleProfile {
                 return profile
             }
         } catch as err {
-            gErrHandler.handleError("Pencere bilgisi alınamadı", err)
+            App.ErrHandler.handleError("Pencere bilgisi alınamadı", err)
         }
         return false
     }
@@ -450,12 +450,12 @@ class singleProfile {
             local jsonData := jsongo.Stringify(jsonStruct)
             local file := FileOpen(AppConst.FILE_PROFILE, "w", "UTF-8")
             if (!file) {
-                throw
+                throw Error("Dosya açılamadı: " . AppConst.FILE_PROFILE)
             }
             file.Write(jsonData)
             file.Close()
         } catch as err {
-            gErrHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
+            App.ErrHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
         }
     }
     load() {
@@ -483,7 +483,7 @@ class singleProfile {
             }
         } catch as err {
             this.profiles := []
-            gErrHandler.backupOnError("AppShorts.load!", AppConst.FILE_PROFILE)
+            App.ErrHandler.backupOnError("AppShorts.load!", AppConst.FILE_PROFILE)
         }
     }
     ; Garbage için

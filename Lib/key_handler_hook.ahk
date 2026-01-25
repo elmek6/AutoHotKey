@@ -8,24 +8,24 @@
     static setTimeOut(v := 5000) => EH.Create(EH.tTimeOut, v)
 }
 
-class singleKeyHandlerHook {
+class singleHotHook {
     static instance := ""
 
     static getInstance() {
-        if (!singleKeyHandlerHook.instance) {
-            singleKeyHandlerHook.instance := singleKeyHandlerHook()
+        if (!singleHotHook.instance) {
+            singleHotHook.instance := singleHotHook()
         }
-        return singleKeyHandlerHook.instance
+        return singleHotHook.instance
     }
 
     __New() {
-        if (singleKeyHandlerHook.instance) {
+        if (singleHotHook.instance) {
             throw Error("singleKeyHandlerHook zaten oluşturulmuş! getInstance kullan.")
         }
     }
 
     handle(b, key := A_ThisHotkey) {
-        if (gState.getBusy() > 0) {
+        if (App.state.getBusy() > 0) {
             return
         }
 
@@ -56,7 +56,7 @@ class singleKeyHandlerHook {
         pressType := 0
 
         try {
-            gState.setBusy(1)
+            App.state.setBusy(1)
 
             ; Double click kontrolü (gap varsa)
             if (b.gapTime != "") {
@@ -191,10 +191,10 @@ class singleKeyHandlerHook {
             SoundBeep(1000, 100)
 
         } catch as err {
-            gErrHandler.handleError("HookKeyHandler hata: " key, err)
+            App.ErrHandler.handleError("HookKeyHandler hata: " key, err)
         } finally {
             ToolTip("")
-            gState.setBusy(0)
+            App.state.setBusy(0)
         }
     }
 
@@ -210,15 +210,15 @@ class singleKeyHandlerHook {
             .setExitOnPressType(2)  ; Kısa basımda hook beklemesin
             .combo("1", "Reload script", () => reloadScript())
             .combo("2", "Show stats", () => getStatsArray(true))
-            .combo("3", "Profile manager", () => gAppShorts.showManagerGui())
+            .combo("3", "Profile manager", () => App.AppShorts.showManagerGui())
             .combo("4", "Key history", () => ShowKeyHistoryLoop())
-            .combo("5", "Memory slots", () => gMemSlots.start())
-            .combo("6", "Macro recorder", () => gRecorder.showButtons())
+            .combo("5", "Memory slots", () => App.MemSlots.start())
+            .combo("6", "Macro recorder", () => App.Recorder.showButtons())
             .combo("7", "F13 menu", () => showF13menu())
             .combo("8", "F14 menu", () => showF14menu())
             .combo("9", "Pause script", () => DialogPauseGui())
             .combo("0", "Exit script", () => ExitApp())
-            .combo("r", "Repository GUI", () => gRepo.showGui())
+            .combo("r", "Repository GUI", () => App.Repo.showGui())
             .combo("a", "TrayTip test", () => TrayTip("Başlık", "Mesaj içeriği", 1))
             .extend(EH.autoPreview(true))  ; Otomatik preview oluştur
             .extend(EH.setTimeOut(30000))  ; 30 saniye timeout
@@ -260,16 +260,16 @@ class singleKeyHandlerHook {
                 }
             })
             .setExitOnPressType(1)
-            .combo("1", "History 1", () => gClipHist.loadFromHistory(1))
-            .combo("2", "History 2", () => gClipHist.loadFromHistory(2))
-            .combo("3", "History 3", () => gClipHist.loadFromHistory(3))
-            .combo("4", "History 4", () => gClipHist.loadFromHistory(4))
-            .combo("5", "History 5", () => gClipHist.loadFromHistory(5))
-            .combo("6", "History 6", () => gClipHist.loadFromHistory(6))
-            .combo("7", "History 7", () => gClipHist.loadFromHistory(7))
-            .combo("8", "History 8", () => gClipHist.loadFromHistory(8))
-            .combo("9", "History 9", () => gClipHist.loadFromHistory(9))
-            .combo("h", "Show history GUI", () => gClipHist.showHistorySearch())
+            .combo("1", "History 1", () => App.ClipHist.loadFromHistory(1))
+            .combo("2", "History 2", () => App.ClipHist.loadFromHistory(2))
+            .combo("3", "History 3", () => App.ClipHist.loadFromHistory(3))
+            .combo("4", "History 4", () => App.ClipHist.loadFromHistory(4))
+            .combo("5", "History 5", () => App.ClipHist.loadFromHistory(5))
+            .combo("6", "History 6", () => App.ClipHist.loadFromHistory(6))
+            .combo("7", "History 7", () => App.ClipHist.loadFromHistory(7))
+            .combo("8", "History 8", () => App.ClipHist.loadFromHistory(8))
+            .combo("9", "History 9", () => App.ClipHist.loadFromHistory(9))
+            .combo("h", "Show history GUI", () => App.ClipHist.showHistorySearch())
             .extend(EH.autoPreview(true))
             .build()
 
@@ -284,17 +284,17 @@ class singleKeyHandlerHook {
                 }
             })
             .setExitOnPressType(1)
-            .combo("1", "Slot 1", () => gClipSlot.loadFromSlot("", 1))
-            .combo("2", "Slot 2", () => gClipSlot.loadFromSlot("", 2))
-            .combo("3", "Slot 3", () => gClipSlot.loadFromSlot("", 3))
-            .combo("4", "Slot 4", () => gClipSlot.loadFromSlot("", 4))
-            .combo("5", "Slot 5", () => gClipSlot.loadFromSlot("", 5))
-            .combo("6", "Slot 6", () => gClipSlot.loadFromSlot("", 6))
-            .combo("7", "Slot 7", () => gClipSlot.loadFromSlot("", 7))
-            .combo("8", "Slot 8", () => gClipSlot.loadFromSlot("", 8))
-            .combo("9", "Slot 9", () => gClipSlot.loadFromSlot("", 9))
-            .combo("0", "Slot 10", () => gClipSlot.loadFromSlot("", 10))
-            .combo("s", "Slot GUI", () => gClipSlot.showSlotsSearch())
+            .combo("1", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
+            .combo("2", "Slot 2", () => App.ClipSlot.loadFromSlot("", 2))
+            .combo("3", "Slot 3", () => App.ClipSlot.loadFromSlot("", 3))
+            .combo("4", "Slot 4", () => App.ClipSlot.loadFromSlot("", 4))
+            .combo("5", "Slot 5", () => App.ClipSlot.loadFromSlot("", 5))
+            .combo("6", "Slot 6", () => App.ClipSlot.loadFromSlot("", 6))
+            .combo("7", "Slot 7", () => App.ClipSlot.loadFromSlot("", 7))
+            .combo("8", "Slot 8", () => App.ClipSlot.loadFromSlot("", 8))
+            .combo("9", "Slot 9", () => App.ClipSlot.loadFromSlot("", 9))
+            .combo("0", "Slot 10", () => App.ClipSlot.loadFromSlot("", 10))
+            .combo("s", "Slot GUI", () => App.ClipSlot.showSlotsSearch())
             .extend(EH.autoPreview(true))
             .build()
 
