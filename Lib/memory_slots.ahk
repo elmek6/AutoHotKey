@@ -22,8 +22,8 @@ class singleMemorySlot {
                 return
             }
         }
-        this.previousState := App.state.getClipHandler()
-        App.state.setClipHandler(App.state.clipStatusEnum.memSlot)
+        this.previousState := State.Clipboard.getMode()
+        State.Clipboard.setMemSlots()
 
         this.slots := Array()
         Loop 10 {
@@ -277,7 +277,7 @@ class singleMemorySlot {
     }
 
     clipboardWatcher(type) {
-        if (App.state.getClipHandler() != App.state.clipStatusEnum.memSlot) {
+        if (!State.Clipboard.isMemSlots) {
             return
         }
 
@@ -354,7 +354,7 @@ class singleMemorySlot {
     }
 
     smartPaste(middlePressed := false) {
-        if (App.state.getClipHandler() != App.state.clipStatusEnum.memSlot) {
+        if (!State.Clipboard.isMemSlots()) {
             return
         }
 
@@ -373,7 +373,7 @@ class singleMemorySlot {
 
 
         if (this.activeList == this.activeViewerEnum.slots) {
-            this.pasteFromSlot(this.currentSlotIndex)            
+            this.pasteFromSlot(this.currentSlotIndex)
             if (this.currentSlotIndex < this.slotsLength) {
                 this.currentSlotIndex++
             } else {
@@ -403,7 +403,7 @@ class singleMemorySlot {
     _destroy() {
         this.isDestroyed := true
         this.changeHotKeyMode(false)
-        App.state.setClipHandler(this.previousState)
+        State.Clipboard.setMode(this.previousState)
         if (this.gui) {
             this.gui.Destroy()
             this.gui := ""

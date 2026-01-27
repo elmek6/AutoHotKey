@@ -25,7 +25,7 @@ class singleHotHook {
     }
 
     handle(b, key := A_ThisHotkey) {
-        if (App.state.getBusy() > 0) {
+        if (!State.Busy.isFree()) {
             return
         }
 
@@ -56,8 +56,9 @@ class singleHotHook {
         pressType := 0
 
         try {
-            App.state.setBusy(1)
-
+            /*
+            State.Busy.setActive()
+            
             ; Double click kontrolü (gap varsa)
             if (b.gapTime != "") {
                 result := KeyWait(key, "D T" (b.gapTime / 1000))
@@ -70,63 +71,64 @@ class singleHotHook {
                     return
                 }
             }
-
+            
             ; Ana tuş consume et (ilk tuş basımını yutmak için)
             KeyWait(key)
-
+            
             startTime := A_TickCount
             mediumTriggered := false
             longTriggered := false
-
+            
             ; ilk tus basimini while ile al tusun basim tipini belirle
             ; kisa basim, orta basim, uzun basim ve cift basim icin farkli fonksiyonlar calistir
             ; menü acilinca while döngüsü bitip hook devreye girer
             while (GetKeyState(key, "P")) {
                 duration := A_TickCount - startTime
-
+            
                 ; Nullable long mod: short geçince orta çalışsın, menü açılsın
                 if (b.longTime == "" && duration >= b.shortTime && !mainKeyExecuted) {
                     if (b.main_key && IsObject(b.main_key)) {
                         b.main_key.Call(1)
                         mainKeyExecuted := true
                     }
-
+            
                     ; Kısa basımda çık modundaysa return
                     if (exitOnPressType == 1) {
                         return
                     }
                     break  ; Menüye geç
                 }
-
+            
                 ; Medium beep (3-level mode)
                 if (b.longTime != "" && duration >= b.shortTime && !mediumTriggered) {
                     SoundBeep(800, 50)
                     mediumTriggered := true
                 }
-
+            
                 ; Long beep
                 if (b.longTime != "" && duration >= b.longTime && !longTriggered) {
                     SoundBeep(600, 50)
                     longTriggered := true
                 }
-
+            
                 Sleep(40)
             }
-
+            
             ; Ana tuş bırakıldı → pressType hesapla ve mainKey çalıştır
             if (!mainKeyExecuted) {
                 holdTime := A_TickCount - startTime
                 pressType := KeyBuilder.getPressType(holdTime, b.shortTime, b.longTime)
-
+            
                 if (b.main_key && IsObject(b.main_key)) {
                     b.main_key.Call(pressType)
                 }
-
+            
                 ; Exit threshold kontrolü
                 if (pressType == exitOnPressType) {
                     return
                 }
             }
+            */
 
             ; Eğer combo yoksa menü açmaya gerek yok
             if (b.combos.Length == 0) {
@@ -194,7 +196,7 @@ class singleHotHook {
             App.ErrHandler.handleError("HookKeyHandler hata: " key, err)
         } finally {
             ToolTip("")
-            App.state.setBusy(0)
+            State.Busy.setFree()
         }
     }
 

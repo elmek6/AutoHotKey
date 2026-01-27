@@ -16,12 +16,12 @@
         this.lastClip := ""
         this.clipLength := 0
         this.autoSaveEvery := 100
-        App.state.setClipHandler(App.state.clipStatusEnum.clipHist)
+        State.Clipboard.setHistory()
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this.loadHistory()
     }
     clipboardWatcher(Type) {
-        if (App.state.getClipHandler() != App.state.clipStatusEnum.clipHist) {
+        if (!State.Clipboard.isHistory()) {
             return
         }
         if (Type == 0) {
@@ -100,24 +100,24 @@
     saveHistory() {
         try {
             local jsonData := jsongo.Stringify(this.history)
-            local file := FileOpen(AppConst.FILE_CLIPBOARD, "w", "UTF-8")
+            local file := FileOpen(Path.Clipboard, "w", "UTF-8")
             if (!file) {
-                throw Error(AppConst.FILE_CLIPBOARD . " yazılamadı")
+                throw Error(Path.Clipboard . " yazılamadı")
             }
             file.Write(jsonData)
             file.Close()
             return true
         } catch as err {
-            App.ErrHandler.backupOnError("ClipHist.saveHistory!", AppConst.FILE_CLIPBOARD)
+            App.ErrHandler.backupOnError("ClipHist.saveHistory!", Path.Clipboard)
             return false
         }
     }
     loadHistory() {
-        if !FileExist(AppConst.FILE_CLIPBOARD) {
+        if !FileExist(Path.Clipboard) {
             return false
         }
         try {
-            local file := FileOpen(AppConst.FILE_CLIPBOARD, "r", "UTF-8")
+            local file := FileOpen(Path.Clipboard, "r", "UTF-8")
             if (!file) {
                 throw Error("clipboards.json okunamadı")
             }
@@ -214,7 +214,7 @@
     }
 
     __Delete() {
-        if (App.state.getShouldSaveOnExit) {
+        if (State.Script.getShouldSaveOnExit) {
             this.saveHistory()
         }
     }

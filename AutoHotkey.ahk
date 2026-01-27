@@ -21,38 +21,36 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
+global State := singleState.getInstance("ver_154_b")
 class App {
-    static State := singleState.getInstance("ver_153_h")
     static ErrHandler := singleErrorHandler.getInstance()
+    static KeyCounts := singleKeyCounter.getInstance()
     static HotMouse := singleHotMouse.getInstance()
     static HotCascade := singleHotCascade.getInstance()
     static HotHook := singleHotHook.getInstance()
-    static KeyCounts := singleKeyCounter.getInstance()
     static ClipHist := singleClipHist.getInstance(1000, 2000) ; maxHistory, maxClipSize
     static ClipSlot := singleClipSlot.getInstance()
     static MemSlots := singleMemorySlot.getInstance()
     static Recorder := singleMacroRec.getInstance(300) ; maxRecordTime
     static AppShorts := singleProfile.getInstance()
-    static Repo := singleRepository.getInstance()    
-    static scriptStartTime := A_Now
+    static Repo := singleRepository.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
 SetWorkingDir(A_ScriptDir)
 CoordMode("Mouse", "Screen")
 TraySetIcon("ahk.ico")
-A_TrayMenu.Add("Control menu" . App.state.getVersion(), (*) => DialogPauseGui())
-class AppConst {
-    static FILES_DIR := "Files\"    
-    static FILE_CLIPBOARD := AppConst.FILES_DIR "clipboards.json"
-    static FILE_LOG := AppConst.FILES_DIR "log.txt"
-    static FILE_SLOT := AppConst.FILES_DIR "slots.json"
-    static FILE_PROFILE := AppConst.FILES_DIR "profiles.json"
-    static FILE_POS := AppConst.FILES_DIR "positions.json"
-    static FILE_REPO := AppConst.FILES_DIR "repository.json"
+A_TrayMenu.Add("Control menu" . State.Script.getVersion(), (*) => DialogPauseGui())
+class Path {
+    static Dir := "Files\"
+    static Clipboard := Path.Dir "clipboards.json"
+    static Log := Path.Dir "log.txt"
+    static Slot := Path.Dir "slots.json"
+    static Profile := Path.Dir "profiles.json"
+    static Reposiroy := Path.Dir "repository.json"
     static initDirectory() {
-        if !DirExist(AppConst.FILES_DIR) {
-            DirCreate(AppConst.FILES_DIR)
+        if !DirExist(Path.Dir) {
+            DirCreate(Path.Dir)
         }
         ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
     }
@@ -70,35 +68,35 @@ Pause & End:: {
 LoadSettings()
 OnExit ExitSettings
 
-;-------------------------------------------------------------------
+; ═══════════════════════════════════════════════════════════
 
 LoadSettings() {
-    OutputDebug "Script " App.state.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-    App.state.loadStats()
+    OutputDebug "Script " State.Script.getVersion() " started... " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
+    State.loadStats()
     if (A_ComputerName = "LAPTOP-UTN6L5PA") { ;work
-        SetTimer(checkIdle, 1000)
+        State.Idle.enable()
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
         ShowTip("Work profile active", TipType.Info, 1000)
         App.currentConfig := App.stateConfig.work
     } else {
-        TrayTip("AHK", "Home profile " . App.state.getVersion(), 1)
+        TrayTip("AHK", "Home profile " . State.Script.getVersion(), 1)
         App.currentConfig := App.stateConfig.home
     }
-    AppConst.initDirectory()
+    Path.initDirectory()
 }
 ExitSettings(ExitReason, ExitCode) {
-    App.state.saveStats(App.scriptStartTime)
+    State.saveStats(State.Script.getStartTime())
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
-    App.state.clearAllOnTopWindows()
+    State.Window.clearAllOnTop()
 }
 reloadScript() {
-    App.state.saveStats(App.scriptStartTime)
+    State.saveStats(State.Script.getStartTime())
     SoundBeep(500)
     Reload
 }
 
-;-------------------------------------------------------------------
+; ═══════════════════════════════════════════════════════════
 
 #HotIf (A_PriorKey != "" && A_TimeSincePriorHotkey != "" && A_TimeSincePriorHotkey < 70)
 LButton:: {
@@ -109,7 +107,7 @@ LButton:: {
 }
 #HotIf
 
-#HotIf App.state.getBusy() > 1 ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
+#HotIf State.Busy.isCombo() ; combo tuşu suppress ediyoruz *önünde modifier tusu var demek
 *1:: return
 *2:: return
 *3:: return
@@ -179,33 +177,33 @@ SC00D:: App.HotHook.sysCommands() ; ´ backtick SC00D VKDD
 ; ~RButton:: App.KeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {
-    if (App.state.getLastWheelTime())
+    if (State.Mouse.shouldProcessWheel())
         Send("#{NumpadAdd}")
 }
 ~MButton & WheelDown:: {
-    if (App.state.getLastWheelTime())
+    if (State.Mouse.shouldProcessWheel())
         Send("#{NumpadSub}")
 }
 
 RButton & WheelUp:: {
-    App.state.setRightClickActive(true)
-    if (App.state.getLastWheelTime()) {
+    State.Mouse.setRightClick(true)
+    if (State.Mouse.shouldProcessWheel()) {
         Send("{Volume_Up}")
     }
 }
 
 RButton & WheelDown:: {
-    App.state.setRightClickActive(true)
-    if (App.state.getLastWheelTime()) {
+    State.Mouse.setRightClick(true)
+    if (State.Mouse.shouldProcessWheel()) {
         Send("{Volume_Down}")
     }
 }
 
 ~RButton Up:: {
-    if (App.state.getRightClickActive()) {
+    if (State.Mouse.isRightClickActive()) {
         Sleep 50
         Send ("{ESC}")
-        App.state.setRightClickActive(false)
+        State.Mouse.setRightClick(false)
     }
 }
 

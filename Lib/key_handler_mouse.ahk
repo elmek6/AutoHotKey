@@ -29,7 +29,7 @@ class singleHotMouse {
     __New() {
         if (singleHotMouse.instance) {
             throw Error("singleKeyHandlerMouse zaten oluşturulmuş! getInstance kullan.")
-        }        
+        }
         this.hgs := HotGestures()
     }
 
@@ -58,7 +58,7 @@ class singleHotMouse {
         _checkCombo(comboActions) {
             for p in comboActions {
                 if (GetKeyState(p.key, "P")) {
-                    App.state.setBusy(2)
+                    State.Busy.setCombo("mc")
                     KeyWait p.key
                     App.KeyCounts.inc(p.key)
                     p.action.Call()
@@ -68,12 +68,12 @@ class singleHotMouse {
             return false
         }
 
-        if (App.state.getBusy() > 0) {
+        if (!State.Busy.isFree()) {
             return
         }
 
         try {
-            App.state.setBusy(1)
+            State.Busy.setActive()
             key := A_ThisHotkey
             if (SubStr(key, 1, 1) == "~") {
                 key := SubStr(key, 2)
@@ -157,7 +157,7 @@ class singleHotMouse {
             }
 
             ; Repeat yoksa veya ilk basımsa normal çalışsın
-            if (App.state.getBusy() == 1 && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
+            if (State.Busy.isActive() && b.main_key != "" && IsObject(b.main_key) && lastRepeatTime == 0) {
                 pressType := KeyBuilder.getPressType(totalDuration, b.shortTime, b.longTime)
                 ; Double-click kontrolü (sadece short press için)
                 if (pressType == 1 && enabledDoubleClick) {
@@ -171,7 +171,7 @@ class singleHotMouse {
             }
 
             ; only on combo -> handleRButton icin sag tusu iptal etmeye yariyor
-            if (onlyOnCombo == 1 && b.main_end != "" && IsObject(b.main_end) && App.state.getBusy() == 2) {
+            if (onlyOnCombo == 1 && b.main_end != "" && IsObject(b.main_end) && State.Busy.isCombo()) {
                 b.main_end.Call()
             }
 
@@ -184,7 +184,7 @@ class singleHotMouse {
             if (gestures.Length > 0) {
                 this.hgs.Stop()
             }
-            App.state.setBusy(0)
+            State.Busy.setFree()
         }
     }
 
@@ -202,7 +202,7 @@ class singleHotMouse {
         smartPaste(no) {
             ; eger memSlot aciksa F20 1 numarali gözü paste yapacak F19 2 ...
             ; normalde F19 paste bu sorunua cözüm lazim
-            if (App.state.getClipHandler() == App.state.clipStatusEnum.memSlot) {
+            if (State.Clipboard.isMemSlots()) {
                 ; Memory Slots modundaysa direkt slot numarasından paste yap
                 App.MemSlots.pasteFromSlot(no)
             } else {
@@ -222,7 +222,7 @@ class singleHotMouse {
                 mouseMoved := (Abs(endX - initialPos.x) > 4) || (Abs(endY - initialPos.y) > 4)
                 switch (pt) {
                     case 1:
-                        if (App.state.getClipHandler() == App.state.clipStatusEnum.memSlot)
+                        if (State.Clipboard.isMemSlots())
                             App.MemSlots.smartPaste(true)
                     case 2: if (!mouseMoved)
                         App.MemSlots.start()
@@ -378,7 +378,7 @@ class singleHotMouse {
         builder := KeyBuilder()
             .mainKey((pt) {
                 switch (pt) {
-                    case 1: App.state.getClipHandler() == App.state.clipStatusEnum.memSlot
+                    case 1: State.Clipboard.isMemSlots()
                         ? App.MemSlots.smartPaste() : Send("^v")
                     case 2: Send("^a^v")
                 }

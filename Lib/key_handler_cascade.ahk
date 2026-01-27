@@ -32,7 +32,7 @@ class singleHotCascade {
     _checkCombo(pairs) {
         for p in pairs {
             if (GetKeyState(p.key, "P")) {
-                App.state.setBusy(2)
+                State.Busy.setCombo("cc")
                 KeyWait p.key
                 p.action.Call()
                 return true
@@ -43,7 +43,7 @@ class singleHotCascade {
 
 
     handle(b, key := A_ThisHotkey) { ;key opsioynel (gönderen özel tus ise belirtmek icin)
-        if (App.state.getBusy() > 0) {
+        if (!State.Busy.isFree()) {
             return
         }
         /*
@@ -57,7 +57,7 @@ class singleHotCascade {
         mainKeyExecuted := false
 
         try {
-            App.state.setBusy(1)
+            State.Busy.setActive()
             startTime := A_TickCount
             beepCount := (b.longTime != "") ? 2 : 1
             mediumTriggered := false
@@ -99,7 +99,7 @@ class singleHotCascade {
                 ; Ana tuş basılıyken yancı tuş kontrolü
                 ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
                 ; OutputDebug("set busy 2`n")
-                App.state.setBusy(2)
+                State.Busy.setCombo("kh")
                 if (this._checkCombo(b.combos)) {
                     return
                 }
@@ -123,7 +123,7 @@ class singleHotCascade {
             }
 
             ; Preview göster
-            App.state.setBusy(1)
+            State.Busy.setActive()
             previewText := ""
             if (IsObject(b.previewCallback)) {
                 currentPressType := mainKeyExecuted ? 1 : KeyBuilder.getPressType(A_TickCount - startTime, b.shortTime, b.longTime)
@@ -146,7 +146,7 @@ class singleHotCascade {
         } catch Error as err {
             App.ErrHandler.handleError(err.Message " " key, err)
         } finally {
-            App.state.setBusy(0)
+            State.Busy.setFree()
         }
     }
 

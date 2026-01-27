@@ -43,7 +43,7 @@ class singleClipSlot {
             local fullData := this.readFullJson()
             fullData["defaultGroupName"] := newName
             local jsonStr := jsongo.Stringify(fullData)
-            local file := FileOpen(AppConst.FILE_SLOT, "w", "UTF-8")
+            local file := FileOpen(Path.Slot, "w", "UTF-8")
             if (!file) {
                 throw
             }
@@ -52,7 +52,7 @@ class singleClipSlot {
             this.loadSlots()
             return true
         } catch as err {
-            App.ErrHandler.backupOnError("ClipSlot.setDefaultGroup!", AppConst.FILE_SLOT)
+            App.ErrHandler.backupOnError("ClipSlot.setDefaultGroup!", Path.Slot)
             return false
         }
     }
@@ -133,7 +133,7 @@ class singleClipSlot {
             fullData["groups"] := groupsArray
             fullData["defaultGroupName"] := this.defaultGroupName
             local jsonStr := jsongo.Stringify(fullData)
-            local file := FileOpen(AppConst.FILE_SLOT, "w", "UTF-8")
+            local file := FileOpen(Path.Slot, "w", "UTF-8")
             if (!file) {
                 throw
             }
@@ -141,16 +141,16 @@ class singleClipSlot {
             file.Close()
             return true
         } catch as err {
-            App.ErrHandler.backupOnError("ClipSlot.saveSlots!", AppConst.FILE_SLOT)
+            App.ErrHandler.backupOnError("ClipSlot.saveSlots!", Path.Slot)
             return false
         }
     }
     readFullJson() {
-        if !FileExist(AppConst.FILE_SLOT) {
+        if !FileExist(Path.Slot) {
             return Map("defaultGroupName", "", "groups", [])
         }
         try {
-            local file := FileOpen(AppConst.FILE_SLOT, "r", "UTF-8")
+            local file := FileOpen(Path.Slot, "r", "UTF-8")
             if (!file) {
                 throw
             }
@@ -158,13 +158,13 @@ class singleClipSlot {
             file.Close()
             return jsongo.Parse(data)
         } catch as err {
-            App.ErrHandler.backupOnError("ClipSlot.readFullJson!", AppConst.FILE_SLOT)
+            App.ErrHandler.backupOnError("ClipSlot.readFullJson!", Path.Slot)
             App.ErrHandler.handleError("readFullJson! JSON okunamadı: " . err.Message, err)
             return Map("defaultGroupName", "", "groups", [])
         }
     }
     loadSlots() {
-        if !FileExist(AppConst.FILE_SLOT) {
+        if !FileExist(Path.Slot) {
             return false
         }
         try {
@@ -318,7 +318,7 @@ class singleClipSlot {
                 ShowTip("Slot boş! Grup: " . App.ClipSlot.defaultGroupName, TipType.Warning, 2000)
             }
             Sleep(20)
-            if (App.state.isActiveClass("Qt5QWindowIcon")) {
+            if (State.Window.isClass("Qt5QWindowIcon")) {
                 SendText(A_Clipboard)
             } else {
                 SendInput("^v")
@@ -351,7 +351,7 @@ class singleClipSlot {
         return groupMenu
     }
     __Delete() {
-        if (App.state.getShouldSaveOnExit) {
+        if (State.Script.getShouldSaveOnExit) {
             this.saveSlots()
         }
     }

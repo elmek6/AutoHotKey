@@ -1,6 +1,6 @@
 getStatsArray(showMsgBox := false) {
-    stats := "Busy status: " App.state.getBusy() "`n"
-    statsArray := ["Busy status: " App.state.getBusy()]
+    stats := "Busy status: " State.Busy.get() "`n"
+    statsArray := ["Busy status: " State.Busy.get()]
 
     for key, count in App.KeyCounts.getAll() {
         stats .= key ": " count "`n"
@@ -20,16 +20,16 @@ getStatsArray(showMsgBox := false) {
             }
         }
     }
-    sinceDateTime := FormatTime(App.scriptStartTime, "yyyy-MM-dd HH:mm:ss")
+    sinceDateTime := FormatTime(State.Script.getStartTime(), "yyyy-MM-dd HH:mm:ss")
     if (showMsgBox) {
-        MsgBox(stats, App.state.getVersion() " - Stats and errors " sinceDateTime)
+        MsgBox(stats, State.Script.getVersion() " - Stats and errors " sinceDateTime)
     }
     return statsArray
 }
 
 showF13menu() {
     Click("Middle", 1)
-    App.state.updateActiveWindow()
+    State.window.update()
 
     menuF13 := Menu()
     menuAppProfile(menuF13)
@@ -67,24 +67,10 @@ showF14menu() {
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuF14.Add()
     menuF14.Add("Settings", menuSettings())
-    menuF14.Add("Statistics " . App.state.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
+    menuF14.Add("Statistics " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
     menuF14.Show()
 }
 
-CheckIdle(*) {
-    App.state.setIdleCount(App.state.getIdleCount() > 0 ? App.state.getIdleCount() : 60)
-    if (A_TimeIdlePhysical < 60000) {
-        App.state.setIdleCount(60)
-    } else {
-        App.state.setIdleCount(App.state.getIdleCount() - 1)
-        if (App.state.getIdleCount() > 0) {
-            MouseMove(-1, -1, 0, "R") ;5 dakikada bir 1 piksel yukarı ve sola hareket
-            SetTimer(CheckIdle, 5 * 60 * 1000) ;5 dakikada bir kontrol
-        } else {
-            SetTimer(CheckIdle, 0)
-        }
-    }
-}
 
 hookCommands() {
     actions := Map(
@@ -99,6 +85,7 @@ hookCommands() {
         "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
         "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
         "r", { dsc: "Repository GUI", fn: (*) => App.Repo.showGui() },
+        "d", { dsc: "Disable idle timer", fn: (*) => State.Idle.disable() },
         "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
         "q", { dsc: "", fn: (*) => Sleep(10) },
     )
@@ -155,9 +142,9 @@ menuStats() {
 
 menuAppProfile(targetMenu) {
     profile := App.AppShorts.findProfileByWindow()
-    title := App.state.getActiveTitle()
-    hwnd := App.state.getActiveHwnd()
-    className := App.state.getActiveClassName()
+    title := State.Window.getTitle()
+    hwnd := State.Window.getHwnd()
+    className := State.Window.getClass()
     profile := App.AppShorts.findProfileByWindow()
 
     if (profile) {
@@ -173,15 +160,15 @@ menuAppProfile(targetMenu) {
 }
 
 menuAlwaysOnTop(targetMenu) {
-    title := App.state.getActiveTitle()
-    hwnd := App.state.getActiveHwnd()
+    title := State.Window.getTitle()
+    hwnd := State.Window.getHwnd()
 
-    if (!App.state.onTopWindowsList.Has(hwnd)) {
-        targetMenu.Add("📍 Add " . title, (*) => App.state.toggleOnTopWindow(hwnd, title))
+    if (!State.Window.onTopWindows.Has(hwnd)) {
+        targetMenu.Add("📍 Add " . title, (*) => State.Window.toggleAlwaysOnTop(hwnd, title))
     }
 
-    for key, value in App.state.onTopWindowsList {
-        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => App.state.toggleOnTopWindow(k, v))(key, value))
+    for key, value in State.Window.onTopWindows {
+        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value))
     }
 
     return targetMenu
@@ -201,7 +188,7 @@ DialogPauseGui() {
     ))
     pauseGui.Add("Button", "w200 h40", "Restart without save").OnEvent("Click", (*) => (
         _destryoGui(),
-        App.state.setShouldSaveOnExit(false),
+        State.Script.setShouldSaveOnExit(false),
         Reload,
         Suspend(0)
     ))

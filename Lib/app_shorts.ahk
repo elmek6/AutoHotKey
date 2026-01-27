@@ -161,8 +161,8 @@ class singleProfile {
             this.showManagerGui()
             ; Aktif pencere bilgilerini otomatik doldur
             try {
-                local title := App.state.getActiveTitle()
-                local className := App.state.getActiveClassName()
+                local title := State.window.getTitle()
+                local className := State.window.getClassName()
                 this._classNameEdit.Value := className
                 this._titleEdit.Value := title
                 this._profileNameEdit.Value := "New Profile"
@@ -408,11 +408,11 @@ class singleProfile {
         this._selectedProfileIndex := 0
         this._selectedActionIndex := 0
     }
-    ; Mevcut metodlar (değişmedi)
+
     findProfileByWindow() {
-        local title := App.state.getActiveTitle()
-        local hwnd := App.state.getActiveHwnd()
-        local className := App.state.getActiveClassName()
+        local title := State.window.getTitle()
+        local hwnd := State.window.getHwnd()
+        local className := State.window.getClass()
         try {
             if (title == "") {
                 return
@@ -448,9 +448,9 @@ class singleProfile {
                 jsonStruct["profiles"].Push(profMap)
             }
             local jsonData := jsongo.Stringify(jsonStruct)
-            local file := FileOpen(AppConst.FILE_PROFILE, "w", "UTF-8")
+            local file := FileOpen(Path.Profile, "w", "UTF-8")
             if (!file) {
-                throw Error("Dosya açılamadı: " . AppConst.FILE_PROFILE)
+                throw Error("Dosya açılamadı: " . Path.Profile)
             }
             file.Write(jsonData)
             file.Close()
@@ -459,11 +459,11 @@ class singleProfile {
         }
     }
     load() {
-        if (!FileExist(AppConst.FILE_PROFILE)) {
+        if (!FileExist(Path.Profile)) {
             return
         }
         try {
-            file := FileOpen(AppConst.FILE_PROFILE, "r", "UTF-8")
+            file := FileOpen(Path.Profile, "r", "UTF-8")
             if (!file) {
                 throw
             }
@@ -483,7 +483,7 @@ class singleProfile {
             }
         } catch as err {
             this.profiles := []
-            App.ErrHandler.backupOnError("AppShorts.load!", AppConst.FILE_PROFILE)
+            App.ErrHandler.backupOnError("AppShorts.load!", Path.Profile)
         }
     }
     ; Garbage için

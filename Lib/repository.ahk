@@ -64,11 +64,11 @@ class SingleRepository {
     }
 
     loadAll() {
-        if !FileExist(AppConst.FILE_REPO)
+        if !FileExist(Path.Reposiroy)
             return false
 
         try {
-            local file := FileOpen(AppConst.FILE_REPO, "r", "UTF-8")
+            local file := FileOpen(Path.Reposiroy, "r", "UTF-8")
             if (!file) {
                 throw Error("repository.json okunamadı")
             }
@@ -128,15 +128,15 @@ class SingleRepository {
 
             ; Stringify ve kaydet
             local jsonStr := jsongo.Stringify(jsonData)
-            local file := FileOpen(AppConst.FILE_REPO, "w", "UTF-8")
+            local file := FileOpen(Path.Reposiroy, "w", "UTF-8")
             if (!file) {
-                throw Error(AppConst.FILE_REPO . " yazılamadı")
+                throw Error(Path.Reposiroy . " yazılamadı")
             }
             file.Write(jsonStr)
             file.Close()
             return true
         } catch as err {
-            App.ErrHandler.backupOnError("Repository.saveAll!", AppConst.FILE_REPO)
+            App.ErrHandler.backupOnError("Repository.saveAll!", Path.Reposiroy)
             return false
         }
     }
@@ -388,17 +388,17 @@ class SingleRepository {
         tags := StrSplit(tagsStr, "`n", "`r")
 
         if (title = "") {
-            ShowTip("Title zorunlu!", TipType.Error, 2000)            
+            ShowTip("Title zorunlu!", TipType.Error, 2000)
             return
         }
 
         if (this.workingItem = "") {
             newItem := Item(title, category, text, tags)
             this.AddItem(newItem)
-            ShowTip("Eklendi!", TipType.Success)            
+            ShowTip("Eklendi!", TipType.Success)
         } else {
             this.UpdateItem(this.workingItem, title, category, text, tagsStr)
-            ShowTip("Güncellendi!", TipType.Success)            
+            ShowTip("Güncellendi!", TipType.Success)
         }
         this._clearDetails()
     }

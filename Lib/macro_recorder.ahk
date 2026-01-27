@@ -34,7 +34,7 @@ class singleMacroRec {
         this.isStrokeOnlyMode := false
         this.recordType := singleMacroRec.recType.key
         this.outputFile := "rec1.ahk"
-        this.logFile := AppConst.FILES_DIR . this.outputFile
+        this.logFile := Path.Dir . this.outputFile
         this.recording := false
         this.playing := false
         this.status := singleMacroRec.macroStatusType.ready
@@ -53,7 +53,7 @@ class singleMacroRec {
         this.isStrokeOnlyMode := false
         this.outputFile := "rec" . fileNumber . ".ahk"
         this.recordType := recordType
-        this.logFile := AppConst.FILES_DIR . this.outputFile
+        this.logFile := Path.Dir . this.outputFile
         if (this.recording) {
             this.playPause()  ; Kayıt varsa pause/stop
             return
@@ -188,7 +188,7 @@ class singleMacroRec {
         if (this.recording || this.playing)
             this.stop()
         this.outputFile := "rec" . fileNumber . ".ahk"
-        this.logFile := AppConst.FILES_DIR . this.outputFile
+        this.logFile := Path.Dir . this.outputFile
         if (!FileExist(this.logFile)) {
             this.showCustomTip()
             ShowTip("Dosya bulunamadı: " . this.logFile, TipType.Error, 2000)
