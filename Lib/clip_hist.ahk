@@ -150,6 +150,42 @@
         return historyMenu
     }
 
+    showQuickHistoryMenu(maxItems := 10) {
+        _pasteContent(content) {
+            A_Clipboard := content
+            ClipWait(0.2)
+            SendInput("^v")
+            ShowTip(content, TipType.Paste, 600)
+        }
+        local history := this.getHistory()
+        if (history.Length == 0) {
+            ShowTip("Geçmiş boş!", TipType.Warning, 800)
+            return
+        }
+
+        qm := Menu()
+        local count := Min(maxItems, history.Length)
+
+        Loop count {
+            local idx := history.Length - A_Index + 1
+            local content := history[idx]
+            local preview := StrReplace(SubStr(content, 1, 60), "`n", " ")
+            if (StrLen(content) > 60)
+                preview .= "..."
+
+            qm.Add(A_Index ": " preview, ((c) => (*) => this._pasteContent(c))(content))
+        }
+
+        qm.Show()
+    }
+
+    _pasteContent(content) {
+        A_Clipboard := content
+        ClipWait(0.2)
+        SendInput("^v")
+        ShowTip(content, TipType.Paste, 600)
+    }
+
     getHistoryPreviewList() {
         if (this.history.Length = 0) {
             return ["(Boş)"]

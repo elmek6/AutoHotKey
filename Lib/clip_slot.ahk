@@ -180,6 +180,29 @@ class singleClipSlot {
             return false
         }
     }
+    showQuickSlotsMenu() {
+        qm := Menu()
+
+        add(groupName) {
+            local preview := this.getContent(groupName, A_Index)
+            preview := StrReplace(SubStr(preview, 1, 50), "`n", " ")
+            if (StrLen(preview) > 50)
+                preview .= "..."
+            qm.Add(A_Index ": " preview, ((g, idx) => (*) => this.loadFromSlot(g, idx))(groupName, A_Index))
+        }
+
+        Loop 9 {
+            add("")
+        }
+        if (this.defaultGroupName != "")
+        {
+            qm.Add()
+            Loop 10 {
+                add(this.defaultGroupName)
+            }
+        }
+        qm.Show()
+    }
     buildLoadSlotMenu() {
         local loadSlotMenu := Menu()
         loadSlotMenu.Add("Search in slots", (*) => this.showSlotsSearch())

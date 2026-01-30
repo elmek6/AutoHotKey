@@ -74,6 +74,8 @@ class singleHotMouse {
 
         try {
             State.Busy.setActive()
+            startTime := A_TickCount
+
             key := A_ThisHotkey
             if (SubStr(key, 1, 1) == "~") {
                 key := SubStr(key, 2)
@@ -108,7 +110,6 @@ class singleHotMouse {
                 }
             }
 
-            startTime := A_TickCount
             lastRepeatTime := 0
             ; visualShown := { medium: false, long: false }
 
@@ -259,7 +260,7 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF13menu()
-                        ; case 2: Send("#{NumpadAdd}")  ; Repeat ile çalışacak
+                    case 2: App.ClipHist.showQuickHistoryMenu(40)
                     case 4: App.ClipHist.showHistorySearch() ; App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
                 }
             })
@@ -269,7 +270,6 @@ class singleHotMouse {
             .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 3))
             .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 2))
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 1))
-            .extend(EM.visual(true))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(350))
             .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
@@ -285,7 +285,7 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF14menu()
-                        ; case 2: Send("#{NumpadSub}")  ; Repeat ile çalışacak
+                    case 2: App.ClipSlot.showQuickSlotsMenu()
                     case 4: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName) ; default group varsa onu göster
                 }
             })
