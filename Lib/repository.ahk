@@ -64,11 +64,11 @@ class SingleRepository {
     }
 
     loadAll() {
-        if !FileExist(Path.Reposiroy)
+        if !FileExist(Path.Repository)
             return false
 
         try {
-            local file := FileOpen(Path.Reposiroy, "r", "UTF-8")
+            local file := FileOpen(Path.Repository, "r", "UTF-8")
             if (!file) {
                 throw Error("repository.json okunamadı")
             }
@@ -128,15 +128,15 @@ class SingleRepository {
 
             ; Stringify ve kaydet
             local jsonStr := jsongo.Stringify(jsonData)
-            local file := FileOpen(Path.Reposiroy, "w", "UTF-8")
+            local file := FileOpen(Path.Repository, "w", "UTF-8")
             if (!file) {
-                throw Error(Path.Reposiroy . " yazılamadı")
+                throw Error(Path.Repository . " yazılamadı")
             }
             file.Write(jsonStr)
             file.Close()
             return true
         } catch as err {
-            App.ErrHandler.backupOnError("Repository.saveAll!", Path.Reposiroy)
+            App.ErrHandler.backupOnError("Repository.saveAll!", Path.Repository)
             return false
         }
     }
