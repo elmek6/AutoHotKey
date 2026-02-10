@@ -162,7 +162,7 @@ class singleProfile {
             ; Aktif pencere bilgilerini otomatik doldur
             try {
                 local title := State.window.getTitle()
-                local className := State.window.getClassName()
+                local className := State.window.getClass()
                 this._classNameEdit.Value := className
                 this._titleEdit.Value := title
                 this._profileNameEdit.Value := "New Profile"
@@ -355,13 +355,20 @@ class singleProfile {
     ; Makro kaydet
     _recordMacro() {
         recorder := singleMacroRec.getInstance()
-        ShowTip("Kayıt başladı, durdurmak için Ctrl+Esc kullan", TipType.Info, 3000)
-        recorder.recordScreen(true)  ; Strokes modunda kaydet
+        ShowTip("Kayıt başladı, durdurmak için tekrar bas", TipType.Info, 3000)
+        recorder.recordStrokes(singleMacroRec.recType.key)
         while (recorder.recording || recorder.status == singleMacroRec.macroStatusType.pause) {
             Sleep(100)
         }
-        keyStrokes := recorder.stop(true)  ; logArr al
-        this._keyStrokesEdit.Value .= (this._keyStrokesEdit.Value ? "`n" : "") . keyStrokes.Join("`n")  ; Append et
+        ; logArr'dan sadece Send/Sleep komutlarını al
+        keyStrokes := ""
+        for k, v in recorder.logArr {
+            if (InStr(v, "Send(") || InStr(v, "Sleep(")) {
+                keyStrokes .= (keyStrokes ? "`n" : "") . v
+            }
+        }
+        if (keyStrokes != "")
+            this._keyStrokesEdit.Value .= (this._keyStrokesEdit.Value ? "`n" : "") . keyStrokes
     }
     ; Profil listesini yenile
     _refreshProfileList() {

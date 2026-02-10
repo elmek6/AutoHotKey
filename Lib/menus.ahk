@@ -72,45 +72,6 @@ showF14menu() {
 }
 
 
-hookCommands() {
-    actions := Map(
-        "1", { dsc: "Reload", fn: (*) => reloadScript() },
-        "2", { dsc: "Show stats", fn: (*) => getStatsArray(true) },
-        "3", { dsc: "Profil manager", fn: (*) => App.AppShorts.showManagerGui() },
-        "4", { dsc: "Show KeyHistoryLoop", fn: (*) => ShowKeyHistoryLoop() },
-        "5", { dsc: "Memory slot swap", fn: (*) => App.MemSlots.start() },
-        "6", { dsc: "Makro...", fn: (*) => App.Recorder.showButtons() },
-        "7", { dsc: "F13 menü", fn: (*) => showF13menu() },
-        "8", { dsc: "F14 menü", fn: (*) => showF14menu() },
-        "9", { dsc: "Pause script", fn: (*) => DialogPauseGui() },
-        "0", { dsc: "Exit to script", fn: (*) => ExitApp() },
-        "r", { dsc: "Repository GUI", fn: (*) => App.Repo.showGui() },
-        "d", { dsc: "Disable idle timer", fn: (*) => State.Idle.disable() },
-        "a", { dsc: "TrayTip", fn: (*) => TrayTip("Başlık", "Mesaj içeriği", 1) },
-        "q", { dsc: "", fn: (*) => Sleep(10) },
-    )
-
-    menu := "Commands (Esc:exit)`n"
-    for k, v in actions
-        menu .= k ": " v.dsc "`n"
-    ToolTip(menu)
-    OutputDebug ("....")
-
-    ih := InputHook("L1 T30", "{Esc}")
-    ih.Start(), ih.Wait()
-    key := ih.Input != "" ? ih.Input : ih.EndKey
-    ToolTip()
-
-    pressedTogether := GetKeyState(A_ThisHotkey, "P")
-    OutputDebug (pressedTogether)
-
-    if actions.Has(key)
-        actions[key].fn()
-    else
-        SoundBeep(800)
-}
-
-
 menuSettings() {
     local menuSettings := Menu()
     menuSettings.Add("Reload", (*) => reloadScript())
@@ -127,7 +88,7 @@ menuStats() {
 
     statsArray := getStatsArray()
     for stat in statsArray {
-        menuStats.Add(stat, (*) => A_Clipboard := stat)
+        menuStats.Add(stat, ((s) => (*) => A_Clipboard := s)(stat))
     }
     menuStats.Add()
 
@@ -176,28 +137,28 @@ menuAlwaysOnTop(targetMenu) {
 
 DialogPauseGui() {
     Suspend(1)
-    _destryoGui() {
+    _destroyGui() {
         pauseGui.Destroy()
         pauseGui := ""
     }
 
     pauseGui := Gui("-MinimizeBox -MaximizeBox +AlwaysOnTop", "Script Durduruldu")
     pauseGui.Add("Button", "w200 h40", "Play Script").OnEvent("Click", (*) => (
-        _destryoGui(),
+        _destroyGui(),
         Suspend(0) ; Script'i devam ettir
     ))
     pauseGui.Add("Button", "w200 h40", "Restart without save").OnEvent("Click", (*) => (
-        _destryoGui(),
+        _destroyGui(),
         State.Script.setShouldSaveOnExit(false),
         Reload,
         Suspend(0)
     ))
     pauseGui.Add("Button", "w200 h40", "Reload").OnEvent("Click", (*) => (
-        _destryoGui(),
+        _destroyGui(),
         reloadScript()
     ))
     pauseGui.Add("Button", "w200 h40", "Exit").OnEvent("Click", (*) => (
-        _destryoGui(),
+        _destroyGui(),
         ExitApp
     ))
     pauseGui.OnEvent("Close", (*) => (
@@ -205,7 +166,7 @@ DialogPauseGui() {
     ))
 
     pauseGui.OnEvent("Escape", (*) => (
-        _destryoGui(),
+        _destroyGui(),
         Suspend(0)
     ))
 

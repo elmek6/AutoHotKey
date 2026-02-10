@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_154_b")
+global State := singleState.getInstance("ver_155_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -49,7 +49,7 @@ class Path {
     static Log := Path.Dir "log.txt"
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
-    static Reposiroy := Path.Dir "repository.json"
+    static Repository := Path.Dir "repository.json"
     static initDirectory() {
         if !DirExist(Path.Dir) {
             DirCreate(Path.Dir)
@@ -236,7 +236,7 @@ NumpadIns:: Send("J")
 NumpadDel:: Send("L")
 NumpadClear:: Send("K")
 
-^!+#Space:: return OutputDebug(":-)") ; Send("+{F10}") ;work suppreme edilemiyor (#hotif de olmadı)
+; ^!+#Space:: return OutputDebug(":-)") ; Send("+{F10}") ;work suppreme edilemiyor (#hotif de olmadı)
 ^<:: SendInput ("^+k") ;satir sil vscode
 !v:: {
     SetKeyDelay (520, 560)

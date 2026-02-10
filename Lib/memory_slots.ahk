@@ -277,7 +277,7 @@ class singleMemorySlot {
     }
 
     clipboardWatcher(type) {
-        if (!State.Clipboard.isMemSlots) {
+        if (!State.Clipboard.isMemSlots()) {
             return
         }
 

@@ -56,8 +56,8 @@ class singleHotHook {
         pressType := 0
 
         try {
-            /*
             State.Busy.setActive()
+            /*
             
             ; Double click kontrolü (gap varsa)
             if (b.gapTime != "") {

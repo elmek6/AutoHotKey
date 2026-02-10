@@ -97,9 +97,6 @@ class singleHotCascade {
                 }
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
-                ; Inputhook ta ölcebiliyor ama tusun süresini dinledigimiz icin iptal
-                ; OutputDebug("set busy 2`n")
-                State.Busy.setCombo("kh")
                 if (this._checkCombo(b.combos)) {
                     return
                 }

@@ -16,6 +16,7 @@
         this.lastClip := ""
         this.clipLength := 0
         this.autoSaveEvery := 100
+        this.ignoreNextChange := false
         State.Clipboard.setHistory()
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this.loadHistory()
@@ -24,8 +25,11 @@
         if (!State.Clipboard.isHistory()) {
             return
         }
+        if (this.ignoreNextChange) {
+            this.ignoreNextChange := false
+            return
+        }
         if (Type == 0) {
-            ; OutputDebug ("Clipboard boşaltıldı !!!! degisik bir hata!")
             return
         }
         If (Type == 2) {
@@ -62,6 +66,7 @@
             this.saveHistory()
             ; OutputDebug("Autosave yapıldı. Sayaç sıfırlandı.")
         } else {
+            this.autoSaveEvery--
             ; OutputDebug("Autosave sayacı: " . this.autoSaveEvery)
         }
     }
@@ -151,12 +156,6 @@
     }
 
     showQuickHistoryMenu(maxItems := 10) {
-        _pasteContent(content) {
-            A_Clipboard := content
-            ClipWait(0.2)
-            SendInput("^v")
-            ShowTip(content, TipType.Paste, 600)
-        }
         local history := this.getHistory()
         if (history.Length == 0) {
             ShowTip("Geçmiş boş!", TipType.Warning, 800)
@@ -227,30 +226,12 @@
             display .= "..."
         menu.Add(prefix . display, (*) => (A_Clipboard := text, Send("^v")))
     }
-    press(commands) {
-        try {
-            if (commands is Array) {
-                for cmd in commands {
-                    if (InStr(cmd, "{Sleep")) {
-                        local sleepTime := RegExReplace(cmd, ".{Sleep (\d+)}.", "$1")
-                        Sleep(sleepTime)
-                    } else {
-                        Send(cmd)
-                    }
-                }
-            } else {
-                Send(commands)
-            }
-        } catch as err {
-            App.ErrHandler.handleError("Komut çalıştırma başarısız: " . err.Message)
-        }
-    }
     showClipboardPreview() {
         ShowTip(A_Clipboard, TipType.Info)
     }
 
     __Delete() {
-        if (State.Script.getShouldSaveOnExit) {
+        if (State.Script.getShouldSaveOnExit()) {
             this.saveHistory()
         }
     }

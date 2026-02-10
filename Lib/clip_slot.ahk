@@ -366,7 +366,7 @@ class singleClipSlot {
         local allGroups := this.getGroupsName()
         for name in allGroups {
             if (name != "") {
-                groupMenu.Add(name, (*) => this.setDefaultGroup(name))
+                groupMenu.Add(name, ((n) => (*) => this.setDefaultGroup(n))(name))
             }
         }
         groupMenu.Add()
@@ -374,7 +374,7 @@ class singleClipSlot {
         return groupMenu
     }
     __Delete() {
-        if (State.Script.getShouldSaveOnExit) {
+        if (State.Script.getShouldSaveOnExit()) {
             this.saveSlots()
         }
     }
