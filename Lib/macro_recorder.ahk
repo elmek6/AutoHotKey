@@ -285,7 +285,7 @@ class singleMacroRec {
         k := InStr(key, "Win") ? key : SubStr(key, 2)
         this.log("{" k " Down}", true)
         Critical("Off")
-        ErrorLevel := !KeyWait(key)
+        KeyWait(key)
         Critical()
         this.log("{" k " Up}", true)
     }
@@ -312,7 +312,7 @@ class singleMacroRec {
         MouseGetPos(&X1, &Y1)
         t1 := A_TickCount
         Critical("Off")
-        ErrorLevel := !KeyWait(key)
+        KeyWait(key)
         Critical()
         t2 := A_TickCount
         if (t2 - t1 <= 200)

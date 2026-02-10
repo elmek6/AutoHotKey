@@ -258,20 +258,6 @@ class singleClipSlot {
         saveSlotMenu.Add("Yeni grup ekle", (*) => this.promptNewGroup())
         return saveSlotMenu
     }
-    ; getSlotsPreviewText() {
-    ;     previews := []
-    ;     local defaultName := ""
-    ;     local values := this.groups[defaultName]["values"]
-    ;     Loop 9 {
-    ;         local preview := StrReplace(this.getSlotPreview(defaultName, A_Index, 100), "`n", " ")
-    ;         local displayName := this.getName(defaultName, A_Index)
-    ;         previews.Push(displayName . " (" . A_Index . "): " . preview)
-    ;     }
-    ;     if (values.Length >= 10) {
-    ;         previews.Push(this.getName(defaultName, 10) . " (" . 0 . "): " . "[x]")
-    ;     }
-    ;     return previews
-    ; }
     showSlotsSearch(groupName := "") {
         local slotsArray := []
         local values := this.groups[groupName]["values"]
