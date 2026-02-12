@@ -134,10 +134,11 @@ class HotGestures {
             absDx := Abs(dx)
             absDy := Abs(dy)
 
-            if (absDx > HotGestures.DIRECTION_THRESHOLD || absDy > HotGestures.DIRECTION_THRESHOLD) {
+            if (absDx > 3 || absDy > 3) { ; 3 pixel veya daha fazla fark varsa devreye gir
                 ; 8-way direction detection
                 this.__lockedDirection := this.__Detect8WayDirection(dx, dy, absDx, absDy)
-                this.__directionLocked := true
+                this.__directionLocked := true                
+                this.__gestureFired := true
 
                 ; Sadece bu direction'a uygun gesture'ları filtrele
                 this.__FilterGesturesByDirection()
