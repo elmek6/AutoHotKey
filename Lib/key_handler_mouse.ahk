@@ -1,4 +1,7 @@
-#Include <hot_gestures>
+#Include <hot_vectors> ; #Include <hot_gestures>
+
+; Yeni fikir tusu basili tutarken gesture
+; F18 basili tutarken sag sol yaparsan back ve del
 
 class EM {    ; Enhancements for KeyBuilder
     static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6, tStationaryPress := 7
@@ -30,7 +33,7 @@ class singleHotMouse {
         if (singleHotMouse.instance) {
             throw Error("singleKeyHandlerMouse zaten oluşturulmuş! getInstance kullan.")
         }
-        this.hgs := HotGestures()
+        this.hgs := HotVectors() ; this.hgs := HotGestures()
     }
 
     handle(b) { ; builderlerin hepsi b. ile baslıyor
@@ -272,9 +275,9 @@ class singleHotMouse {
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 1))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(350))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.downLeft, (pos) => WinMinimize("A"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => WinMinimize("A"))))
             .build()
         this.handle(builder)
     }
@@ -296,13 +299,16 @@ class singleHotMouse {
             .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot("", 3))
             .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot("", 2))
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.up, (pos) => Send("{Escape}"))))
-            .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.once | HotGestures.bDir.down, (pos) => Send("{Enter}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upLeft, (pos) => Send("{Home}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downRight, (pos) => Send("{End}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => Send("{Enter}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upRight, (pos) => Send("{End}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.down, (pos) => Send("{Enter}"))))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(250))
             .build()
@@ -317,8 +323,8 @@ class singleHotMouse {
                     case 2: Send("{Escape}")
                 }
             })
-            .combo("F13", "Delete", () => Send("{Delete}"))
-            .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
+            ; .combo("F13", "Delete", () => Send("{Delete}"))
+            ; .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
             .build()
 
         this.handle(builder)
@@ -332,7 +338,7 @@ class singleHotMouse {
                     case 2: Send("{Enter}")
                 }
             })
-            .combo("F13", "Send F13", () => Send("F13 bos"))
+            ; .combo("F13", "Send F13", () => Send("F13 bos"))
             .build()
         this.handle(builder)
     }
@@ -342,13 +348,11 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Right}")
-                    case 2: Send("{Home}")
+                    case 2: Send("{BackSpace}")
                 }
             })
-            .combo("F14", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
-            .combo("F18", "Delete", () => Send("{Delete}"))
-            .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
-            .combo("MButton", "3x Click + Delete", () => (Click("Left", 3), Send("{Delete}")))
+            ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => pos > 0 ? Send("{Delete}") : Mod(pos, 5) == 0 ? Send("^z") : Sleep(5))))
             .build()
 
         this.handle(builder)
@@ -360,16 +364,19 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Left}")
-                    case 2: Send("{End}")
+                    case 2: Send("{Delete}")
                 }
             })
-            .combo("F17", "Cut", () => Send("^x"))
-            .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            ; .combo("F17", "Cut", () => Send("^x"))
+            ; .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
-            .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.leftRight, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Send("{Delete}"))))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-            ; .extend(EM.gesture(HotGestures.Gesture(HotGestures.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))            
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Send("{Delete}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => pos < 0 ? Send("{BackSpace}") : Mod(pos, 5) == 0 ? Send("^z") : Sleep(5))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
+
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
             .build()
         this.handle(builder)
     }
@@ -384,9 +391,9 @@ class singleHotMouse {
                 }
             })
             .mainEnd(() => ShowTip(A_Clipboard, TipType.Paste))
-            .combo("F13", "Select All & Paste", () => Send("^a^v"))
-            .combo("F14", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
-            .combo("F20", "Select All & Paste", () => Send("^a^v"))
+            ; .combo("F13", "Select All & Paste", () => Send("^a^v"))
+            ; .combo("F14", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
+            ; .combo("F20", "Select All & Paste", () => Send("^a^v"))
             .combo("LButton", "Click & Paste", () => (Click("Left", 1), Send("^v")))
             .combo("MButton", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
             .build()
@@ -405,10 +412,10 @@ class singleHotMouse {
                 }
             })
             .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
-            .combo("F13", "Select All & Copy", () => Send("^a^c"))
-            .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
-            .combo("F19", "Select All & Copy", () => Send("^a^c"))
-            .combo("F18", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            ; .combo("F13", "Select All & Copy", () => Send("^a^c"))
+            ; .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
+            ; .combo("F19", "Select All & Copy", () => Send("^a^c"))
+            ; .combo("F18", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Click & Copy", () => (Click("Left", 1), Send("^c")))
             .combo("MButton", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .build()
