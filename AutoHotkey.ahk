@@ -62,20 +62,13 @@ Pause & Home:: {
     ; DialogPauseGui()
     reloadScript()
 }
-Pause & End:: {
-    ProcessClose("AutoHotkey64.exe")    
+Pause & End:: {   
     ExitApp()
 }
 Pause & Delete:: {    
-    ProcessClose("AutoHotkey64.exe")
+    ProcessClose("AutoHotkey64.exe") ; tamamen öldür
     Sleep 300
-    reloadScript()
-
-    Run(A_AhkPath " `"" A_ScriptFullPath "`"") ; yeniden baslat
-    reloadScript()
-
-    ; Terminalde tek seferlk: tskkill /f /im AutoHotkey64.exe
-    ; ExitApp()
+    ExitApp()
 }
 #SuspendExempt False
 

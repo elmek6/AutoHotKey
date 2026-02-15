@@ -307,8 +307,7 @@ class singleHotMouse {
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upRight, (pos) => Send("{End}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.down, (pos) => Send("{Enter}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))            
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(250))
             .build()
