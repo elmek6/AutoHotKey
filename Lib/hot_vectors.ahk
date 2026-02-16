@@ -331,12 +331,39 @@ class HotVectors {
 
         Update(text, x, y) {
             this.__lbl.Value := text
+            
+            ; Çoklu monitör desteği: mevcut monitörün sınırlarını al
+            monitorIndex := this.__GetMonitorIndexFromCoords(x, y)
+            MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
+            
             ; x: imleç merkezine hizala (yaklaşık 120px offset)
-            this.__gui.Move(x - 120, y)
+            guiX := x - 120
+            guiY := y
+            
+            ; GUI'nin monitör sınırları içinde kalmasını sağla
+            guiWidth := 240  ; w240 text control'den
+            if (guiX < monLeft)
+                guiX := monLeft
+            if (guiX + guiWidth > monRight)
+                guiX := monRight - guiWidth
+            if (guiY < monTop)
+                guiY := monTop
+            
+            this.__gui.Move(guiX, guiY)
             if (!this.__visible) {
                 this.__gui.Show("NA AutoSize NoActivate")
                 this.__visible := true
             }
+        }
+        
+        __GetMonitorIndexFromCoords(x, y) {
+            ; Hangi monitörde olduğumuzu tespit et
+            Loop MonitorGetCount() {
+                MonitorGet(A_Index, &mLeft, &mTop, &mRight, &mBottom)
+                if (x >= mLeft && x <= mRight && y >= mTop && y <= mBottom)
+                    return A_Index
+            }
+            return 1  ; Varsayılan olarak birinci monitör
         }
 
         Hide() {

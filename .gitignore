@@ -1,5 +1,9 @@
+# Ignored directories
 archive/
 Files/
 ahk2_script/
 test/
 SciTE/
+
+# Ignored files
+Files/log.txt

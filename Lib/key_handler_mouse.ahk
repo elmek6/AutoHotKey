@@ -347,7 +347,7 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Right}")
-                    case 2: Send("{BackSpace}")
+                    case 2: Send("{End}")
                 }
             })
             ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
@@ -363,7 +363,7 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Left}")
-                    case 2: Send("{Delete}")
+                    case 2: Send("{Home}")
                 }
             })
             ; .combo("F17", "Cut", () => Send("^x"))

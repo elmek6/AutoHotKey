@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_156_h")
+global State := singleState.getInstance("ver_157_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -45,8 +45,8 @@ TraySetIcon("ahk.ico")
 A_TrayMenu.Add("Control menu" . State.Script.getVersion(), (*) => DialogPauseGui())
 class Path {
     static Dir := "Files\"
-    static Clipboard := Path.Dir "clipboards.json"
     static Log := Path.Dir "log.txt"
+    static Clipboard := Path.Dir "clipboards.json"
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
     static Repository := Path.Dir "repository.json"
@@ -243,5 +243,3 @@ NumpadClear:: Send("K")
 AppsKey & a:: { ;work
     SetTimer(() => ToolTip("AppsKey + A basıldı"), -80)
 }
-
-
