@@ -22,9 +22,11 @@ class HotVectors {
 
     ; ── Sabitler ────────────────────────────────────────────────────────
     static DIRECTION_THRESHOLD := 8    ; px — yön kilidi eşiği
-    static STEP_SIZE           := 10   ; px — bir tetiklenme eşiği
+    static STEP_SIZE           := 14   ; px — bir tetiklenme eşiği
     static MAX_TOTAL_DISTANCE  := 9000 ; px — toplam hareket güvenlik limiti
-    static POLL_INTERVAL       := 10   ; ms — while döngüsü uyku süresi
+    static POLL_INTERVAL       := 14   ; ms — while döngüsü uyku süresi
+    static ACCELERATION_ENABLE := true ; İvme çarpanı aktif/pasif
+    static MAX_SPEED_MULTIPLIER:= 20   ; Maksimum hız çarpanı (1-20 arası önerilir)
 
     ; ── Public API: binary direction flag'leri (HotGestures uyumlu) ─────
     static bDir := {
@@ -138,6 +140,12 @@ class HotVectors {
 
             sign := rawValue >= 0 ? 1 : -1
 
+            ; ── İvme çarpanı hesapla ─────────────────────────────────
+            speed := 1
+            if (HotVectors.ACCELERATION_ENABLE) {
+                speed := Min(Floor(absMag / HotVectors.STEP_SIZE), HotVectors.MAX_SPEED_MULTIPLIER)
+            }
+
             ; ── Güvenlik limiti ───────────────────────────────────────
             totalDistance += absMag
             if (totalDistance > HotVectors.MAX_TOTAL_DISTANCE) {
@@ -147,10 +155,8 @@ class HotVectors {
             }
 
             ; ── Gesture'ları tetikle ─────────────────────────────────
-            ; İvme kaldırıldı: her tetiklemede callback tam olarak 1 kez çağrılır.
-            ; İleride ivme lazım olursa:
-            ;   speed := Min(Floor(absMag / HotVectors.STEP_SIZE), 20)
-            ;   Loop speed { g.callback.Call(sign > 0 ? A_Index : -A_Index) }
+            ; İvme aktifse: speed kadar callback çağrısı
+            ; İvme pasifse: her zaman 1 kez çağrı
             for g in this.__activeGestures {
                 if (!this.__CheckDirection(g.direction, sign))
                     continue
@@ -160,13 +166,15 @@ class HotVectors {
                     if (!this.__onceTriggered.Has(gKey))
                         this.__onceTriggered[gKey] := g.callback
                 } else {
-                    g.callback.Call(sign)
+                    Loop speed {
+                        g.callback.Call(sign > 0 ? A_Index : -A_Index)
+                    }
                     this.__gestureFired := true
                 }
             }
 
             ; ── Kümülatif pos ve görsel ──────────────────────────────
-            runningPos += sign
+            runningPos += (sign * speed)
             this.__tip.Update(
                 this.__BuildLabel(sign, runningPos),
                 this.__originX,
