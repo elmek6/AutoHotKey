@@ -4,7 +4,7 @@
 ; F18 basili tutarken sag sol yaparsan back ve del
 
 class EM {    ; Enhancements for KeyBuilder
-    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6, tStationaryPress := 7
+    static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6
 
     ; Factory: Tek satırda objeyi damgalayıp döner
     static Create(type, data) => { base: EM.Prototype, type: type, data: data }
@@ -16,7 +16,6 @@ class EM {    ; Enhancements for KeyBuilder
     static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
     static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v)
     static repeatKey(interval := 500) => EM.Create(EM.tRepeatKey, interval)
-    static detectStaticHold(v := 3) => EM.Create(EM.tStationaryPress, v) ;tolerance olabilir simdilik kullanmiyorum
 }
 
 class singleHotMouse {
@@ -234,7 +233,6 @@ class singleHotMouse {
                         App.ClipHist.showHistorySearch()
                 }
             })
-            .extend(EM.detectStaticHold())
             .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())
             .combo("F15", "Smart Paste 6", () => smartPaste(6))
             .combo("F16", "Smart Paste 5", () => smartPaste(5))

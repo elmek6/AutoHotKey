@@ -99,12 +99,6 @@ class singleMacroRec {
         }
     }
 
-    getStrokeCommands() {
-        if (!this.recording || !this.isStrokeOnlyMode)
-            return ""
-        return this.stopRecording(true)
-    }
-
     stopRecording(returnOnly := false) {
         if (!this.recording)
             return returnOnly ? "" : ""

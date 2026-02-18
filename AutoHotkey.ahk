@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_157_h")
+global State := singleState.getInstance("ver_158_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -62,16 +62,17 @@ Pause & Home:: {
     ; DialogPauseGui()
     reloadScript()
 }
-Pause & End:: {   
+Pause & End:: {
     ExitApp()
 }
-Pause & Delete:: {    
+Pause & Delete:: {
     ProcessClose("AutoHotkey64.exe") ; tamamen öldür
     Sleep 300
     ExitApp()
 }
 #SuspendExempt False
 
+OnError(GlobalErrorHandler)
 LoadSettings()
 OnExit ExitSettings
 
@@ -242,4 +243,29 @@ NumpadClear:: Send("K")
 
 AppsKey & a:: { ;work
     SetTimer(() => ToolTip("AppsKey + A basıldı"), -80)
+}
+
+; ═══════════════════════════════════════════════════════════
+; GlobalErrorHandler — OnError ile kayıtlı, tüm thread hatalarını yakalar.
+;
+; mode değerleri:
+;   "Return"  → AHK o hotkey thread'ini durdurur, script yaşamaya devam eder  ← bunu dönüyoruz
+;   "Exit"    → ExitApp() çağrısından önce tetiklenir
+;   "ExitApp" → Fatal error, script kapatılıyor
+;
+; App.ErrHandler.handleError() zaten OutputDebug + TrayTip yapıyor,
+; bu yüzden mevcut altyapıyla doğrudan uyumlu.
+; ═══════════════════════════════════════════════════════════
+GlobalErrorHandler(thrownValue, mode) {
+    try {
+        msg := thrownValue is Error
+            ? thrownValue.Message " | " thrownValue.What " (line " thrownValue.Line ")"
+            : String(thrownValue)
+        App.ErrHandler.handleError("GLOBAL[" mode "]: " msg,
+            thrownValue is Error ? thrownValue : unset)
+    } catch {
+        ; App.ErrHandler henüz hazır değilse (çok erken hata) doğrudan yaz
+        OutputDebug("GLOBAL ERROR (handler fallback): " String(thrownValue) "`n")
+    }
+    return "Return"
 }

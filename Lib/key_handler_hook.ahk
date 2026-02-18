@@ -228,78 +228,79 @@ class singleHotHook {
 
         this.handle(builder)
     }
-
-    ; Örnek 2: Uygulama kısayolları (CapsLock gibi bir tuşla)
-    hookAppShortcuts() {
-        builder := KeyBuilder(400)
-            .mainKey((pt) {
-                if (pt == 1) {  ; Kısa basım: CapsLock toggle
-                    caps := !GetKeyState("CapsLock", "T")
-                    SetCapsLockState(caps)
-                    ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
-                }
-                ; pt == 2: Uzun basım → menü aç (otomatik)
-            })
-            .setExitOnPressType(1)
-            .combo("1", "VS Code", () => Run("code"))
-            .combo("2", "Chrome", () => Run("chrome"))
-            .combo("3", "Explorer", () => Run("explorer"))
-            .combo("4", "Terminal", () => Run("wt.exe"))
-            .combo("5", "Notepad", () => Run("notepad"))
-            .extend(EH.autoPreview(true))
-            .build()
-
-        this.handle(builder, "CapsLock")
-    }
-
-    ; Örnek 3
-    hookTabMenu() {
-        builder := KeyBuilder(350)
-            .mainKey((dt) {
-                switch (dt) {
-                    case 1: SendInput("{Tab}")
-                        ; case 2: menü aç (otomatik)
-                }
-            })
-            .setExitOnPressType(1)
-            .combo("1", "History 1", () => App.ClipHist.loadFromHistory(1))
-            .combo("2", "History 2", () => App.ClipHist.loadFromHistory(2))
-            .combo("3", "History 3", () => App.ClipHist.loadFromHistory(3))
-            .combo("4", "History 4", () => App.ClipHist.loadFromHistory(4))
-            .combo("5", "History 5", () => App.ClipHist.loadFromHistory(5))
-            .combo("6", "History 6", () => App.ClipHist.loadFromHistory(6))
-            .combo("7", "History 7", () => App.ClipHist.loadFromHistory(7))
-            .combo("8", "History 8", () => App.ClipHist.loadFromHistory(8))
-            .combo("9", "History 9", () => App.ClipHist.loadFromHistory(9))
-            .combo("h", "Show history GUI", () => App.ClipHist.showHistorySearch())
-            .extend(EH.autoPreview(true))
-            .build()
-
-        this.handle(builder, "Tab")
-    }
-
-    hookCaretSlots() {
-        builder := KeyBuilder(350)
-            .mainKey((dt) {
-                if (dt == 1) {
-                    SendInput("^")
-                }
-            })
-            .setExitOnPressType(1)
-            .combo("1", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
-            .combo("2", "Slot 2", () => App.ClipSlot.loadFromSlot("", 2))
-            .combo("3", "Slot 3", () => App.ClipSlot.loadFromSlot("", 3))
-            .combo("4", "Slot 4", () => App.ClipSlot.loadFromSlot("", 4))
-            .combo("5", "Slot 5", () => App.ClipSlot.loadFromSlot("", 5))
-            .combo("6", "Slot 6", () => App.ClipSlot.loadFromSlot("", 6))
-            .combo("7", "Slot 7", () => App.ClipSlot.loadFromSlot("", 7))
-            .combo("8", "Slot 8", () => App.ClipSlot.loadFromSlot("", 8))
-            .combo("9", "Slot 9", () => App.ClipSlot.loadFromSlot("", 9))
-            .combo("0", "Slot 10", () => App.ClipSlot.loadFromSlot("", 10))
-            .combo("s", "Slot GUI", () => App.ClipSlot.showSlotsSearch())
-            .extend(EH.autoPreview(true))
-            .build()
-
-        this.handle(builder, "^")
-    }
+    /*  Sistem menüsü gibi kullanilabilecek diger yapilar belki uzun basma filan ESC ya da rakamlar F tuslari icin??
+        ; Örnek 2: Uygulama kısayolları (CapsLock gibi bir tuşla)
+        hookAppShortcuts() {
+            builder := KeyBuilder(400)
+                .mainKey((pt) {
+                    if (pt == 1) {  ; Kısa basım: CapsLock toggle
+                        caps := !GetKeyState("CapsLock", "T")
+                        SetCapsLockState(caps)
+                        ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
+                    }
+                    ; pt == 2: Uzun basım → menü aç (otomatik)
+                })
+                .setExitOnPressType(1)
+                .combo("1", "VS Code", () => Run("code"))
+                .combo("2", "Chrome", () => Run("chrome"))
+                .combo("3", "Explorer", () => Run("explorer"))
+                .combo("4", "Terminal", () => Run("wt.exe"))
+                .combo("5", "Notepad", () => Run("notepad"))
+                .extend(EH.autoPreview(true))
+                .build()
+    
+            this.handle(builder, "CapsLock")
+        }
+    
+        ; Örnek 3
+        hookTabMenu() {
+            builder := KeyBuilder(350)
+                .mainKey((dt) {
+                    switch (dt) {
+                        case 1: SendInput("{Tab}")
+                            ; case 2: menü aç (otomatik)
+                    }
+                })
+                .setExitOnPressType(1)
+                .combo("1", "History 1", () => App.ClipHist.loadFromHistory(1))
+                .combo("2", "History 2", () => App.ClipHist.loadFromHistory(2))
+                .combo("3", "History 3", () => App.ClipHist.loadFromHistory(3))
+                .combo("4", "History 4", () => App.ClipHist.loadFromHistory(4))
+                .combo("5", "History 5", () => App.ClipHist.loadFromHistory(5))
+                .combo("6", "History 6", () => App.ClipHist.loadFromHistory(6))
+                .combo("7", "History 7", () => App.ClipHist.loadFromHistory(7))
+                .combo("8", "History 8", () => App.ClipHist.loadFromHistory(8))
+                .combo("9", "History 9", () => App.ClipHist.loadFromHistory(9))
+                .combo("h", "Show history GUI", () => App.ClipHist.showHistorySearch())
+                .extend(EH.autoPreview(true))
+                .build()
+    
+            this.handle(builder, "Tab")
+        }
+    
+        hookCaretSlots() {
+            builder := KeyBuilder(350)
+                .mainKey((dt) {
+                    if (dt == 1) {
+                        SendInput("^")
+                    }
+                })
+                .setExitOnPressType(1)
+                .combo("1", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
+                .combo("2", "Slot 2", () => App.ClipSlot.loadFromSlot("", 2))
+                .combo("3", "Slot 3", () => App.ClipSlot.loadFromSlot("", 3))
+                .combo("4", "Slot 4", () => App.ClipSlot.loadFromSlot("", 4))
+                .combo("5", "Slot 5", () => App.ClipSlot.loadFromSlot("", 5))
+                .combo("6", "Slot 6", () => App.ClipSlot.loadFromSlot("", 6))
+                .combo("7", "Slot 7", () => App.ClipSlot.loadFromSlot("", 7))
+                .combo("8", "Slot 8", () => App.ClipSlot.loadFromSlot("", 8))
+                .combo("9", "Slot 9", () => App.ClipSlot.loadFromSlot("", 9))
+                .combo("0", "Slot 10", () => App.ClipSlot.loadFromSlot("", 10))
+                .combo("s", "Slot GUI", () => App.ClipSlot.showSlotsSearch())
+                .extend(EH.autoPreview(true))
+                .build()
+    
+            this.handle(builder, "^")
+        }
+    */
 }

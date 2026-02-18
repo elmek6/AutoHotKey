@@ -6,8 +6,8 @@
  ***********************************************************************/
 
 class HotGestures {
-    static DIRECTION_THRESHOLD := 10    ; İlk 10 pixel'de yön belirleme
-    static STEP_SIZE := 10              ; Her 10 pixel'de bir callback tetikle
+    static DIRECTION_THRESHOLD := 16    ; İlk 10 pixel'de yön belirleme
+    static STEP_SIZE := 16              ; Her 10 pixel'de bir callback tetikle
     static MAX_DRAW_LENGTH := 2000      ; Maksimum çizim uzunluğu (güvenlik)
 
     ; Binary direction flags (public API)
@@ -41,10 +41,10 @@ class HotGestures {
 
     __New() {
 
-        
+
         ; DrawingBoard'u baştan oluştur (bir kere)
         this.__drawingBoard := HotGestures.DrawingBoard(0x00FF88)
-        
+
         ; State variables
         this.__mouseHook := ""
         this.__originX := 0
@@ -195,7 +195,7 @@ class HotGestures {
                     }
                 } else {
                     ; Normal gesture ise hemen çalış
-                    g.callback.Call(Abs(currentStep)*diff)
+                    g.callback.Call(Abs(currentStep) * diff)
                     ; OutputDebug("step: " . currentStep . ", diff: " . diff . "`n")
                     this.__gestureFired := true
                 }
@@ -210,7 +210,7 @@ class HotGestures {
         }
 
         this.__lastStep := currentStep
-        
+
         ; Güvenlik limiti
         this.__totalDrawLength += Abs(diff * HotGestures.STEP_SIZE)
         if (this.__totalDrawLength > HotGestures.MAX_DRAW_LENGTH) {
@@ -218,7 +218,7 @@ class HotGestures {
             this.Stop()           ; Gesture'ı sonlandır
             return
         }
-        
+
         this.__drawingBoard.DrawLineTo(x, y)
     }
 
@@ -389,7 +389,7 @@ class HotGestures {
         Show() {
             this.Opt("AlwaysOnTop")
             ; Virtual screen koordinatlarına göre GUI'yi konumlandır
-            super.Show("NoActivate x" this.__virtualLeft " y" this.__virtualTop 
+            super.Show("NoActivate x" this.__virtualLeft " y" this.__virtualTop
                 . " w" this.__virtualWidth " h" this.__virtualHeight - 1)
         }
 

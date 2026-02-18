@@ -1,3 +1,4 @@
+/*
 class EC {    ;Enhancements for KeyBuilder
     static tSetExitOnPress := 1
 
@@ -7,6 +8,7 @@ class EC {    ;Enhancements for KeyBuilder
     ; kısa yazmak için yardımcı metodlar
     static setExitOnPressType(v) => EC.Create(EC.tSetExitOnPress, v)
 }
+*/
 
 ; mainStart mainEnd bu yapida yok
 

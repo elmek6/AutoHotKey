@@ -15,9 +15,6 @@ class KeyBuilder {
         this.previewCallback := ""
         this.exitOnPressType := -1
 
-        ; Hotkey özel alanlar (cascade de kullanılmaz, zararsız)
-        this.enableVisual := false
-        this.enableMouseProfile := ""
         this.gestures := []
         this._extensions := []
     }
