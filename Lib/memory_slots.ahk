@@ -35,6 +35,7 @@ class singleMemorySlot {
         this.slotLV := ""
         this.historyLV := ""
         this.ignoreSameValue := ""
+        this.fKeysEnabled := ""  ; true F tuşları desteği - default disabled olarak başlar
         this.middlePasteCheck := ""
         this.clipHistory := []
         this.isDestroyed := false
@@ -43,7 +44,7 @@ class singleMemorySlot {
             history: false
         }
         ; this.jumpPasteIndex := false belki mod degisince copyden paste bu sekilde alinabilir
-        ; ama 10 astiysa ne yapmak lazim o da düsünülmeli
+        ; ama 10 astiysa ne yapmak lazim o da düşünülmeli
         this.activeList := this.activeViewerEnum.slots
         this.ignoreNextClip := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
@@ -57,30 +58,33 @@ class singleMemorySlot {
         }
 
         this._createGui()
-        this.gui.Show("x10 y10 w450 h620")
-        this.changeHotKeyMode(true)
+        this.gui.Show("x10 y10 w450 h650")
+        ; F tuşlarını hemen aktif ETME - kullanıcı checkbox ile etkinleştirmeli
     }
 
     _createGui() {
         try {
-            this.gui := Gui("+AlwaysOnTop +ToolWindow +MinimizeBox", "💾 Hafıza Slotları")
+            this.gui := Gui("+AlwaysOnTop +ToolWindow +MinimizeBox", "🧾 Hafıza Slotları")
             this.gui.OnEvent("Close", (*) => this._destroy())
             this.gui.OnEvent("Escape", (*) => this._destroy())
             this.gui.SetFont("s9", "Segoe UI")
-            this.gui.Add("Text", "x10 y10 w430 Center", "🔹 F1-F10: Kısa=Slot Yapıştır | Uzun=History Paste | Çift=Slota Kaydet 🔹")
 
-            this.ignoreSameValue := this.gui.Add("CheckBox", "x10 y35 w210 h30", "Veri tekrarını kabul et")
+            ; F tuşları checkbox (default disabled - kullanıcı çalıştırmak isterse aktif edebilir)
+            this.fKeysEnabled := this.gui.Add("CheckBox", "x10 y10 w210 h30", "🔹 F1-F10: Kısa=Slot | Uzun=History | Çift=Kaydet")
+            this.fKeysEnabled.OnEvent("Click", (*) => this._toggleFKeys())
 
-            clearBtn := this.gui.Add("Button", "x230 y35 w210 h30", "🗑️ Slotları Temizle")
+            this.ignoreSameValue := this.gui.Add("CheckBox", "x230 y10 w210 h30", "Veri tekrarını kabul et")
+
+            clearBtn := this.gui.Add("Button", "x10 y45 w210 h30", "🗑️ Slotları Temizle")
             clearBtn.OnEvent("Click", (*) => this._clearSlots())
 
-            this.middlePasteCheck := this.gui.Add("CheckBox", "x10 y75 w350 h20 Checked1", "Orta basım: Aktif slotu yapıştır (Middle Paste)")
+            this.middlePasteCheck := this.gui.Add("CheckBox", "x230 y45 w210 h30 Checked1", "Orta basım: Aktif slotu yapıştır")
 
-            this.slotsHeader := this.gui.Add("Text", "x10 y105 w430 h25 Center BackgroundTrans", "📦 Memory Slots")
+            this.slotsHeader := this.gui.Add("Text", "x10 y85 w430 h25 Center BackgroundTrans", "🦆 Memory Slots")
             this.slotsHeader.SetFont("Bold")
             this.slotsHeader.OnEvent("Click", (*) => (this._selectSlotViewer(this.currentSlotIndex)))
 
-            this.slotLV := this.gui.Add("ListView", "x10 y130 w430 h220 +HScroll -Multi +LV0x10", ["Slot", "İçerik"])
+            this.slotLV := this.gui.Add("ListView", "x10 y110 w430 h220 +HScroll -Multi +LV0x10", ["Slot", "İçerik"])
             this.slotLV.ModifyCol(1, 60)
             this.slotLV.ModifyCol(2, 350)
             this.slotLV.OnEvent("Click", (*) => this._onSlotClick())
@@ -90,11 +94,11 @@ class singleMemorySlot {
                 this.slotLV.Add("", A_Index, "")
             }
 
-            this.historyHeader := this.gui.Add("Text", "x10 y360 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
+            this.historyHeader := this.gui.Add("Text", "x10 y340 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
             this.historyHeader.SetFont("Bold")
             this.historyHeader.OnEvent("Click", (*) => (this._selectHistoryViewer(this.currentHistoryIndex)))
 
-            this.historyLV := this.gui.Add("ListView", "x10 y390 w430 h220 +HScroll -Multi +LV0x10", ["#", "İçerik"])
+            this.historyLV := this.gui.Add("ListView", "x10 y370 w430 h220 +HScroll -Multi +LV0x10", ["#", "İçerik"])
             this.historyLV.ModifyCol(1, 60)
             this.historyLV.ModifyCol(2, 350)
             this.historyLV.OnEvent("Click", (*) => this._onHistoryClick())
@@ -106,13 +110,36 @@ class singleMemorySlot {
         }
     }
 
-    changeHotKeyMode(sw) {
-        mode := sw ? "On" : "Off"
+    ; F tuşlarını toggle et (checkbox tıklanınca çalışır)
+    _toggleFKeys() {
+        isChecked := this.fKeysEnabled.Value
+        if (isChecked) {
+            ; F tuşlarını AKTif et
+            this._setupFKeys(true)
+            ShowTip("🔹 F1-F10 tuşları AKTifleştirildi", TipType.Success, 1000)
+        } else {
+            ; F tuşlarını KAPA
+            this._setupFKeys(false)
+            ShowTip("🔹 F1-F10 tuşları kapatıldı", TipType.Info, 1000)
+        }
+    }
+
+    ; F tuşlarını kur/aç yada kapat
+    _setupFKeys(enable) {
+        mode := enable ? "On" : "Off"
         CreateHotkeyHandler(idx) {
             return (*) => this._handleFKey(idx)
         }
         Loop 10 {
-            try Hotkey("F" A_Index, sw ? CreateHotkeyHandler(A_Index) : "", mode)
+            try {
+                if (enable) {
+                    Hotkey("F" A_Index, CreateHotkeyHandler(A_Index), mode)
+                } else {
+                    Hotkey("F" A_Index, , mode)
+                }
+            } catch as err {
+                OutputDebug("F" A_Index " hotkey hatası: " err.Message "`n")
+            }
         }
     }
 
@@ -142,8 +169,14 @@ class singleMemorySlot {
         SoundBeep(600, 100)
         return 2
     }
-    ; F tuşu handler'ı – senin verdiğin detectPressType ile
+
+    ; F tuşu handler'ı — F tuşları etkinleştirilmediğinde çalışmaz
     _handleFKey(index) {
+        ; Güvenlik kontrolü: eğer F tuşları değilse veya GUI kapalıysa işlem yapma
+        if (!this.fKeysEnabled.Value || !this.gui || this.isDestroyed) {
+            return
+        }
+
         type := this.detectPressType("F" index, 300, 100)
         switch type {
             case 1: this.pasteFromSlot(index), this._selectSlotViewer(index)
@@ -228,7 +261,7 @@ class singleMemorySlot {
     _onSlotDoubleClick() {
         row := this.slotLV.GetNext(0)
         if (!row || row > this.slotsLength || this.slots[row] == "") {
-            OutPutDebug("⚠️ Slot boş!")
+            OutputDebug("⚠️ Slot boş!")
             return
         }
         content := this.slots[row]
@@ -255,7 +288,7 @@ class singleMemorySlot {
         }
         content := this.clipHistory[row]
         if (content == "") {
-            OutPutDebug("⚠️ Seçili item boş!")
+            OutputDebug("⚠️ Seçili item boş!")
             return
         }
         A_Clipboard := content
@@ -402,7 +435,8 @@ class singleMemorySlot {
 
     _destroy() {
         this.isDestroyed := true
-        this.changeHotKeyMode(false)
+        ; F tuşlarını kapat (GUI kapatılınca)
+        this._setupFKeys(false)
         State.Clipboard.setMode(this.previousState)
         if (this.gui) {
             this.gui.Destroy()
