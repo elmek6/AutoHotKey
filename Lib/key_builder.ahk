@@ -91,3 +91,23 @@ class KeyBuilder {
         }
     }
 }
+
+; ======================================================================
+
+
+UpdateIndicator() {
+    global mouseIndicator, lastX, lastY
+    MouseGetPos &x, &y
+    ; Sadece fare hareket ettiyse güncelle
+    if (x = lastX && y = lastY)
+        return
+
+    lastX := x
+    lastY := y
+
+    try mouseIndicator.Destroy()
+    mouseIndicator := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    mouseIndicator.BackColor := "00FF88"  ; Neon yeşil
+    mouseIndicator.Add("Text", "x3 y0 w14 h14 Center BackgroundTrans", "●")
+    mouseIndicator.Show("x" (x + 22) " y" (y + 22) " w20 h20 NoActivate")
+}

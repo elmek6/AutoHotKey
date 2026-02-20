@@ -1,4 +1,14 @@
 /*
+
+zaten var olan visualEffect(pt) tekrar yapilandilacak. parametre hangi pressType sonra yanacagi
+key_builder.ahk icindeki UpdateIndicator() tekrar yapilandirilacak belki pressType aktarilabilir
+kisa basim herhangi bir görsel dönüs yok. kisa basimi gecince mavi, uzun basimi geince sari olmali
+
+ikinci asamada
+tab icin uzun basimda kayit olabilir (tab veya rakam farketmez yeterki uzun basim??)
+*/
+
+/*
 class EC {    ;Enhancements for KeyBuilder
     static tSetExitOnPress := 1
 
