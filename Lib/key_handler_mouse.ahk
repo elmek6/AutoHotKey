@@ -3,6 +3,13 @@
 ; Yeni fikir tusu basili tutarken gesture
 ; F18 basili tutarken sag sol yaparsan back ve del
 
+; kullanilmayanlar
+; visual calismiyor
+; setPressType yapisina gerek yok builder ile zaman gecirilebiliyor
+; repatKey hem zaman hem de press type olabilir veya gesture ile yaz, bunu sil hic kullanmadim
+; triggerByPressType kullanilmamis
+; workOnlyOnCombo ses acma sag tus icin kullanilmis sadece
+
 class EM {    ; Enhancements for KeyBuilder
     static tVisual := 1, tGesture := 2, tOnCombo := 3, tDBClick := 4, tTriggerPressType := 5, tRepeatKey := 6
 
@@ -305,7 +312,7 @@ class singleHotMouse {
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upRight, (pos) => Send("{End}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
-            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))            
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(250))
             .build()
@@ -341,11 +348,12 @@ class singleHotMouse {
     }
 
     handleF17() {
-        builder := KeyBuilder()
+        builder := KeyBuilder(350, 800) ; .setPressType(300, 800) kaldirilabilir extra
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Right}")
                     case 2: Send("{End}")
+                    case 3: Send("{Delete}")
                 }
             })
             ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
@@ -357,21 +365,21 @@ class singleHotMouse {
 
 
     handleF18() {
-        builder := KeyBuilder()
+        builder := KeyBuilder(350, 800) ; .setPressType(300, 800) setPressType ile aynı işi yapıyor kaldirilabilir
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Left}")
                     case 2: Send("{Home}")
+                    case 3: Send("{BackSpace}")
                 }
             })
             ; .combo("F17", "Cut", () => Send("^x"))
             ; .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
-            .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))            
+            .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Send("{Delete}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => pos < 0 ? Send("{BackSpace}") : Mod(pos, 5) == 0 ? Send("^z") : Sleep(5))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
-
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
             .build()
