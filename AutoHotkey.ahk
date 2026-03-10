@@ -17,12 +17,11 @@
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
-#Include <quick_menu>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_159_h")
+global State := singleState.getInstance("ver_160_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -35,7 +34,6 @@ class App {
     static Recorder := singleMacroRec.getInstance(300) ; maxRecordTime
     static AppShorts := singleProfile.getInstance()
     static Repo := singleRepository.getInstance()
-    static qMenu := singleQuickMenu.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }

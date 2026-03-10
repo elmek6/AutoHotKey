@@ -272,6 +272,7 @@ class singleHotMouse {
                     case 4: App.ClipHist.showHistorySearch() ; App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
                 }
             })
+            .combo("F14", "panic", () => WinMinimize("A"))
             .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 6))
             .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 5))
             .combo("F17", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 4))
@@ -282,7 +283,7 @@ class singleHotMouse {
             .extend(EM.repeatKey(350))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => WinMinimize("A"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => WinMinimize("A"))))
             .build()
         this.handle(builder)
     }
@@ -297,6 +298,7 @@ class singleHotMouse {
                     case 4: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName) ; default group varsa onu göster
                 }
             })
+            .combo("F13", "panic", () => WinMinimize("A"))
             .combo("LButton", "test", () => OutputDebug("test"))
             .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot("", 6))
             .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot("", 5))
@@ -304,12 +306,12 @@ class singleHotMouse {
             .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot("", 3))
             .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot("", 2))
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
+            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight | HotVectors.bDir.unlock, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upLeft, (pos) => Send("{Home}"))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downRight, (pos) => Send("{End}"))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => Send("{Enter}"))))
-            .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upRight, (pos) => Send("{End}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upLeft, (pos) => Send("{Home}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downRight, (pos) => Send("{End}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => Send("{Enter}"))))
+            ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upRight, (pos) => Send("{End}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (diff) => Click( diff > 0 ? "WheelRight" : "WheelLeft")))) mouse click oldugu icin sanirim bozuyor
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))

@@ -102,7 +102,7 @@ class singleClipSlot {
         }
         values[slotIndex]["content"] := newContent
     }
-    getSlotPreview(groupName := this.defaultGroupName, slotIndex, maxLength := 200) {
+    getSlotPreview(groupName := this.defaultGroupName, slotIndex, maxLength := 60) {
         if (groupName == "" && slotIndex == 10) {
             return "***"
         }
@@ -183,24 +183,33 @@ class singleClipSlot {
     showQuickSlotsMenu() {
         qm := Menu()
 
-        add(groupName) {
-            local preview := this.getContent(groupName, A_Index)
-            preview := StrReplace(SubStr(preview, 1, 50), "`n", " ")
+        addSlot(groupName, slotIdx, label) {
+            local content := this.getContent(groupName, slotIdx)
+            local preview := StrReplace(SubStr(content, 1, 50), "`n", " ")
             if (StrLen(preview) > 50)
                 preview .= "..."
-            qm.Add(A_Index ": " preview, ((g, idx) => (*) => this.loadFromSlot(g, idx))(groupName, A_Index))
+            qm.Add(label ": " (preview != "" ? preview : "(Boş)"), ((g, idx) => (*) => this.loadFromSlot(g, idx))(groupName, slotIdx))
         }
 
-        Loop 9 {
-            add("")
-        }
-        if (this.defaultGroupName != "")
-        {
-            qm.Add()
+        ; Selected group önce — "1 AdI: içerik"
+        if (this.defaultGroupName != "") {
             Loop 10 {
-                add(this.defaultGroupName)
+                local key := A_Index == 10 ? "0" : String(A_Index)
+                local name := this.getName(this.defaultGroupName, A_Index)
+                local label := key . (name != "" ? " " . name : "")
+                addSlot(this.defaultGroupName, A_Index, label)
             }
+            qm.Add()
         }
+
+        ; Default group — selected varsa "[1]", yoksa "1"
+        Loop 9 {
+            local label := this.defaultGroupName != "" ? "[" . A_Index . "]" : String(A_Index)
+            addSlot("", A_Index, label)
+        }
+
+        qm.Add()
+        qm.Add("Search slots", (*) => this.showSlotsSearch())
         qm.Show()
     }
     buildLoadSlotMenu() {

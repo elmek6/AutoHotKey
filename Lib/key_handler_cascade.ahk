@@ -160,15 +160,17 @@ class singleHotCascade {
     }
 
     cascadeCaret() {
+        ; Selected group varsa ondan yükle, yoksa default ("")
         loadSave(no) {
-            App.ClipSlot.loadFromSlot("", no)
+            local g := App.ClipSlot.defaultGroupName
+            App.ClipSlot.loadFromSlot(g, no)
         }
 
         builder := KeyBuilder(350)  ; 2 level mode
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{SC029}")
-                    case 2: App.ClipSlot.showSlotsSearch()
+                    case 2: App.ClipSlot.showQuickSlotsMenu()
                 }
             })
             .setExitOnPressType(1)
@@ -222,7 +224,7 @@ class singleHotCascade {
                         ShowTip(caps ? "CAPSLOCK" : "capslock", TipType.Info)
                         SetCapsLockState(caps)
                     case 2:
-                        App.ClipHist.showHistorySearch()
+                        App.ClipHist.showQuickHistoryMenu()
                 }
             })
             .setExitOnPressType(1)

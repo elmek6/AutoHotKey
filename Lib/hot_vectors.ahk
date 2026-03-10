@@ -1,21 +1,20 @@
 /************************************************************************
- * @description Eksen kilitli mouse vector sistemi - 8-way direction detection
+ * @description Eksen kilitli mouse vector sistemi - 4-way direction detection
  * Fare sabit tutulur (polling, hook YOK). Vektör bilgisi Gui ile gösterilir.
- *
- * HotGestures ile birebir API uyumlu:
- *   bDir, Register, ClearRegistrations, Start, Stop, WasGestureFired, Gesture
  *
  * Callback: fn(pos)
  *   pos = +1 veya -1  (ivme kaldırıldı, her tetiklemede tek çağrı)
- *   +1 → sağ / yukarı / çapraz-ileri
+ *   +1 → sağ / yukarı
  *   -1 → sol / aşağı  (iki yönlü gesture'larda)
  *
- * Ekran gösterimi örneği:
- *   ↔ LT: -3    (leftRight gesture, 3 kez sola gidildi)
- *   ↔ RT: +2    (leftRight gesture, 2 kez sağa gidildi)
- *   ↑  UP: +1   (tek yönlü up gesture)
+ * bDir flag'leri:
+ *   none      — hiçbir şey
+ *   once      — modifier: gesture sadece bir kez tetiklenir (key bırakılınca)
+ *   unlock    — modifier: bu yön kilitliyken dik hareket yapılırsa yön değişir
+ *   up, down, left, right — tek yönlü
+ *   upDown, leftRight     — çift yönlü (her iki yön aynı callback)
  *
- * @version 2.0
+ * @version 3.0
  ***********************************************************************/
 
 class HotVectors {
@@ -28,33 +27,29 @@ class HotVectors {
     static ACCELERATION_ENABLE := true ; İvme çarpanı aktif/pasif
     static MAX_SPEED_MULTIPLIER:= 20   ; Maksimum hız çarpanı (1-20 arası önerilir)
 
-    ; ── Public API: binary direction flag'leri (HotGestures uyumlu) ─────
+    ; ── Public API: direction flag'leri ─────────────────────────────────
     static bDir := {
         none:      0,
-        once:      1,
-        up:        2,
-        down:      4,
-        left:      8,
-        right:     16,
-        upDown:    2 | 4,    ; 6
-        leftRight: 8 | 16,   ; 24
-        upRight:   32,
-        upLeft:    64,
-        downRight: 128,
-        downLeft:  256
+        once:      1,   ; modifier: bir kez tetikle
+        unlock:    2,   ; modifier: dik harekette yön değişimine izin ver
+        up:        4,
+        down:      8,
+        left:      16,
+        right:     32,
+        upDown:    4 | 8,     ; 12
+        leftRight: 16 | 32    ; 48
     }
+
+    ; ── modifier mask (once | unlock) ───────────────────────────────────
+    static __modMask := 1 | 2   ; once | unlock
 
     ; ── İç enum: kilitli yön ────────────────────────────────────────────
     static __dirType := {
         none:       0,
-        strictUp:   1,
-        strictDown: 2,
-        strictLeft: 3,
-        strictRight:4,
-        upRight:    5,
-        upLeft:     6,
-        downRight:  7,
-        downLeft:   8
+        up:         1,
+        down:       2,
+        left:       3,
+        right:      4
     }
 
     ; ════════════════════════════════════════════════════════════════════
@@ -76,9 +71,9 @@ class HotVectors {
     }
 
     Register(direction, callback) {
-        cleanDir := direction & ~HotVectors.bDir.once
+        cleanDir := direction & ~HotVectors.__modMask
         for reg in this.__registrations {
-            if ((reg.direction & ~HotVectors.bDir.once) == cleanDir)
+            if ((reg.direction & ~HotVectors.__modMask) == cleanDir)
                 throw Error("HotVectors: çakışan yön '" direction "' zaten kayıtlı!")
         }
         this.__registrations.Push({ direction: direction, callback: callback })
@@ -107,7 +102,7 @@ class HotVectors {
         this.__gestureFired    := false
 
         totalDistance := 0
-        runningPos    := 0   ; görsel için kümülatif pos sayacı
+        runningPos    := 0
 
         while (GetKeyState(keyName, "P")) {
             MouseGetPos(&cx, &cy)
@@ -120,13 +115,29 @@ class HotVectors {
                 absDy := Abs(dy)
                 if (absDx > HotVectors.DIRECTION_THRESHOLD
                  || absDy > HotVectors.DIRECTION_THRESHOLD) {
-                    this.__lockedDirection := this.__Detect8WayDirection(dx, dy, absDx, absDy)
+                    this.__lockedDirection := this.__Detect4WayDirection(dx, dy)
                     this.__directionLocked := true
-                    this.__gestureFired    := true   ; yön kilitlendi = bir şey oldu
                     this.__FilterGesturesByDirection()
                 }
                 Sleep(HotVectors.POLL_INTERVAL)
                 continue
+            }
+
+            ; ── unlock: dik eksende hareket eşiği aşıldıysa yön değiştir ─
+            if (this.__HasUnlockGesture()) {
+                absDx := Abs(dx)
+                absDy := Abs(dy)
+                newDir := this.__Detect4WayDirection(dx, dy)
+                if (newDir != this.__lockedDirection
+                 && (absDx > HotVectors.DIRECTION_THRESHOLD
+                  || absDy > HotVectors.DIRECTION_THRESHOLD)) {
+                    this.__lockedDirection := newDir
+                    this.__FilterGesturesByDirection()
+                    MouseMove(this.__originX, this.__originY, 0)
+                    runningPos := 0
+                    Sleep(HotVectors.POLL_INTERVAL)
+                    continue
+                }
             }
 
             ; ── Kilitli eksende büyüklük ──────────────────────────────
@@ -150,13 +161,10 @@ class HotVectors {
             totalDistance += absMag
             if (totalDistance > HotVectors.MAX_TOTAL_DISTANCE) {
                 SoundBeep(1000, 200)
-                ; __gestureFired zaten true — key_handler_mouse menüyü açmaz
                 break
             }
 
             ; ── Gesture'ları tetikle ─────────────────────────────────
-            ; İvme aktifse: speed kadar callback çağrısı
-            ; İvme pasifse: her zaman 1 kez çağrı
             for g in this.__activeGestures {
                 if (!this.__CheckDirection(g.direction, sign))
                     continue
@@ -178,7 +186,7 @@ class HotVectors {
             this.__tip.Update(
                 this.__BuildLabel(sign, runningPos),
                 this.__originX,
-                this.__originY + 22   ; imlecin hemen altı
+                this.__originY + 22
             )
 
             ; ── Fareyi origin'e sıfırla ───────────────────────────────
@@ -202,22 +210,33 @@ class HotVectors {
     ; Yardımcı metodlar
     ; ════════════════════════════════════════════════════════════════════
 
+    __Detect4WayDirection(dx, dy) {
+        if (Abs(dy) > Abs(dx))
+            return dy > 0 ? HotVectors.__dirType.up   : HotVectors.__dirType.down
+        return     dx > 0 ? HotVectors.__dirType.right : HotVectors.__dirType.left
+    }
+
     __GetAxisValue(dx, dy) {
         switch this.__lockedDirection {
-            case HotVectors.__dirType.strictUp,    HotVectors.__dirType.strictDown:   return dy
-            case HotVectors.__dirType.strictRight, HotVectors.__dirType.strictLeft:   return dx
-            case HotVectors.__dirType.upRight:    return (dx + dy)  // 2
-            case HotVectors.__dirType.upLeft:     return (-dx + dy) // 2
-            case HotVectors.__dirType.downRight:  return (dx - dy)  // 2
-            case HotVectors.__dirType.downLeft:   return (-dx - dy) // 2
+            case HotVectors.__dirType.up,    HotVectors.__dirType.down:  return dy
+            case HotVectors.__dirType.right, HotVectors.__dirType.left:  return dx
         }
         return 0
+    }
+
+    ; ── Kayıtlı gesture'lardan herhangi biri unlock flag'i taşıyor mu? ──
+    __HasUnlockGesture() {
+        for reg in this.__registrations {
+            if (reg.direction & HotVectors.bDir.unlock)
+                return true
+        }
+        return false
     }
 
     ; ── Aktif gesture'lardan herhangi biri çift yönlü mü? ───────────────
     __IsBidirectional() {
         for g in this.__activeGestures {
-            dir := g.direction & ~HotVectors.bDir.once
+            dir := g.direction & ~HotVectors.__modMask
             if (dir == HotVectors.bDir.upDown || dir == HotVectors.bDir.leftRight)
                 return true
         }
@@ -225,50 +244,29 @@ class HotVectors {
     }
 
     ; ── Görsel etiket üret ───────────────────────────────────────────────
-    ; Tek yönlü:   "↑  UP: +2"
-    ; Çift yönlü:  "↕  UP: +2"  veya  "↔  LT: -3"
-    ; Çapraz:      "↗  UR: +1"
     __BuildLabel(sign, runningPos) {
-        ld    := this.__lockedDirection
+        ld     := this.__lockedDirection
         isBidi := this.__IsBidirectional()
         valStr := (runningPos >= 0 ? "+" : "") . runningPos
 
         switch ld {
-            case HotVectors.__dirType.strictUp, HotVectors.__dirType.strictDown:
+            case HotVectors.__dirType.up, HotVectors.__dirType.down:
                 prefix  := isBidi ? "↕" : (sign > 0 ? "↑" : "↓")
                 dirName := sign > 0 ? "UP" : "DN"
                 return prefix . "  " . dirName . ": " . valStr
 
-            case HotVectors.__dirType.strictLeft, HotVectors.__dirType.strictRight:
+            case HotVectors.__dirType.left, HotVectors.__dirType.right:
                 prefix  := isBidi ? "↔" : (sign > 0 ? "→" : "←")
                 dirName := sign > 0 ? "RT" : "LT"
                 return prefix . "  " . dirName . ": " . valStr
-
-            case HotVectors.__dirType.upRight:    return "↗  UR: " . valStr
-            case HotVectors.__dirType.upLeft:     return "↖  UL: " . valStr
-            case HotVectors.__dirType.downRight:  return "↘  DR: " . valStr
-            case HotVectors.__dirType.downLeft:   return "↙  DL: " . valStr
         }
         return "? " . valStr
     }
 
-    __Detect8WayDirection(dx, dy, absDx, absDy) {
-        if (absDy < 3 && absDx > 6)
-            return dx > 0 ? HotVectors.__dirType.strictRight : HotVectors.__dirType.strictLeft
-        if (absDx < 3 && absDy > 6)
-            return dy > 0 ? HotVectors.__dirType.strictUp    : HotVectors.__dirType.strictDown
-        if (absDx > 4 && absDy > 4)
-            return dy > 0
-                ? (dx > 0 ? HotVectors.__dirType.upRight   : HotVectors.__dirType.upLeft)
-                : (dx > 0 ? HotVectors.__dirType.downRight : HotVectors.__dirType.downLeft)
-        if (absDy > absDx)
-            return dy > 0 ? HotVectors.__dirType.strictUp    : HotVectors.__dirType.strictDown
-        return     dx > 0 ? HotVectors.__dirType.strictRight : HotVectors.__dirType.strictLeft
-    }
-
     __FilterGesturesByDirection() {
+        this.__activeGestures := []
         for reg in this.__registrations {
-            dir := reg.direction & ~HotVectors.bDir.once
+            dir := reg.direction & ~HotVectors.__modMask
             if (this.__IsDirectionMatch(dir, this.__lockedDirection))
                 this.__activeGestures.Push(reg)
         }
@@ -276,45 +274,40 @@ class HotVectors {
 
     __IsDirectionMatch(bDirFlags, detectedDir) {
         switch detectedDir {
-            case HotVectors.__dirType.strictUp:
-                return bDirFlags == HotVectors.bDir.up     || bDirFlags == HotVectors.bDir.upDown
-            case HotVectors.__dirType.strictDown:
-                return bDirFlags == HotVectors.bDir.down   || bDirFlags == HotVectors.bDir.upDown
-            case HotVectors.__dirType.strictLeft:
-                return bDirFlags == HotVectors.bDir.left   || bDirFlags == HotVectors.bDir.leftRight
-            case HotVectors.__dirType.strictRight:
-                return bDirFlags == HotVectors.bDir.right  || bDirFlags == HotVectors.bDir.leftRight
-            case HotVectors.__dirType.upRight:    return bDirFlags == HotVectors.bDir.upRight
-            case HotVectors.__dirType.upLeft:     return bDirFlags == HotVectors.bDir.upLeft
-            case HotVectors.__dirType.downRight:  return bDirFlags == HotVectors.bDir.downRight
-            case HotVectors.__dirType.downLeft:   return bDirFlags == HotVectors.bDir.downLeft
+            case HotVectors.__dirType.up:
+                return bDirFlags == HotVectors.bDir.up    || bDirFlags == HotVectors.bDir.upDown
+            case HotVectors.__dirType.down:
+                return bDirFlags == HotVectors.bDir.down  || bDirFlags == HotVectors.bDir.upDown
+            case HotVectors.__dirType.left:
+                return bDirFlags == HotVectors.bDir.left  || bDirFlags == HotVectors.bDir.leftRight
+            case HotVectors.__dirType.right:
+                return bDirFlags == HotVectors.bDir.right || bDirFlags == HotVectors.bDir.leftRight
         }
         return false
     }
 
     __CheckDirection(direction, sign) {
-        dir := direction & ~HotVectors.bDir.once
+        dir := direction & ~HotVectors.__modMask
         switch this.__lockedDirection {
-            case HotVectors.__dirType.strictUp, HotVectors.__dirType.strictDown:
+            case HotVectors.__dirType.up, HotVectors.__dirType.down:
                 if (dir == HotVectors.bDir.upDown)
-                  return true
+                    return true
                 return (dir == HotVectors.bDir.up   && sign > 0)
                     || (dir == HotVectors.bDir.down  && sign < 0)
-            case HotVectors.__dirType.strictLeft, HotVectors.__dirType.strictRight:
-                if (dir == HotVectors.bDir.leftRight) 
-                  return true
+            case HotVectors.__dirType.left, HotVectors.__dirType.right:
+                if (dir == HotVectors.bDir.leftRight)
+                    return true
                 return (dir == HotVectors.bDir.right && sign > 0)
                     || (dir == HotVectors.bDir.left  && sign < 0)
-            default:
-                return sign > 0
         }
+        return false
     }
 
     ; ════════════════════════════════════════════════════════════════════
     ; İç sınıflar
     ; ════════════════════════════════════════════════════════════════════
 
-    ; Gesture — EM.gesture() ile kullanım için (HotGestures uyumlu)
+    ; Gesture — EM.gesture() ile kullanım için
     class Gesture {
         __New(direction, callback) {
             this.Direction := direction
@@ -323,7 +316,6 @@ class HotVectors {
     }
 
     ; VectorTip — unicode destekli, yeniden oluşturmadan güncellenen Gui.
-    ; Her Update() çağrısında sadece text + pozisyon değişir, Gui destroy edilmez.
     class VectorTip {
         __New() {
             g := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 -DPIScale")
@@ -339,39 +331,35 @@ class HotVectors {
 
         Update(text, x, y) {
             this.__lbl.Value := text
-            
-            ; Çoklu monitör desteği: mevcut monitörün sınırlarını al
+
             monitorIndex := this.__GetMonitorIndexFromCoords(x, y)
-            MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, &monBottom)
-            
-            ; x: imleç merkezine hizala (yaklaşık 120px offset)
+            MonitorGetWorkArea(monitorIndex, &monLeft, &monTop, &monRight, )
+
             guiX := x - 120
             guiY := y
-            
-            ; GUI'nin monitör sınırları içinde kalmasını sağla
-            guiWidth := 240  ; w240 text control'den
+
+            guiWidth := 240
             if (guiX < monLeft)
                 guiX := monLeft
             if (guiX + guiWidth > monRight)
                 guiX := monRight - guiWidth
             if (guiY < monTop)
                 guiY := monTop
-            
+
             this.__gui.Move(guiX, guiY)
             if (!this.__visible) {
                 this.__gui.Show("NA AutoSize NoActivate")
                 this.__visible := true
             }
         }
-        
+
         __GetMonitorIndexFromCoords(x, y) {
-            ; Hangi monitörde olduğumuzu tespit et
             Loop MonitorGetCount() {
                 MonitorGet(A_Index, &mLeft, &mTop, &mRight, &mBottom)
                 if (x >= mLeft && x <= mRight && y >= mTop && y <= mBottom)
                     return A_Index
             }
-            return 1  ; Varsayılan olarak birinci monitör
+            return 1
         }
 
         Hide() {

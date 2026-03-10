@@ -155,7 +155,7 @@
         return historyMenu
     }
 
-    showQuickHistoryMenu(maxItems := 10) {
+    showQuickHistoryMenu(maxItems := 9) {
         local history := this.getHistory()
         if (history.Length == 0) {
             ShowTip("Geçmiş boş!", TipType.Warning, 800)
@@ -175,6 +175,8 @@
             qm.Add(A_Index ": " preview, ((c) => (*) => this._pasteContent(c))(content))
         }
 
+        qm.Add()
+        qm.Add("Clipboard History Search", (*) => this.showHistorySearch())
         qm.Show()
     }
 

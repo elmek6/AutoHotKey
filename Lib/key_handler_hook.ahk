@@ -140,11 +140,12 @@ class singleHotHook {
 
             ; Otomatik preview oluştur
             if (autoPreview) {
-                previewText := "━━━ MENÜ ━━━`n`n"
+                qm := Menu()
                 for p in b.combos {
-                    previewText .= p.key ": " p.desc "`n"
+                    qm.Add(p.key ": " p.desc, ((a) => (*) => a.Call())(p.action))
                 }
-                previewText .= "`nESC: İptal"
+                qm.Show()
+                return
             }
             ; Özel preview callback varsa onu kullan
             else if (IsObject(b.previewCallback)) {
@@ -200,30 +201,29 @@ class singleHotHook {
         }
     }
 
-    ; Örnek: hookCommands tarzı bir menü (backtick ile açılan komut merkezi)
+    ; Sistem komut menüsü — backtick (´) tuşuyla açılır
     sysCommands() {
         builder := KeyBuilder(350)  ; 2-level mode
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("´")  ; Kısa basım: normal karakter
-                        ; case 2: ; Uzun basım: menüyü aç (otomatik)
                 }
             })
-            .setExitOnPressType(2)  ; Kısa basımda hook beklemesin
-            .combo("1", "Reload script", () => reloadScript())
-            .combo("2", "Show stats", () => getStatsArray(true))
+            .setExitOnPressType(2)  ; Uzun basımda hook devreye girer
+            .combo("1", "Reload script",   () => reloadScript())
+            .combo("2", "Show stats",      () => getStatsArray(true))
             .combo("3", "Profile manager", () => App.AppShorts.showManagerGui())
-            .combo("4", "Key history", () => ShowKeyHistoryLoop())
-            .combo("5", "Memory slots", () => App.MemSlots.start())
-            .combo("6", "Macro recorder", () => App.Recorder.showButtons())
-            .combo("7", "F13 menu", () => showF13menu())
-            .combo("8", "F14 menu", () => showF14menu())
-            .combo("9", "Pause script", () => DialogPauseGui())
-            .combo("0", "Exit script", () => ExitApp())
-            .combo("r", "Repository GUI", () => App.Repo.showGui())
-            .combo("a", "TrayTip test", () => TrayTip("Başlık", "Mesaj içeriği", 1))
-            .extend(EH.autoPreview(true))  ; Otomatik preview oluştur
-            .extend(EH.setTimeOut(30000))  ; 30 saniye timeout
+            .combo("4", "Key history",     () => ShowKeyHistoryLoop())
+            .combo("5", "Memory slots",    () => App.MemSlots.start())
+            .combo("6", "Macro recorder",  () => App.Recorder.showButtons())
+            .combo("7", "F13 menu",        () => showF13menu())
+            .combo("8", "F14 menu",        () => showF14menu())
+            .combo("9", "Pause script",    () => DialogPauseGui())
+            .combo("0", "Exit script",     () => ExitApp())
+            .combo("r", "Repository GUI",  () => App.Repo.showGui())
+            .combo("a", "TrayTip test",    () => TrayTip("Başlık", "Mesaj içeriği", 1))
+            .extend(EH.autoPreview(true))   ; qMenu ile göster
+            .extend(EH.setTimeOut(30000))
             .build()
 
         this.handle(builder)

@@ -231,3 +231,27 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
             tipGui := ""
         }
     } }
+
+; --------------------------------------------------------------
+
+class QuickMenu {
+    ; Basit liste göster, callback'e seçilen text ve index döner
+    static Show(items, callback, title := "") {
+        qm := Menu()
+
+        if (title != "") {
+            qm.Add(title, (*) => 0)
+            qm.Disable(title)
+            qm.Add()
+        }
+
+        for i, item in items {
+            local text := IsObject(item) && item.HasOwnProp("text") ? item.text : item
+            local key := IsObject(item) && item.HasOwnProp("key") ? item.key : i
+            local display := key ": " text
+            qm.Add(display, ((t, idx) => (*) => callback(t, idx))(text, i))
+        }
+
+        qm.Show()
+    }
+}
