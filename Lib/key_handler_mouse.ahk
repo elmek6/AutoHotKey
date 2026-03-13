@@ -294,7 +294,7 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF14menu()
-                    case 2: App.ClipSlot.showQuickSlotsMenu()
+                    case 2: App.ClipSlot.showQuickSlotsMenu(true)
                     case 4: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName) ; default group varsa onu göster
                 }
             })

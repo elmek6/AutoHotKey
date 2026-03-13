@@ -180,7 +180,7 @@ class singleClipSlot {
             return false
         }
     }
-    showQuickSlotsMenu() {
+    showQuickSlotsMenu(showAll) {
         qm := Menu()
 
         addSlot(groupName, slotIdx, label) {
@@ -191,7 +191,7 @@ class singleClipSlot {
             qm.Add(label ": " (preview != "" ? preview : "(Boş)"), ((g, idx) => (*) => this.loadFromSlot(g, idx))(groupName, slotIdx))
         }
 
-        ; Selected group önce — "1 AdI: içerik"
+        ; Selected group önce — "1: içerik"
         if (this.defaultGroupName != "") {
             Loop 10 {
                 local key := A_Index == 10 ? "0" : String(A_Index)
@@ -199,13 +199,15 @@ class singleClipSlot {
                 local label := key . (name != "" ? " " . name : "")
                 addSlot(this.defaultGroupName, A_Index, label)
             }
-            qm.Add()
         }
 
         ; Default group — selected varsa "[1]", yoksa "1"
-        Loop 9 {
-            local label := this.defaultGroupName != "" ? "[" . A_Index . "]" : String(A_Index)
-            addSlot("", A_Index, label)
+        if (showAll) {
+            qm.Add()
+            Loop 9 {
+                local label := this.defaultGroupName != "" ? "[" . A_Index . "]" : String(A_Index)
+                addSlot("", A_Index, label)
+            }
         }
 
         qm.Add()

@@ -162,15 +162,14 @@ class singleHotCascade {
     cascadeCaret() {
         ; Selected group varsa ondan yükle, yoksa default ("")
         loadSave(no) {
-            local g := App.ClipSlot.defaultGroupName
-            App.ClipSlot.loadFromSlot(g, no)
+            App.ClipSlot.loadFromSlot("", no)
         }
 
         builder := KeyBuilder(350)  ; 2 level mode
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{SC029}")
-                    case 2: App.ClipSlot.showQuickSlotsMenu()
+                    case 2: App.ClipSlot.showQuickSlotsMenu(true)
                 }
             })
             .setExitOnPressType(1)
@@ -197,19 +196,20 @@ class singleHotCascade {
             .mainKey((dt) {
                 switch (dt) {
                     case 1: SendInput("{Tab}")
-                    case 2: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
+                    case 2: App.ClipSlot.showQuickSlotsMenu(false)
                 }
             })
             .setExitOnPressType(1)
-            .combo("1", "History 1", () => loadSave(1))
-            .combo("2", "History 2", () => loadSave(2))
-            .combo("3", "History 3", () => loadSave(3))
-            .combo("4", "History 4", () => loadSave(4))
-            .combo("5", "History 5", () => loadSave(5))
-            .combo("6", "History 6", () => loadSave(6))
-            .combo("7", "History 7", () => loadSave(7))
-            .combo("8", "History 8", () => loadSave(8))
-            .combo("9", "History 9", () => loadSave(9))
+            .combo("1", "Slot 1", () => loadSave(1))
+            .combo("2", "Slot 2", () => loadSave(2))
+            .combo("3", "Slot 3", () => loadSave(3))
+            .combo("4", "Slot 4", () => loadSave(4))
+            .combo("5", "Slot 5", () => loadSave(5))
+            .combo("6", "Slot 6", () => loadSave(6))
+            .combo("7", "Slot 7", () => loadSave(7))
+            .combo("8", "Slot 8", () => loadSave(8))
+            .combo("9", "Slot 9", () => loadSave(9))
+            .combo("0", "Slot 0", () => loadSave(10))
             .build()
         this.handle(builder, "Tab")
     }
