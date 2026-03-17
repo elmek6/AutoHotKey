@@ -175,12 +175,16 @@ SC00D:: App.HotHook.sysCommands() ; ´ backtick SC00D VKDD
 ; ~RButton:: App.KeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {
-    if (State.Mouse.shouldProcessWheel())
-        Send("#{NumpadAdd}")
+    if (State.Mouse.shouldProcessWheel()) {
+        State.Mouse.setMiddleWheelUsed(true)
+        Send("^{+}")
+    }
 }
 ~MButton & WheelDown:: {
-    if (State.Mouse.shouldProcessWheel())
-        Send("#{NumpadSub}")
+    if (State.Mouse.shouldProcessWheel()) {
+        State.Mouse.setMiddleWheelUsed(true)
+        Send("^{-}")
+    }
 }
 
 RButton & WheelUp:: {

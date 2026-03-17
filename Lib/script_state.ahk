@@ -68,9 +68,13 @@ class singleState {
         rightClickActive := false
         lastWheelTime := 0
         _wheelCount := 0
+        middleWheelUsed := false
 
         setRightClick(active) => this.rightClickActive := active
         isRightClickActive() => this.rightClickActive
+
+        setMiddleWheelUsed(active := true) => this.middleWheelUsed := active
+        wasMiddleWheelUsed() => this.middleWheelUsed
 
         shouldProcessWheel(throttleMs := 600) {
             diff := A_TickCount - this.lastWheelTime
@@ -90,6 +94,7 @@ class singleState {
             this.rightClickActive := false
             this.lastWheelTime := 0
             this._wheelCount := 0
+            this.middleWheelUsed := false
         }
     }
 

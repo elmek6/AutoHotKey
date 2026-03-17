@@ -223,11 +223,16 @@ class singleHotMouse {
         local initialPos := { x: 0, y: 0 }
         builder := KeyBuilder(350, 1000)
             .mainStart((*) {
+                State.Mouse.setMiddleWheelUsed(false)
                 MouseGetPos &x, &y
                 initialPos.x := x
                 initialPos.y := y
             })
             .mainKey((pt) {
+                if (State.Mouse.wasMiddleWheelUsed()) {
+                    State.Mouse.setMiddleWheelUsed(false)
+                    return
+                }
                 MouseGetPos &endX, &endY
                 mouseMoved := (Abs(endX - initialPos.x) > 4) || (Abs(endY - initialPos.y) > 4)
                 switch (pt) {
