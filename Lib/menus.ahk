@@ -63,6 +63,8 @@ showF14menu() {
     menuF14.Add()
     menuF14.Add("Load from slot", App.ClipSlot.buildLoadSlotMenu())
     menuF14.Add("Save to slot", App.ClipSlot.buildSaveSlotMenu())
+    local sideLabel := "Side slot" . (App.ClipSlot.defaultGroupName != "" ? " [" . App.ClipSlot.defaultGroupName . "]" : "")
+    menuF14.Add(sideLabel, buildSideSlotMenu())
     menuF14.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuF14.Add()
@@ -71,6 +73,37 @@ showF14menu() {
     menuF14.Show()
 }
 
+
+buildSideSlotMenu() {
+    local m := Menu()
+    m.Add("Yeni grup ekle", (*) => App.ClipSlot.promptNewGroup())
+    m.Add("Notepad ile aç", (*) => Run("notepad.exe " Path.Slot))
+    m.Add()
+    m.Add("No side slot", (*) => App.ClipSlot.setDefaultGroup(""))
+    local allGroups := App.ClipSlot.getGroupsName()
+    for name in allGroups {
+        local sub := Menu()
+        sub.Add("Select this group", ((n) => (*) => App.ClipSlot.setDefaultGroup(n))(name))
+        sub.Add()
+        Loop 10 {
+            local idx := A_Index
+            local slotKey := idx == 10 ? "0" : String(idx)
+            local slotName := App.ClipSlot.getName(name, idx)
+            local preview := App.ClipSlot.getSlotPreview(name, idx)
+            local label := slotKey . " " . slotName . ": " . preview
+            sub.Add(label, ((n, i) => (*) => (A_Clipboard := App.ClipSlot.getContent(n, i)))(name, idx))
+        }
+        sub.Add()
+        sub.Add("Delete this group", ((n) => (*) => (
+            MsgBox("'" . n . "' grubunu silmek istiyor musun?", "Grup sil", "YesNo") == "Yes"
+                ? App.ClipSlot.deleteGroup(n)
+                : 0
+        ))(name))
+        local groupLabel := name . (App.ClipSlot.defaultGroupName == name ? " ✓" : "")
+        m.Add(groupLabel, sub)
+    }    
+    return m
+}
 
 menuSettings() {
     local menuSettings := Menu()

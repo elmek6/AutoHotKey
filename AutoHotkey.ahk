@@ -1,4 +1,4 @@
-#Requires AutoHotkey >= 2.1-alpha.18
+#Requires AutoHotkey >= 2.1-alpha.22
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
@@ -21,7 +21,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_160_b")
+global State := singleState.getInstance("ver_170_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -68,6 +68,8 @@ Pause & Delete:: {
     Sleep 300
     ExitApp()
 }
+Pause & c:: State.Busy.setFree()
+; ~MButton & RButton:: State.Busy.setFree() test et
 #SuspendExempt False
 
 OnError(GlobalErrorHandler)

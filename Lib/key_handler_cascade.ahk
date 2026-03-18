@@ -109,6 +109,7 @@ class singleHotCascade {
                 }
 
                 ; Ana tuş basılıyken yancı tuş kontrolü
+                State.Busy.setCombo("kh") ; basilan rakami consume ediyoruz
                 if (this._checkCombo(b.combos)) {
                     return
                 }

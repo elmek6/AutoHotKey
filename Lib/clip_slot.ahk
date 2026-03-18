@@ -239,8 +239,6 @@ class singleClipSlot {
                 }
             }
         }
-        loadSlotMenu.Add()
-        loadSlotMenu.Add("Grup seç", this.buildGroupMenu())
         return loadSlotMenu
     }
     buildSaveSlotMenu() {
@@ -265,8 +263,6 @@ class singleClipSlot {
                 }
             }
         }
-        saveSlotMenu.Add()
-        saveSlotMenu.Add("Yeni grup ekle", (*) => this.promptNewGroup())
         return saveSlotMenu
     }
     showSlotsSearch(groupName := "") {
@@ -358,17 +354,16 @@ class singleClipSlot {
             ShowTip("Grup oluşturuldu ve seçildi.", TipType.Success, 800)
         }
     }
-    buildGroupMenu() {
-        local groupMenu := Menu()
-        local allGroups := this.getGroupsName()
-        for name in allGroups {
-            if (name != "") {
-                groupMenu.Add(name, ((n) => (*) => this.setDefaultGroup(n))(name))
-            }
+
+    deleteGroup(groupName) {
+        if (groupName == "" || !this.groups.Has(groupName)) {
+            return
         }
-        groupMenu.Add()
-        groupMenu.Add("Only default slots", (*) => this.setDefaultGroup(""))
-        return groupMenu
+        this.groups.Delete(groupName)
+        if (this.defaultGroupName == groupName) {
+            this.defaultGroupName := ""
+        }
+        this.saveSlots()
     }
     __Delete() {
         if (State.Script.getShouldSaveOnExit()) {

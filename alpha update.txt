@@ -1,0 +1,12 @@
+En Kullanışlı Alpna Version Update icin kaynaklar
+
+#	URL	Ne için
+1	https://www.autohotkey.com/docs/alpha/	Alpha branch canlı dokümantasyon — [v2.1-alpha.XX+] etiketleriyle tam syntax
+2	https://api.github.com/repos/AutoHotkey/AutoHotkey/compare/SHA1...SHA2	İki versiyon arası exact commit mesajları
+3	https://api.github.com/repos/AutoHotkey/AutoHotkey/git/refs/tags	Tag SHA'larını bul
+4	https://www.autohotkey.com/docs/alpha/Variables.htm	Operatörler, built-in değişkenler
+5	https://www.autohotkey.com/docs/alpha/Structs.htm	Struct keyword syntax
+6	https://www.autohotkey.com/docs/alpha/Modules.htm	Modül sistemi
+7	https://www.autohotkey.com/docs/alpha/lib/_Import.htm	#Import direktifi
+8	https://www.autohotkey.com/docs/alpha/lib/_Module.htm	#Module direktifi
+9	https://www.autohotkey.com/docs/alpha/lib/_StructPack.htm	#StructPack direktifi
