@@ -14,6 +14,7 @@
 #Include <key_handler_cascade>
 #Include <key_handler_mouse>
 #Include <key_handler_hook>
+#Include <turkish_layout_addon>
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
@@ -21,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_170_h")
+global State := singleState.getInstance("ver_171_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()

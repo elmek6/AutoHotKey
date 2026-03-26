@@ -220,30 +220,15 @@ class singleHotMouse {
                 App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, no)
             }
         }
-        local initialPos := { x: 0, y: 0 }
-        builder := KeyBuilder(350, 1000)
-            .mainStart((*) {
-                State.Mouse.setMiddleWheelUsed(false)
-                MouseGetPos &x, &y
-                initialPos.x := x
-                initialPos.y := y
-            })
+        builder := KeyBuilder()
+            .mainStart((*) => State.Mouse.setMiddleWheelUsed(false))
             .mainKey((pt) {
                 if (State.Mouse.wasMiddleWheelUsed()) {
                     State.Mouse.setMiddleWheelUsed(false)
                     return
                 }
-                MouseGetPos &endX, &endY
-                mouseMoved := (Abs(endX - initialPos.x) > 4) || (Abs(endY - initialPos.y) > 4)
-                switch (pt) {
-                    case 1:
-                        if (State.Clipboard.isMemSlots())
-                            App.MemSlots.smartPaste(true)
-                    case 2: if (!mouseMoved)
-                        App.MemSlots.start()
-                    case 3: if (!mouseMoved)
-                        App.ClipHist.showHistorySearch()
-                }
+                if (pt = 1 && State.Clipboard.isMemSlots())
+                    App.MemSlots.smartPaste(true)
             })
             .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())
             .combo("F15", "Smart Paste 6", () => smartPaste(6))
@@ -300,7 +285,7 @@ class singleHotMouse {
                 switch (pt) {
                     case 1: showF14menu()
                     case 2: App.ClipSlot.showQuickSlotsMenu(true)
-                    case 4: App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName) ; default group varsa onu göster
+                    case 4: App.MemSlots.start()
                 }
             })
             .combo("F13", "panic", () => WinMinimize("A"))
@@ -359,8 +344,8 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Right}")
-                    case 2: Send("{End}")
-                    case 3: Send("{Delete}")
+                    case 2: Send("{Delete}")
+                    case 3: Send("{End}")
                 }
             })
             ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
@@ -376,8 +361,8 @@ class singleHotMouse {
             .mainKey((pt) {
                 switch (pt) {
                     case 1: Send("!{Left}")
-                    case 2: Send("{Home}")
-                    case 3: Send("{BackSpace}")
+                    case 2: Send("{BackSpace}")
+                    case 3: Send("{Home}")
                 }
             })
             ; .combo("F17", "Cut", () => Send("^x"))
