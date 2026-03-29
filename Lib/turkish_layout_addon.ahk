@@ -24,16 +24,29 @@ global TkLayout := 1
     }
 }
 
-; ─── Layout 1 yardımcı: hemen gönder, uzun basışta Türkçe ile değiştir ───────
-; $ prefix: hook zorla, Ctrl/Alt/Win kısayolları zaten geçer (yakalanmaz)
+; ─── Layout 1 yardımcı ───────────────────────────────────────────────────────
+; Orijinal mantık: hemen gönder, 400ms sonra hâlâ basılıysa Türkçe ile değiştir.
+; Aynı tuşa hızlı çift basışta (_tkBusy kontrolü): 2. basış direkt gönderilir,
+; KeyWait beklemez → harf yutulmaz, sıra bozulmaz.
+global _tkBusy := Map()
+
 _HandleTurkish(key, lower, tkLower, tkUpper) {
     isShift := GetKeyState("Shift", "P")
-    isCaps := GetKeyState("CapsLock", "T")
-    isUpper := isCaps ? !isShift : isShift  ; CapsLock Shift'i ters çevirir
+    isCaps  := GetKeyState("CapsLock", "T")
+    isUpper := isCaps ? !isShift : isShift
 
-    ; Normal karakter: {Blind} ile gönder → OS CapsLock+Shift'i halleder, uygulama tekrar uygulamaz
+    ; Bu tuş zaten bir thread tarafından bekleniyor
+    if (_tkBusy.Has(key) && _tkBusy[key] > 0) {
+        ; 400ms geçmişse → OS key-repeat, yoksay
+        if (A_TickCount - _tkBusy[key] >= 400)
+            return
+        ; 400ms geçmemişse → gerçek hızlı çift basış, direkt gönder
+        Send("{Blind}{" lower "}")
+        return
+    }
+
+    _tkBusy[key] := A_TickCount
     Send("{Blind}{" lower "}")
-
     released := KeyWait(key, "T0.4")
 
     if (!released) {
@@ -41,10 +54,12 @@ _HandleTurkish(key, lower, tkLower, tkUpper) {
         Send("{BackSpace}")
         SendText(isUpper ? tkUpper : tkLower)
     }
+    _tkBusy[key] := 0
 }
 
 ; ─── Dizilim 1: Uzun basış ───────────────────────────────────────────────────
 ; $ = sadece modifier'sız ve Shift kombinasyonunu yakala → Ctrl+C, Alt+G vb. geçer
+#MaxThreadsPerHotkey 2
 #HotIf TkLayout = 1 && !GetKeyState("ScrollLock", "T")
 $c:: _HandleTurkish("c", "c", "ç", "Ç")
 $+c:: _HandleTurkish("c", "c", "ç", "Ç")
@@ -55,6 +70,7 @@ $+i:: _HandleTurkish("i", "i", "ı", "İ")
 $g:: _HandleTurkish("g", "g", "ğ", "Ğ")
 $+g:: _HandleTurkish("g", "g", "ğ", "Ğ")
 #HotIf
+#MaxThreadsPerHotkey 1
 
 ; ─── Dizilim 2: Direkt remap ─────────────────────────────────────────────────
 ; sc00D = = / + tuşu (sysCommands bu modda devre dışı kalır)
@@ -72,7 +88,7 @@ $sc01B:: _TkDirect("ü", "Ü")
 $+sc01B:: _TkDirect("ü", "Ü")
 $ö:: _TkDirect("ş", "Ş")
 $+ö:: _TkDirect("ş", "Ş")
-$ä:: _TkDirect("ı", "İ")
+$ä:: _TkDirect("i", "İ")
 $+ä:: _TkDirect("i", "İ")
 $,:: _TkDirect("ö", "Ö")
 $+,:: _TkDirect("ö", "Ö")
