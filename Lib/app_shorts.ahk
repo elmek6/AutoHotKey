@@ -69,16 +69,16 @@ class AppProfile {
         return result
     }
 }
-class singleProfile {
+class SingleProfile {
     static instance := ""
     static getInstance() {
-        if (!singleProfile.instance) {
-            singleProfile.instance := singleProfile()
+        if (!SingleProfile.instance) {
+            SingleProfile.instance := SingleProfile()
         }
-        return singleProfile.instance
+        return SingleProfile.instance
     }
     __New() {
-        if (singleProfile.instance) {
+        if (SingleProfile.instance) {
             throw Error("ProfileManager zaten oluşturulmuş! getInstance kullan.")
         }
         this.profiles := []
@@ -352,14 +352,19 @@ class singleProfile {
         this._onActionSelect()
         this.save()  ; Çalışırken kaydet
     }
-    ; Makro kaydet
+    ; Makro kaydet (timer-based, GUI donmaz)
     _recordMacro() {
-        recorder := singleMacroRec.getInstance()
+        recorder := SingleMacroRec.getInstance()
         ShowTip("Kayıt başladı, durdurmak için tekrar bas", TipType.Info, 3000)
-        recorder.recordStrokes(singleMacroRec.recType.key)
-        while (recorder.recording || recorder.status == singleMacroRec.macroStatusType.pause) {
-            Sleep(100)
-        }
+        recorder.recordStrokes(SingleMacroRec.recType.key)
+        this._boundRecordCheck := ObjBindMethod(this, "_onRecordComplete")
+        SetTimer(this._boundRecordCheck, 100)
+    }
+    _onRecordComplete() {
+        recorder := SingleMacroRec.getInstance()
+        if (recorder.recording || recorder.status == SingleMacroRec.macroStatusType.pause)
+            return
+        SetTimer(this._boundRecordCheck, 0)
         ; logArr'dan sadece Send/Sleep komutlarını al
         keyStrokes := ""
         for k, v in recorder.logArr {
@@ -367,7 +372,7 @@ class singleProfile {
                 keyStrokes .= (keyStrokes ? "`n" : "") . v
             }
         }
-        if (keyStrokes != "")
+        if (keyStrokes != "" && this._keyStrokesEdit)
             this._keyStrokesEdit.Value .= (this._keyStrokesEdit.Value ? "`n" : "") . keyStrokes
     }
     ; Profil listesini yenile
@@ -422,7 +427,7 @@ class singleProfile {
         local className := State.window.getClass()
         try {
             if (title == "") {
-                return
+                return false
             }
             for profile in this.profiles {
                 if (profile.className && profile.className != className) {
@@ -440,7 +445,6 @@ class singleProfile {
     }
     addProfile(profile) {
         this.profiles.Push(profile)
-        this.save()
     }
     save() {
         try {
@@ -472,7 +476,7 @@ class singleProfile {
         try {
             file := FileOpen(Path.Profile, "r", "UTF-8")
             if (!file) {
-                throw
+                throw Error("Dosya açılamadı: " . Path.Profile)
             }
             local data := file.Read()
             file.Close()
@@ -498,6 +502,6 @@ class singleProfile {
         if (this._gui) {
             this._onGuiClose()
         }
-        singleProfile.instance := ""
+        SingleProfile.instance := ""
     }
 }

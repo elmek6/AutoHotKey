@@ -10,7 +10,7 @@ class Item {
         this.category := category
         this.text := text
         this.tags := tags
-        this.uuid := FormatTime(A_Now, "dd/MM/yyyy_HH:mm") "_" A_TickCount
+        this.uuid := FormatTime(A_Now, "yyyyMMdd_HHmmss") "_" A_TickCount "_" Random(1000, 9999)
     }
 
     ShowInfo() {
@@ -155,7 +155,7 @@ class SingleRepository {
                 item.title := newTitle
                 item.category := newCategory
                 item.text := newText
-                item.tags := StrSplit(newTags, "`n", "`r")
+                item.tags := IsObject(newTags) ? newTags : StrSplit(newTags, "`n", "`r")
                 this.updateCategoriesAndTags()
                 this.resetFilters()
                 this.saveAll()
@@ -253,8 +253,9 @@ class SingleRepository {
         if (query = "") {
             return this.items.Clone()
         }
+        escaped := "i)\Q" query "\E"
         for item in this.items {
-            if (RegExMatch(item.title, "i)" query) || RegExMatch(item.category, "i)" query) || RegExMatch(item.text, "i)" query)) {
+            if (RegExMatch(item.title, escaped) || RegExMatch(item.category, escaped) || RegExMatch(item.text, escaped)) {
                 results.Push(item)
             }
         }
@@ -262,8 +263,9 @@ class SingleRepository {
     }
 
     HasTagMatch(tags, query) {
+        escaped := "i)\Q" query "\E"
         for tag in tags {
-            if (RegExMatch(tag, "i)" query)) {
+            if (RegExMatch(tag, escaped)) {
                 return true
             }
         }
@@ -397,7 +399,7 @@ class SingleRepository {
             this.AddItem(newItem)
             ShowTip("Eklendi!", TipType.Success)
         } else {
-            this.UpdateItem(this.workingItem, title, category, text, tagsStr)
+            this.UpdateItem(this.workingItem, title, category, text, tags)
             ShowTip("Güncellendi!", TipType.Success)
         }
         this._clearDetails()

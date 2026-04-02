@@ -1,4 +1,4 @@
-class singleMacroRec {
+class SingleMacroRec {
     static instance := ""
     static RecordingControl := ""
     static bak := ""
@@ -19,25 +19,25 @@ class singleMacroRec {
     }
 
     static getInstance(maxRecordTime := 300, maxLines := 500) {
-        if (!singleMacroRec.instance) {
-            singleMacroRec.instance := singleMacroRec(maxRecordTime, maxLines)
+        if (!SingleMacroRec.instance) {
+            SingleMacroRec.instance := SingleMacroRec(maxRecordTime, maxLines)
         }
-        return singleMacroRec.instance
+        return SingleMacroRec.instance
     }
 
     __New(maxRecordTime, maxLines) {
-        if (singleMacroRec.instance) {
+        if (SingleMacroRec.instance) {
             throw Error("MacroRecorder zaten oluşturulmuş! getInstance kullan.")
         }
         this.maxRecordTime := maxRecordTime
         this.maxLines := maxLines
         this.isStrokeOnlyMode := false
-        this.recordType := singleMacroRec.recType.key
+        this.recordType := SingleMacroRec.recType.key
         this.outputFile := "rec1.ahk"
         this.logFile := Path.Dir . this.outputFile
         this.recording := false
         this.playing := false
-        this.status := singleMacroRec.macroStatusType.ready
+        this.status := SingleMacroRec.macroStatusType.ready
         this.logArr := []
         this.oldid := ""
         this.oldtitle := ""
@@ -47,6 +47,10 @@ class singleMacroRec {
         this.prmSleepEnabled := 0
         this.prmSetKeyDelay := 30
         this.prmSpeedUp := 0.0
+        ; Cached timer callbacks - tek seferlik BoundFunc oluştur
+        this._boundStopRecording := ObjBindMethod(this, "stopRecording")
+        this._boundShowTipChangeColor := ObjBindMethod(this, "showTipChangeColor")
+        this._boundLogWindow := ObjBindMethod(this, "logWindow")
     }
 
     recordAction(fileNumber, recordType) {
@@ -72,7 +76,7 @@ class singleMacroRec {
         this.oldid := ""
         this.oldtitle := ""
         this.recording := true
-        this.status := singleMacroRec.macroStatusType.record
+        this.status := SingleMacroRec.macroStatusType.record
         this.catchPressedHotkey(true, isStrokeOnly)
         CoordMode("Mouse", "Screen")
         MouseGetPos(&x, &y)
@@ -80,37 +84,37 @@ class singleMacroRec {
         this.relativeY := y
         tipMsg := isStrokeOnly ? "Recording strokes..." : "Recording"
         this.showCustomTip(tipMsg)
-        SetTimer(ObjBindMethod(this, "stopRecording"), -this.maxRecordTime * 1000)
+        SetTimer(this._boundStopRecording, -this.maxRecordTime * 1000)
     }
 
     playPause() {
-        if (this.status == singleMacroRec.macroStatusType.record) {
+        if (this.status == SingleMacroRec.macroStatusType.record) {
             this.recording := false
-            this.status := singleMacroRec.macroStatusType.pause
+            this.status := SingleMacroRec.macroStatusType.pause
             this.catchPressedHotkey(false, this.isStrokeOnlyMode)
-            SetTimer(ObjBindMethod(this, "stopRecording"), 0)
+            SetTimer(this._boundStopRecording, 0)
             this.showCustomTip("Paused")
-        } else if (this.status == singleMacroRec.macroStatusType.pause) {
+        } else if (this.status == SingleMacroRec.macroStatusType.pause) {
             this.recording := true
-            this.status := singleMacroRec.macroStatusType.record
+            this.status := SingleMacroRec.macroStatusType.record
             this.catchPressedHotkey(true, this.isStrokeOnlyMode)
             this.showCustomTip(this.isStrokeOnlyMode ? "Recording strokes..." : "Recording")
-            SetTimer(ObjBindMethod(this, "stopRecording"), -this.maxRecordTime * 1000)
+            SetTimer(this._boundStopRecording, -this.maxRecordTime * 1000)
         }
     }
 
     stopRecording(returnOnly := false) {
         if (!this.recording)
-            return returnOnly ? "" : ""
+            return ""
 
         this.recording := false
-        this.status := singleMacroRec.macroStatusType.ready
+        this.status := SingleMacroRec.macroStatusType.ready
         this.catchPressedHotkey(false, this.isStrokeOnlyMode)
-        SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
+        SetTimer(this._boundShowTipChangeColor, 0)
         this.showCustomTip()
 
         if (this.logArr.Length = 0 || this.logArr.Length > this.maxLines) {
-            return returnOnly ? "" : ""
+            return ""
         }
 
         ;-> Sadece Send ve Sleep içeren satırları filtrele
@@ -126,45 +130,47 @@ class singleMacroRec {
         ;-> Sadece Send ve Sleep içeren satırları filtrele
 
         ; Dosyaya yaz (normal kayıt modu için)
-        prnRepeatCount := 1
-        fullScript := "; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
-        fullScript .= "; run sample.ahk --repeat=1{1 to n} --speedUp=0.0{sleep * n} --keyDelay=30`n"
-        fullScript .= "#SingleInstance Force`n"
-        fullScript .= "prnRepeatCount := " prnRepeatCount "`n"
-        fullScript .= "prmSpeedUp := " this.prmSpeedUp "`n"
-        fullScript .= "prmSetKeyDelay := " this.prmSetKeyDelay "`n"
-        fullScript .= "for _, arg in A_Args {`n"
-        fullScript .= "    if (RegExMatch(arg, `"(?:-r|--repeat)=(\\d+)`", &m))`n"
-        fullScript .= "        prnRepeatCount := m[1]`n"
-        fullScript .= "    else if (RegExMatch(arg, `"--keyDelay=(\d+)`", &m))`n"
-        fullScript .= "        prmSetKeyDelay := m[1]`n"
-        fullScript .= "    else if (RegExMatch(arg, `"--speedUp=([\d\.]+)`", &m))`n"
-        fullScript .= "        prmSpeedUp := m[1]`n"
-        fullScript .= "}`n`n"
-        fullScript .= "#HotIf`n"
-        fullScript .= "^C:: {`n"
-        fullScript .= "    ExitApp(3)`n"
-        fullScript .= "}`n`n"
-        fullScript .= "Loop (prnRepeatCount) {`n"
-        fullScript .= "SetKeyDelay(30)`n"
-        fullScript .= "SendMode(`"Event`")`n"
-        fullScript .= "SetTitleMatchMode(2)`n"
-        if (this.mouseMode == "window") {
-            fullScript .= "CoordMode(`"Mouse`", `"Window`")`n"
-        } else {
-            fullScript .= "CoordMode(`"Mouse`", `"Screen`")`n"
-        }
+        coordMode := this.mouseMode == "window" ? "Window" : "Screen"
+        lines := []
+        lines.Push("; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss"))
+        lines.Push("; run sample.ahk --repeat=1{1 to n} --speedUp=0.0{sleep * n} --keyDelay=30")
+        lines.Push("#SingleInstance Force")
+        lines.Push("prnRepeatCount := 1")
+        lines.Push("prmSpeedUp := " this.prmSpeedUp)
+        lines.Push("prmSetKeyDelay := " this.prmSetKeyDelay)
+        lines.Push("for _, arg in A_Args {")
+        lines.Push("    if (RegExMatch(arg, `"(?:-r|--repeat)=(\\d+)`", &m))")
+        lines.Push("        prnRepeatCount := m[1]")
+        lines.Push("    else if (RegExMatch(arg, `"--keyDelay=(\d+)`", &m))")
+        lines.Push("        prmSetKeyDelay := m[1]")
+        lines.Push("    else if (RegExMatch(arg, `"--speedUp=([\d\.]+)`", &m))")
+        lines.Push("        prmSpeedUp := m[1]")
+        lines.Push("}")
+        lines.Push("")
+        lines.Push("#HotIf")
+        lines.Push("^C:: {")
+        lines.Push("    ExitApp(3)")
+        lines.Push("}")
+        lines.Push("")
+        lines.Push("Loop (prnRepeatCount) {")
+        lines.Push("SetKeyDelay(30)")
+        lines.Push("SendMode(`"Event`")")
+        lines.Push("SetTitleMatchMode(2)")
+        lines.Push("CoordMode(`"Mouse`", `"" coordMode "`")")
         For k, v in this.logArr {
             if (InStr(v, "Sleep(")) {
                 sleepValue := RegExMatch(v, "Sleep\((\d+)\)", &m) ? m[1] : 0
-                fullScript .= "    Sleep( " sleepValue "* prmSpeedUp )`n"
+                lines.Push("    Sleep( " sleepValue "* prmSpeedUp )")
             } else {
-                fullScript .= v "`n"
+                lines.Push(v)
             }
         }
-        fullScript .= "}`n"
-        fullScript .= "ExitApp"
-        fullScript := RegExReplace(fullScript, "\R", "`n")
+        lines.Push("}")
+        lines.Push("ExitApp")
+        fullScript := ""
+        for line in lines {
+            fullScript .= line "`n"
+        }
 
         if (FileExist(this.logFile))
             FileDelete(this.logFile)
@@ -189,14 +195,14 @@ class singleMacroRec {
             return
         }
         this.playing := true
-        this.status := singleMacroRec.macroStatusType.play
+        this.status := SingleMacroRec.macroStatusType.play
         this.showCustomTip("Playing " . this.outputFile, "y35", "Green|00FFFF")
         ahk := A_AhkPath
         if (!FileExist(ahk)) {
             this.showCustomTip()
             MsgBox("AutoHotkey bulunamadı: " ahk "!", "Hata", 4096)
             this.playing := false
-            this.status := singleMacroRec.macroStatusType.ready
+            this.status := SingleMacroRec.macroStatusType.ready
             return
         }
         ; command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
@@ -205,55 +211,46 @@ class singleMacroRec {
         command := ahk . " `"" . this.logFile . "`" " . params
         scriptExitCode := RunWait(command)
         this.playing := false
-        this.status := singleMacroRec.macroStatusType.ready
+        this.status := SingleMacroRec.macroStatusType.ready
         this.showCustomTip()
         if (scriptExitCode != 0) {
             App.ErrHandler.handleError("Script Error in " this.outputFile ": - Exit code :" scriptExitCode)
         }
     }
 
-    catchPressedHotkey(f := false, isStrokeOnly := false) {
-        f := f ? "On" : "Off"
+    catchPressedHotkey(enable := false, isStrokeOnly := false) {
+        state := enable ? "On" : "Off"
+        keyFn := enable ? (*) => this.logKey() : (*) => 0
+
+        ; Klavye hotkey'leri
         Loop 254 {
             k := GetKeyName(vk := Format("vk{:X}", A_Index))
             if (!(k ~= "^(?i:|Control|Alt|Shift|LButton|RButton|MButton)$"))
-                Hotkey("~*" vk, (*) => this.logKey(), f)
+                Hotkey("~*" vk, keyFn, state)
         }
         For i, k in StrSplit("NumpadEnter|Home|End|PgUp|PgDn|Left|Right|Up|Down|Delete|Insert", "|") {
             sc := Format("sc{:03X}", GetKeySC(k))
             if (!(k ~= "^(?i:|Control|Alt|Shift)$"))
-                Hotkey("~*" sc, (*) => this.logKey(), f)
+                Hotkey("~*" sc, keyFn, state)
         }
 
-        ; Fare hotkey'leri sadece stroke-only DEĞİLSE aktif
-        if (!isStrokeOnly && this.recordType != singleMacroRec.recType.key) {
-            Hotkey("$~*LButton", (*) => this.logKeyMouse("LButton"), f)
-            Hotkey("$~*RButton", (*) => this.logKeyMouse("RButton"), f)
-            Hotkey("$~*MButton", (*) => this.logKeyMouse("MButton"), f)
-        }
-
-        if (f = "On") {
-            ; Stroke-only modda pencere değişikliği KAYDEDİLMEZ
-            if (!isStrokeOnly) {
-                SetTimer(ObjBindMethod(this, "logWindow"), 100)
-                this.logWindow()
-            }
+        ; Fare hotkey'leri: açarken koşullu, kapatırken her zaman kapat
+        if (enable && !isStrokeOnly && this.recordType != SingleMacroRec.recType.key) {
+            Hotkey("$~*LButton", (*) => this.logKeyMouse("LButton"), "On")
+            Hotkey("$~*RButton", (*) => this.logKeyMouse("RButton"), "On")
+            Hotkey("$~*MButton", (*) => this.logKeyMouse("MButton"), "On")
         } else {
-            SetTimer(ObjBindMethod(this, "logWindow"), 0)
-            ; Hotkey temizliği
-            Loop 254 {
-                k := GetKeyName(vk := Format("vk{:X}", A_Index))
-                if (!(k ~= "^(?i:|Control|Alt|Shift|LButton|RButton|MButton)$"))
-                    Hotkey("~*" vk, (*) => 0, "Off")
-            }
-            For i, k in StrSplit("NumpadEnter|Home|End|PgUp|PgDn|Left|Right|Up|Down|Delete|Insert", "|") {
-                sc := Format("sc{:03X}", GetKeySC(k))
-                if (!(k ~= "^(?i:|Control|Alt|Shift)$"))
-                    Hotkey("~*" sc, (*) => 0, "Off")
-            }
             Hotkey("$~*LButton", (*) => 0, "Off")
             Hotkey("$~*RButton", (*) => 0, "Off")
             Hotkey("$~*MButton", (*) => 0, "Off")
+        }
+
+        ; Pencere takibi
+        if (enable && !isStrokeOnly) {
+            SetTimer(this._boundLogWindow, 100)
+            this.logWindow()
+        } else {
+            SetTimer(this._boundLogWindow, 0)
         }
     }
 
@@ -265,16 +262,16 @@ class singleMacroRec {
         if (r ~= "^(?i:Alt|Ctrl|Shift|Win)$")
             this.logKeyControl(k)
         else if (k ~= "^(?i:LButton|RButton|MButton)$") {
-            if (this.recordType != singleMacroRec.recType.key && !this.isStrokeOnlyMode)
+            if (this.recordType != SingleMacroRec.recType.key && !this.isStrokeOnlyMode)
                 this.logKeyMouse(k)
         } else {
-            if (this.recordType != singleMacroRec.recType.mouse)
+            if (this.recordType != SingleMacroRec.recType.mouse)
                 this.logKeyboard(k, vksc)
         }
     }
 
     logKeyControl(key) {
-        if (this.recordType = singleMacroRec.recType.mouse || this.isStrokeOnlyMode)
+        if (this.recordType = SingleMacroRec.recType.mouse || this.isStrokeOnlyMode)
             return
         k := InStr(key, "Win") ? key : SubStr(key, 2)
         this.log("{" k " Down}", true)
@@ -284,24 +281,45 @@ class singleMacroRec {
         this.log("{" k " Up}", true)
     }
 
+    ; MouseClick string builder: mode = "screen"|"window"|"relative", updown = "D"|"U"|""
+    _mouseStr(key, x, y, mode, updown := "") {
+        prefix := this.mouseMode == mode ? "" : ";"
+        if (mode == "relative") {
+            if (updown)
+                return prefix "MouseClick(`"" key "`", " x ", " y ",,, `"" updown "`", `"R`") `;" mode
+            return prefix "MouseClick(`"" key "`", " x ", " y ",,,, `"R`") `;" mode
+        }
+        if (updown)
+            return prefix "MouseClick(`"" key "`", " x ", " y ",,, `"" updown "`") `;" mode
+        return prefix "MouseClick(`"" key "`", " x ", " y ") `;" mode
+    }
+
     logKeyMouse(key) {
-        if (this.recordType = singleMacroRec.recType.key || this.isStrokeOnlyMode)
+        if (this.recordType = SingleMacroRec.recType.key || this.isStrokeOnlyMode)
             return
         k := SubStr(key, 1, 1)
+
+        ; Down eventlerini logla ve index'lerini sakla
         CoordMode("Mouse", "Screen")
         MouseGetPos(&X, &Y, &id)
-        this.log((this.mouseMode == "window" || this.mouseMode == "relative" ? ";" : "") "MouseClick(`"" k "`", " X ", " Y ",,, `"D`") `;screen")
+        this.log(this._mouseStr(k, X, Y, "screen", "D"))
+        screenIdx := this.logArr.Length
 
         CoordMode("Mouse", "Window")
         MouseGetPos(&WindowX, &WindowY, &id)
-        this.log((this.mouseMode != "window" ? ";" : "") "MouseClick(`"" k "`", " WindowX ", " WindowY ",,, `"D`") `;window")
+        this.log(this._mouseStr(k, WindowX, WindowY, "window", "D"))
+        windowIdx := this.logArr.Length
 
         CoordMode("Mouse", "Screen")
         MouseGetPos(&tempRelativeX, &tempRelativeY, &id)
-        this.log((this.mouseMode != "relative" ? ";" : "") "MouseClick(`"" k "`", " (tempRelativeX - this.relativeX) ", " (tempRelativeY - this.relativeY) ",,, `"D`", `"R`") `;relative")
+        relX := tempRelativeX - this.relativeX
+        relY := tempRelativeY - this.relativeY
+        this.log(this._mouseStr(k, relX, relY, "relative", "D"))
+        relativeIdx := this.logArr.Length
         this.relativeX := tempRelativeX
         this.relativeY := tempRelativeY
 
+        ; Tuş bırakılmasını bekle
         CoordMode("Mouse", "Screen")
         MouseGetPos(&X1, &Y1)
         t1 := A_TickCount
@@ -314,23 +332,31 @@ class singleMacroRec {
         else
             MouseGetPos(&X2, &Y2)
 
-        i := this.logArr.Length - 2, r := this.logArr[i]
-        if (InStr(r, ",,, `"D`")") && Abs(X2 - X1) + Abs(Y2 - Y1) < 5)
-            this.logArr[i] := SubStr(r, 1, -16) ") `;screen", this.log()
-        else
-            this.log((this.mouseMode == "window" || this.mouseMode == "relative" ? ";" : "") "MouseClick(`"" k "`", " (X + X2 - X1) ", " (Y + Y2 - Y1) ",,, `"U`") `;screen")
+        noDrag := Abs(X2 - X1) + Abs(Y2 - Y1) < 5
 
-        i := this.logArr.Length - 1, r := this.logArr[i]
-        if (InStr(r, ",,, `"D`")") && Abs(X2 - X1) + Abs(Y2 - Y1) < 5)
-            this.logArr[i] := SubStr(r, 1, -16) ") `;window", this.log()
-        else
-            this.log((this.mouseMode != "window" ? ";" : "") "MouseClick(`"" k "`", " (WindowX + X2 - X1) ", " (WindowY + Y2 - Y1) ",,, `"U`") `;window")
+        ; Screen
+        if (noDrag) {
+            this.logArr[screenIdx] := this._mouseStr(k, X, Y, "screen")
+            this.log()
+        } else {
+            this.log(this._mouseStr(k, X + X2 - X1, Y + Y2 - Y1, "screen", "U"))
+        }
 
-        i := this.logArr.Length, r := this.logArr[i]
-        if (InStr(r, ",,, `"D`", `"R`")") && Abs(X2 - X1) + Abs(Y2 - Y1) < 5)
-            this.logArr[i] := SubStr(r, 1, -23) ",,,, `"R`") `;relative", this.log()
-        else
-            this.log((this.mouseMode != "relative" ? ";" : "") "MouseClick(`"" k "`", " (X2 - X1) ", " (Y2 - Y1) ",,, `"U`", `"R`") `;relative")
+        ; Window
+        if (noDrag) {
+            this.logArr[windowIdx] := this._mouseStr(k, WindowX, WindowY, "window")
+            this.log()
+        } else {
+            this.log(this._mouseStr(k, WindowX + X2 - X1, WindowY + Y2 - Y1, "window", "U"))
+        }
+
+        ; Relative
+        if (noDrag) {
+            this.logArr[relativeIdx] := this._mouseStr(k, relX, relY, "relative")
+            this.log()
+        } else {
+            this.log(this._mouseStr(k, X2 - X1, Y2 - Y1, "relative", "U"))
+        }
     }
 
     logKeyboard(k, vksc) {
@@ -389,7 +415,7 @@ class singleMacroRec {
             this.logArr[i] := SubStr(r, 1, -1) . str "`""
             return
         }
-        if (this.logArr.Length >= this.maxLines && this.recordType != singleMacroRec.recType.mouse) {
+        if (this.logArr.Length >= this.maxLines && this.recordType != SingleMacroRec.recType.mouse) {
             this.stopRecording()
             return
         }
@@ -399,13 +425,14 @@ class singleMacroRec {
     }
 
     showCustomTip(s := "", pos := "y35", color := "Red|00FFFF") {
-        static ShowTip := Gui()
-        if (singleMacroRec.bak = color "," pos "," s)
+        static ShowTip := ""
+        if (SingleMacroRec.bak = color "," pos "," s)
             return
-        SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
-        singleMacroRec.bak := color "," pos "," s
-        ShowTip.Destroy()
-        singleMacroRec.RecordingControl := ""
+        SetTimer(this._boundShowTipChangeColor, 0)
+        SingleMacroRec.bak := color "," pos "," s
+        if (IsObject(ShowTip))
+            ShowTip.Destroy()
+        SingleMacroRec.RecordingControl := ""
         if (s = "")
             return
         ShowTip := Gui("+LastFound +AlwaysOnTop +ToolWindow -Caption +E0x08000020", "ShowTip")
@@ -414,18 +441,18 @@ class singleMacroRec {
         ShowTip.MarginX := 10
         ShowTip.MarginY := 5
         ShowTip.SetFont("q3 s20 bold c" . (InStr(s, "Playing") ? "Green" : "Red"))
-        singleMacroRec.RecordingControl := ShowTip.Add("Text", , s)
+        SingleMacroRec.RecordingControl := ShowTip.Add("Text", , s)
         ShowTip.Show("NA " . pos)
-        SetTimer(ObjBindMethod(this, "showTipChangeColor"), 1000)
+        SetTimer(this._boundShowTipChangeColor, 1000)
     }
 
     showTipChangeColor() {
-        if (!singleMacroRec.RecordingControl || !IsObject(singleMacroRec.RecordingControl)) {
-            SetTimer(ObjBindMethod(this, "showTipChangeColor"), 0)
+        if (!SingleMacroRec.RecordingControl || !IsObject(SingleMacroRec.RecordingControl)) {
+            SetTimer(this._boundShowTipChangeColor, 0)
             return
         }
-        r := StrSplit(SubStr(singleMacroRec.bak, 1, InStr(singleMacroRec.bak, ",") - 1), "|")
-        singleMacroRec.RecordingControl.SetFont("q3 c" r[singleMacroRec.idx := Mod(Round(singleMacroRec.idx), r.Length) + 1])
+        r := StrSplit(SubStr(SingleMacroRec.bak, 1, InStr(SingleMacroRec.bak, ",") - 1), "|")
+        SingleMacroRec.RecordingControl.SetFont("q3 c" r[SingleMacroRec.idx := Mod(Round(SingleMacroRec.idx), r.Length) + 1])
     }
 
     showButtons() {
@@ -452,7 +479,7 @@ class singleMacroRec {
         recordBtn := pauseGui.Add("Button", "w80 h25 x10 y40", "🛑")
         recordBtn.OnEvent("Click", (*) => (
             fileNumber := SubStr(fileCombo.Text, 4, 1),
-            recordType := typeCombo.Text = "key" ? singleMacroRec.recType.key : (typeCombo.Text = "mouse" ? singleMacroRec.recType.mouse : singleMacroRec.recType.hybrid),
+            recordType := typeCombo.Text = "key" ? SingleMacroRec.recType.key : (typeCombo.Text = "mouse" ? SingleMacroRec.recType.mouse : SingleMacroRec.recType.hybrid),
             this.recordAction(fileNumber, recordType)
         ))
 

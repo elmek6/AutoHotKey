@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_172_h")
+global State := singleState.getInstance("ver_173_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -32,9 +32,9 @@ class App {
     static ClipHist := singleClipHist.getInstance(1000, 2000) ; maxHistory, maxClipSize
     static ClipSlot := singleClipSlot.getInstance()
     static MemSlots := singleMemorySlot.getInstance()
-    static Recorder := singleMacroRec.getInstance(300) ; maxRecordTime
-    static AppShorts := singleProfile.getInstance()
-    static Repo := singleRepository.getInstance()
+    static Recorder := SingleMacroRec.getInstance(300) ; maxRecordTime
+    static AppShorts := SingleProfile.getInstance()
+    static Repo := SingleRepository.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
@@ -249,6 +249,14 @@ NumpadClear:: Send("K")
 AppsKey & a:: { ;work
     SetTimer(() => ToolTip("AppsKey + A basıldı"), -80)
 }
+
+; F13 basılı tutulurken mouse wheel ile ses kontrolü
+~F14 & WheelUp:: Send("{Volume_Up}")
+~F14 & WheelDown:: Send("{Volume_Down}")
+
+; F14 basılı iken mouse wheel ile zoom
+~F13 & WheelDown:: Send("#{NumpadSub}")
+~F13 & WheelUp:: Send("#{NumpadAdd}")
 
 ; ═══════════════════════════════════════════════════════════
 ; GlobalErrorHandler — OnError ile kayıtlı, tüm thread hatalarını yakalar.
