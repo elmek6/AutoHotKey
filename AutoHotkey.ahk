@@ -18,7 +18,8 @@
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
-; #Include <array_filter>
+#Include <array_filter>
+#Include <clip_big>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
@@ -35,6 +36,7 @@ class App {
     static Recorder := SingleMacroRec.getInstance(300) ; maxRecordTime
     static AppShorts := SingleProfile.getInstance()
     static Repo := SingleRepository.getInstance()
+    static BigClipHist := singleBigClipHist.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
@@ -49,6 +51,7 @@ class Path {
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
     static Repository := Path.Dir "repository.json"
+    static BigClips := Path.Dir "bigclips.bin"
     static initDirectory() {
         if !DirExist(Path.Dir) {
             DirCreate(Path.Dir)
@@ -95,6 +98,7 @@ LoadSettings() {
 }
 ExitSettings(ExitReason, ExitCode) {
     State.saveStats(State.Script.getStartTime())
+    App.BigClipHist.__Delete()
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
     State.Window.clearAllOnTop()

@@ -41,8 +41,10 @@
 
         if (StrLen(text) = 0)
             return
-        if (StrLen(text) > this.maxClipSize)
+        if (StrLen(text) > this.maxClipSize) {
+            App.BigClipHist.addClip(text)
             return
+        }
         if (text = this.lastClip)
             return
         this.addToHistory(text)

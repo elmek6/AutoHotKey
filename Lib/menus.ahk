@@ -66,6 +66,7 @@ showF14menu() {
     local sideLabel := "Side slot" . (App.ClipSlot.defaultGroupName != "" ? " [" . App.ClipSlot.defaultGroupName . "]" : "")
     menuF14.Add(sideLabel, buildSideSlotMenu())
     menuF14.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
+    menuF14.Add("Big Clip Deep Search", (*) => App.BigClipHist.showSearch())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuF14.Add()
     menuF14.Add("Settings", menuSettings())
