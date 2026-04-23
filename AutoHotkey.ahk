@@ -29,7 +29,7 @@ class App {
     static HotMouse := singleHotMouse.getInstance()
     static HotCascade := singleHotCascade.getInstance()
     static HotHook := singleHotHook.getInstance()
-    static ClipHist := singleClipHist.getInstance(1000, 2000) ; maxHistory, maxClipSize
+    static ClipHist := singleClipHist.getInstance(1000, 2500) ; maxHistory, maxSaveCount
     static ClipSlot := singleClipSlot.getInstance()
     static MemSlots := singleMemorySlot.getInstance()
     static Recorder := SingleMacroRec.getInstance(300) ; maxRecordTime
@@ -45,7 +45,7 @@ A_TrayMenu.Add("Control menu" . State.Script.getVersion(), (*) => DialogPauseGui
 class Path {
     static Dir := "Files\"
     static Log := Path.Dir "log.txt"
-    static Clipboard := Path.Dir "clipboards.json"
+    static Clipboard := Path.Dir "clipboards.bin"
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
     static Repository := Path.Dir "repository.json"

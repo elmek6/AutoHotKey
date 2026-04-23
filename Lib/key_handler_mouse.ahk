@@ -221,14 +221,25 @@ class singleHotMouse {
             }
         }
         builder := KeyBuilder()
+            .setPressType(300, 800)
             .mainStart((*) => State.Mouse.setMiddleWheelUsed(false))
             .mainKey((pt) {
                 if (State.Mouse.wasMiddleWheelUsed()) {
                     State.Mouse.setMiddleWheelUsed(false)
                     return
                 }
-                if (pt = 1 && State.Clipboard.isMemSlots())
-                    App.MemSlots.smartPaste(true)
+                switch pt {
+                    case 1:
+                        if (State.Clipboard.isMemSlots())
+                            App.MemSlots.smartPaste(true)
+                    case 2:
+                        if (State.Clipboard.isMemSlots())
+                            App.MemSlots.smartPaste(true)
+                        else
+                            SendInput("^v")
+                        Sleep(50)
+                        SendInput("^{Enter}")
+                }
             })
             .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())
             .combo("F15", "Smart Paste 6", () => smartPaste(6))
