@@ -97,11 +97,11 @@ buildSideSlotMenu() {
         sub.Add("Delete this group", ((n) => (*) => (
             MsgBox("'" . n . "' grubunu silmek istiyor musun?", "Grup sil", "YesNo") == "Yes"
                 ? App.ClipSlot.deleteGroup(n)
-                : 0
+            : 0
         ))(name))
         local groupLabel := name . (App.ClipSlot.defaultGroupName == name ? " ✓" : "")
         m.Add(groupLabel, sub)
-    }    
+    }
     return m
 }
 
@@ -216,6 +216,7 @@ class TipType {
     static Cut := "cut"
     static Copy := "copy"
     static Paste := "paste"
+    static BigClip := "bigclip"
 }
 
 ShowTip(msg, type := TipType.Info, duration := 800) {
@@ -242,7 +243,8 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
         TipType.Success, { text: "28A745", bg: "E6FFE6" },  ; Yeşil/Açık Yeşil
         TipType.Cut, { text: "6F42C1", bg: "F8F9FA" },  ; Mor/Gri
         TipType.Copy, { text: "0D6EFD", bg: "F8F9FA" },  ; Mavi/Açık Mavi
-        TipType.Paste, { text: "198754", bg: "F8F9FA" }  ; Yeşil/Açık Yeşil
+        TipType.Paste, { text: "198754", bg: "F8F9FA" },  ; Yeşil/Açık Yeşil
+        TipType.BigClip, { text: "808080", bg: "F0F0F0" }  ; Gri/Açık Gri (Bellek kısıtlaması)
     )
 
     ; Varsayılan renk (eğer type yoksa veya hatalıysa)
