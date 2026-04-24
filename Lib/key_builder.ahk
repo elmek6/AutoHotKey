@@ -95,6 +95,26 @@ class KeyBuilder {
 ; ======================================================================
 
 
+; Visual indicator functions
+ShowIndicator(color := "00FF88", msg := "●") {
+    global mouseIndicator
+    try mouseIndicator.Destroy()
+    MouseGetPos(&x, &y)
+    mouseIndicator := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    mouseIndicator.BackColor := color
+    mouseIndicator.MarginX := 6
+    mouseIndicator.MarginY := 4
+    mouseIndicator.SetFont("s11 bold c000000", "Segoe UI")
+    mouseIndicator.Add("Text", "BackgroundTrans", msg)
+    mouseIndicator.Show("x" (x + 22) " y" (y + 10) " NoActivate AutoSize")
+}
+
+HideIndicator() {
+    global mouseIndicator
+    try mouseIndicator.Destroy()
+    mouseIndicator := ""
+}
+
 UpdateIndicator() {
     global mouseIndicator, lastX, lastY
     MouseGetPos &x, &y

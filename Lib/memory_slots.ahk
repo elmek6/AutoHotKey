@@ -40,12 +40,12 @@ class singleMemorySlot {
         this.clipHistory := []
         this.isDestroyed := false
         this.activeViewerEnum := {
-            slots: true,
-            history: false
+            slots: false,
+            history: true
         }
         ; this.jumpPasteIndex := false belki mod degisince copyden paste bu sekilde alinabilir
         ; ama 10 astiysa ne yapmak lazim o da düşünülmeli
-        this.activeList := this.activeViewerEnum.slots
+        this.activeList := this.activeViewerEnum.history
         this.ignoreNextClip := false
         OnClipboardChange(this.clipboardWatcher.Bind(this))
 
@@ -53,8 +53,7 @@ class singleMemorySlot {
         count := Min(10, fullHistory.Length)
         this.clipHistory := []
         Loop count {
-            idx := fullHistory.Length - A_Index + 1
-            this.clipHistory.Push(fullHistory[idx])
+            this.clipHistory.Push(fullHistory[A_Index])
         }
 
         this._createGui()
@@ -105,6 +104,7 @@ class singleMemorySlot {
             this.historyLV.OnEvent("DoubleClick", (*) => this._onHistoryDoubleClick())
             this._populateHistory()
             this._activeViewerBackground()
+            this._selectHistoryViewer(1)
         } catch as err {
             App.ErrHandler.handleError("GUI oluşturma hatası", err)
         }

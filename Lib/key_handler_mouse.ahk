@@ -1,4 +1,5 @@
 #Include <hot_vectors> ; #Include <hot_gestures>
+#Include <key_builder>
 
 ; Yeni fikir tusu basili tutarken gesture
 ; F18 basili tutarken sag sol yaparsan back ve del
@@ -17,7 +18,7 @@ class EM {    ; Enhancements for KeyBuilder
     static Create(type, data) => { base: EM.Prototype, type: type, data: data }
 
     ; kısa yazmak için yardımcı metodlar
-    static visual(v) => EM.Create(EM.tVisual, v)
+    static visual(label1, label2 := "") => EM.Create(EM.tVisual, label2 == "" ? label1 : [label1, label2])
     static gesture(gestureObj) => EM.Create(EM.tGesture, gestureObj)
     static enableDoubleClick(v := true) => EM.Create(EM.tDBClick, v)
     static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
@@ -51,18 +52,23 @@ class singleHotMouse {
         repeatInterval := 0
 
         for item in b.extensions {
-            if (item is EM) {
-                switch item.type {
-                    case EM.tVisual: enableVisual := item.data
-                    case EM.tOnCombo: onlyOnCombo := item.data
-                    case EM.tDBClick: enabledDoubleClick := item.data
-                    case EM.tGesture: gestures.Push(item.data)
-                    case EM.tTriggerPressType: triggerPressType := item.data
-                    case EM.tRepeatKey: repeatInterval := item.data
+            try {
+                if (item is EM) {
+                    switch item.type {
+                        case EM.tVisual: enableVisual := item.data
+                        case EM.tOnCombo: onlyOnCombo := item.data
+                        case EM.tDBClick: enabledDoubleClick := item.data
+                        case EM.tGesture: gestures.Push(item.data)
+                        case EM.tTriggerPressType: triggerPressType := item.data
+                        case EM.tRepeatKey: repeatInterval := item.data
+                    }
                 }
             }
         }
 
+
+        shortTimer := ""
+        longTimer := ""
 
         _checkCombo(comboActions) {
             for p in comboActions {
@@ -106,6 +112,22 @@ class singleHotMouse {
                 b.main_start.Call()
             }
 
+            lastRepeatTime := 0
+            ; longTimeThreshold ensures we don't try to check against b.longTime if it's empty
+            longTimeThreshold := (b.longTime != "") ? b.longTime : 999999
+
+            ; Indicator: timer ile başlat (gesture döngüsü içinde de çalışsın)
+            if (enableVisual) {
+                label1 := IsObject(enableVisual) ? enableVisual[1] : enableVisual
+                label2 := IsObject(enableVisual) ? (enableVisual.Length >= 2 ? enableVisual[2] : "") : ""
+                shortTimer := () => ShowIndicator("00FF88", label1)
+                SetTimer(shortTimer, -b.shortTime)
+                if (longTimeThreshold != 999999 && label2 != "") {
+                    longTimer := () => ShowIndicator("00BFFF", label2)
+                    SetTimer(longTimer, -longTimeThreshold)
+                }
+            }
+
             ; === HotGestures başlat ===
             if (gestures.Length > 0) {
                 this.hgs.ClearRegistrations()  ; Önceki gesture'ları temizle
@@ -119,11 +141,9 @@ class singleHotMouse {
                 }
             }
 
-            lastRepeatTime := 0
-            ; visualShown := { medium: false, long: false }
-
             while GetKeyState(key, "P") {
                 duration := A_TickCount - startTime
+
                 pressType := KeyBuilder.getPressType(duration, b.shortTime, b.longTime)
 
                 ; Repeat kontrolü
@@ -161,6 +181,15 @@ class singleHotMouse {
             KeyWait key
             totalDuration := A_TickCount - startTime
 
+            ; Tuş bırakıldı: indicator'ı hemen kapat (main_key bloklayıcı menü açabilir)
+            if (enableVisual) {
+                if (shortTimer != "")
+                    SetTimer(shortTimer, 0)
+                if (longTimer != "")
+                    SetTimer(longTimer, 0)
+                HideIndicator()
+            }
+
             ; HotGestures sonuç kontrolü
             if (gestures.Length > 0) {
                 this.hgs.Stop() ; HotGestures zaten callback'leri çağırdı
@@ -193,6 +222,13 @@ class singleHotMouse {
             }
             if (gestures.Length > 0) {
                 this.hgs.Stop()
+            }
+            if (enableVisual) {
+                if (shortTimer != "")
+                    SetTimer(shortTimer, 0)
+                if (longTimer != "")
+                    SetTimer(longTimer, 0)
+                HideIndicator()
             }
             State.Busy.setFree()
         }
@@ -238,7 +274,7 @@ class singleHotMouse {
                         else
                             SendInput("^v")
                         Sleep(50)
-                        SendInput("^{Enter}")
+                        SendInput("+{Enter}")
                 }
             })
             .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())
@@ -280,6 +316,7 @@ class singleHotMouse {
             .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 3))
             .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 2))
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 1))
+            ; .extend(EM.visual([""]))
             .extend(EM.enableDoubleClick())
             .extend(EM.repeatKey(350))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
@@ -291,7 +328,7 @@ class singleHotMouse {
 
 
     handleF14() {
-        builder := KeyBuilder(350)
+        builder := KeyBuilder(350, 700)
             .mainKey((pt) {
                 switch (pt) {
                     case 1: showF14menu()
@@ -309,6 +346,7 @@ class singleHotMouse {
             .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight | HotVectors.bDir.unlock, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
+            .extend(EM.visual(["Cut", "MemClip"]))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.upLeft, (pos) => Send("{Home}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downRight, (pos) => Send("{End}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => Send("{Enter}"))))
@@ -332,6 +370,7 @@ class singleHotMouse {
             })
             ; .combo("F13", "Delete", () => Send("{Delete}"))
             ; .combo("LButton", "Send F15 L", () => Send("F15 L bos"))
+            .extend(EM.visual("Esc"))
             .build()
 
         this.handle(builder)
@@ -346,6 +385,7 @@ class singleHotMouse {
                 }
             })
             ; .combo("F13", "Send F13", () => Send("F13 bos"))
+            .extend(EM.visual("Enter"))
             .build()
         this.handle(builder)
     }
@@ -360,6 +400,7 @@ class singleHotMouse {
                 }
             })
             ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
+            .extend(EM.visual("Del", "End"))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => pos > 0 ? Send("{Delete}") : Mod(pos, 5) == 0 ? Send("^z") : Sleep(5))))
             .build()
 
@@ -385,6 +426,7 @@ class singleHotMouse {
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
+            .extend(EM.visual("BkSp", "Home"))
             .build()
         this.handle(builder)
     }
@@ -396,8 +438,11 @@ class singleHotMouse {
                     case 1: State.Clipboard.isMemSlots()
                         ? App.MemSlots.smartPaste() : Send("^v")
                     case 2: Send("^a^v")
+                    case 3: App.MemSlots.start()
                 }
             })
+            .setPressType(300, 800)
+            .extend(EM.visual("All+Paste", "MemClip"))
             .mainEnd(() => ShowTip(A_Clipboard, TipType.Paste))
             ; .combo("F13", "Select All & Paste", () => Send("^a^v"))
             ; .combo("F14", "3x Click + Paste", () => (Click("Left", 3), Send("^v")))
@@ -416,9 +461,9 @@ class singleHotMouse {
                 switch (pt) {
                     case 1: Send("^c")
                     case 2: Send("^x")
-                    case 3: App.MemSlots.start()
                 }
             })
+            .extend(EM.visual("Cut"))
             .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
             ; .combo("F13", "Select All & Copy", () => Send("^a^c"))
             ; .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
