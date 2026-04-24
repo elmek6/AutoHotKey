@@ -156,6 +156,15 @@ SC132:: App.Recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run 
 SC16C:: App.Recorder.playKeyAction(2, 1)
 #HotIf
 
+; Mem slot acikken insert tusu smart paste
+#HotIf State.Clipboard.isMemSlots()
+Insert:: App.MemSlots.smartPaste(true)
+#HotIf
+
+
+
+
+
 ;Fare tuslari haritasi
 F13:: App.HotMouse.handleF13()
 F14:: App.HotMouse.handleF14()
@@ -175,6 +184,7 @@ SC00D:: App.HotHook.sysCommands() ; ´ backtick SC00D VKDD
 ~LButton:: App.HotMouse.handleLButton()
 ~MButton:: App.HotMouse.handleMButton()
 ~RButton:: App.HotMouse.handleRButton()
+
 ; ~RButton:: App.KeyCounts.inc("RButton")
 ;~LButton & RButton::RButton & LButton:: {}
 ~MButton & WheelUp:: {

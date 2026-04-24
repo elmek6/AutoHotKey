@@ -69,7 +69,7 @@ class singleMemorySlot {
             this.gui.SetFont("s9", "Segoe UI")
 
             ; F tuşları checkbox (default disabled - kullanıcı çalıştırmak isterse aktif edebilir)
-            this.fKeysEnabled := this.gui.Add("CheckBox", "x10 y10 w210 h30", "🔹 F1-F10: Kısa=Slot | Uzun=History | Çift=Kaydet")
+            this.fKeysEnabled := this.gui.Add("CheckBox", "x10 y10 w210 h30", "🔹 F1-F10: Kısa=Slot | Uzun=History | Çift=Kaydet  Insert=smart paste")
             this.fKeysEnabled.OnEvent("Click", (*) => this._toggleFKeys())
 
             this.ignoreSameValue := this.gui.Add("CheckBox", "x230 y10 w210 h30", "Veri tekrarını kabul et")
@@ -81,7 +81,7 @@ class singleMemorySlot {
 
             this.slotsHeader := this.gui.Add("Text", "x10 y85 w430 h25 Center BackgroundTrans", "🦆 Memory Slots")
             this.slotsHeader.SetFont("Bold")
-            this.slotsHeader.OnEvent("Click", (*) => (this._selectSlotViewer(this.currentSlotIndex)))
+            this.slotsHeader.OnEvent("Click", (*) => (this.activeList == this.activeViewerEnum.slots ? this._reverseSlotsOrder() : this._selectSlotViewer(this.currentSlotIndex)))
 
             this.slotLV := this.gui.Add("ListView", "x10 y110 w430 h220 +HScroll -Multi +LV0x10", ["Slot", "İçerik"])
             this.slotLV.ModifyCol(1, 60)
@@ -95,7 +95,7 @@ class singleMemorySlot {
 
             this.historyHeader := this.gui.Add("Text", "x10 y340 w430 h25 Center BackgroundTrans", "📋 Clipboard Geçmişi")
             this.historyHeader.SetFont("Bold")
-            this.historyHeader.OnEvent("Click", (*) => (this._selectHistoryViewer(this.currentHistoryIndex)))
+            this.historyHeader.OnEvent("Click", (*) => (this.activeList == this.activeViewerEnum.history ? this._reverseHistoryOrder() : this._selectHistoryViewer(this.currentHistoryIndex)))
 
             this.historyLV := this.gui.Add("ListView", "x10 y370 w430 h220 +HScroll -Multi +LV0x10", ["#", "İçerik"])
             this.historyLV.ModifyCol(1, 60)
@@ -424,6 +424,33 @@ class singleMemorySlot {
 
     }
 
+    _reverseSlotsOrder() {
+        len := this.slotsLength
+        Loop len // 2 {
+            i := A_Index
+            j := len - A_Index + 1
+            tmp := this.slots[i]
+            this.slots[i] := this.slots[j]
+            this.slots[j] := tmp
+        }
+        Loop 10 {
+            this._updateSlotDisplay(A_Index, this.slots[A_Index])
+        }
+        this._selectSlotViewer(1)
+    }
+
+    _reverseHistoryOrder() {
+        reversed := []
+        i := this.clipHistory.Length
+        while (i >= 1) {
+            reversed.Push(this.clipHistory[i])
+            i--
+        }
+        this.clipHistory := reversed
+        this._populateHistory()
+        this._selectHistoryViewer(1)
+    }
+
     _clearSlots() {
         this.currentSlotIndex := 1
         this.activeList := this.activeViewerEnum.slots
@@ -435,8 +462,8 @@ class singleMemorySlot {
 
     _destroy() {
         this.isDestroyed := true
-        ; F tuşlarını kapat (GUI kapatılınca)
-        this._setupFKeys(false)
+        if (this.fKeysEnabled && this.fKeysEnabled.Value)
+            this._setupFKeys(false)
         State.Clipboard.setMode(this.previousState)
         if (this.gui) {
             this.gui.Destroy()

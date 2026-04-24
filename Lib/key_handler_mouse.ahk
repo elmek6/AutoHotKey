@@ -461,9 +461,10 @@ class singleHotMouse {
                 switch (pt) {
                     case 1: Send("^c")
                     case 2: Send("^x")
+                    case 3: App.MemSlots.start()
                 }
             })
-            .extend(EM.visual("Cut"))
+            .extend(EM.visual("Cut", "MemClip"))
             .mainEnd(() => (ShowTip(A_Clipboard, TipType.Copy)))
             ; .combo("F13", "Select All & Copy", () => Send("^a^c"))
             ; .combo("F14", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
