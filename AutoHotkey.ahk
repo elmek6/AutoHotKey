@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_173_h")
+global State := singleState.getInstance("ver_174_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -160,9 +160,6 @@ SC16C:: App.Recorder.playKeyAction(2, 1)
 #HotIf State.Clipboard.isMemSlots()
 Insert:: App.MemSlots.smartPaste(true)
 #HotIf
-
-
-
 
 
 ;Fare tuslari haritasi
