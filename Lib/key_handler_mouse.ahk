@@ -265,16 +265,14 @@ class singleHotMouse {
                     return
                 }
                 switch pt {
-                    case 1:
+                    case 1: ; short
                         if (State.Clipboard.isMemSlots())
                             App.MemSlots.smartPaste(true)
-                    case 2:
-                        if (State.Clipboard.isMemSlots())
+                    case 2: ; long press shift enter + paste
+                        if (State.Clipboard.isMemSlots()) {
                             App.MemSlots.smartPaste(true)
-                        else
-                            SendInput("^v")
-                        Sleep(50)
-                        SendInput("+{Enter}")
+                            SendInput("+{Enter}")
+                        }
                 }
             })
             .combo("F14", "Show History Search", () => App.ClipHist.showHistorySearch())

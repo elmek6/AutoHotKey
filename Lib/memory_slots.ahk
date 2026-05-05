@@ -205,10 +205,11 @@ class singleMemorySlot {
             return
         }
         this.ignoreNextClip := true
-        A_Clipboard := this.clipHistory[index]
+        content := this.clipHistory[index]["text"]
+        A_Clipboard := content
         ClipWait(0.2)
         SendInput("^v")
-        ShowTip(this.clipHistory[index], TipType.Paste, 800)
+        ShowTip(content, TipType.Paste, 800)
     }
 
     ; Çift basım: clipboard'ı o slota kaydet
@@ -230,7 +231,7 @@ class singleMemorySlot {
             return
         }
         Loop this.clipHistory.Length {
-            preview := this._makePreview(this.clipHistory[A_Index])
+            preview := this._makePreview(this.clipHistory[A_Index]["text"])
 
             idx := Format("{:02}", A_Index)
             this.historyLV.Add("", "F" . idx . "...", preview)
@@ -286,13 +287,15 @@ class singleMemorySlot {
         if (!row || row > this.clipHistory.Length) {
             return
         }
-        content := this.clipHistory[row]
+        content := this.clipHistory[row]["text"]
         if (content == "") {
             OutputDebug("⚠️ Seçili item boş!")
             return
         }
+        this.ignoreNextClip := true
         A_Clipboard := content
         ClipWait(0.5)
+        SendInput("^v")
         ShowTip(content, TipType.Paste, 700)
     }
 
