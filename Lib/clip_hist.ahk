@@ -2,13 +2,13 @@ class singleClipHist {
     static instance := ""
     static FILE_VERSION := 2
 
-    static getInstance(maxHistory, maxSaveCount, defaultLoadCount := 40) {
+    static getInstance(maxHistory, maxSaveCount) {
         if (!singleClipHist.instance)
-            singleClipHist.instance := singleClipHist(maxHistory, maxSaveCount, defaultLoadCount)
+            singleClipHist.instance := singleClipHist(maxHistory, maxSaveCount)
         return singleClipHist.instance
     }
 
-    __New(maxHistory, maxSaveCount, defaultLoadCount) {
+    __New(maxHistory, maxSaveCount) {
         if (singleClipHist.instance)
             throw Error("ClipHist zaten oluşturulmuş! getInstance kullan.")
         this.history := []   ; Array of Map {ts, count, text}
@@ -17,35 +17,41 @@ class singleClipHist {
         this.maxByteSize := 1048576  ; 1MB
         this.lastClip := ""
         this.ignoreNextChange := false
+        this._fileRecordCount := 0   ; header'dan okunan toplam kayıt sayısı
+        this._fileStartTs := 0       ; header'dan okunan başlangıç tarihi (en eski kayıt)
         State.Clipboard.setHistory()
         OnClipboardChange(this.clipboardWatcher.Bind(this))
-        this._load(defaultLoadCount)
+        this._load(maxSaveCount)
     }
 
     ; ── Clipboard watcher ────────────────────────────────────────────────────
 
     clipboardWatcher(Type) {
-        if (!State.Clipboard.isHistory())
-            return
-        if (this.ignoreNextChange) {
-            this.ignoreNextChange := false
-            return
+        try {
+            if (!State.Clipboard.isHistory())
+                return
+            if (this.ignoreNextChange) {
+                this.ignoreNextChange := false
+                return
+            }
+            if (Type == 0)
+                return
+            if (Type == 2) {
+                ShowTip("⛵")
+                return
+            }
+            local text := A_Clipboard
+            ShowTip(text, TipType.Copy)
+            if (StrLen(text) = 0)
+                return
+            if ((StrPut(text, "UTF-8") - 1) > this.maxByteSize)
+                return
+            if (text = this.lastClip)
+                return
+            this.addToHistory(text)
+        } catch as err {
+            App.ErrHandler.handleError("ClipHist.clipboardWatcher: " err.Message, err)
         }
-        if (Type == 0)
-            return
-        if (Type == 2) {
-            ShowTip("⛵")
-            return
-        }
-        local text := A_Clipboard
-        ShowTip(text, TipType.Copy)
-        if (StrLen(text) = 0)
-            return
-        if ((StrPut(text, "UTF-8") - 1) > this.maxByteSize)
-            return
-        if (text = this.lastClip)
-            return
-        this.addToHistory(text)
     }
 
     ; ── Runtime history ──────────────────────────────────────────────────────
@@ -122,6 +128,8 @@ class singleClipHist {
                 return result
             }
             local totalInFile := NumGet(headerBuf, 0, "UInt")
+            this._fileRecordCount := totalInFile
+            this._fileStartTs := NumGet(headerBuf, 4, "UInt64")
             local version := NumGet(headerBuf, 12, "UInt")
             if (version != singleClipHist.FILE_VERSION) {
                 file.Close()
@@ -151,19 +159,31 @@ class singleClipHist {
             }
             file.Close()
         } catch as err {
-            App.ErrHandler.handleError("ClipHist._readRecords: " err.Message)
+            App.ErrHandler.handleError("ClipHist._readRecords: " err.Message, err, true)
         }
         return result
     }
 
     _load(count) {
         local items := this._readRecords(count)
-        if (items.Length == 0 && FileExist(Path.Clipboard))
+        local fileSize := FileExist(Path.Clipboard) ? FileGetSize(Path.Clipboard) : 0
+        local headerCount := this._fileRecordCount
+        local expectedCount := (headerCount > 0 && count > 0 && count < headerCount) ? count : headerCount
+
+        if (fileSize > 0 && (items.Length == 0 || items.Length < expectedCount)) {
+            local msg := "Clipboard dosyası bozuk veya okunamadı!`nDosya boyutu: " fileSize " bayt`nBeklenen: " expectedCount " kayıt, Okunan: " items.Length " kayıt`nDosya yedekleniyor..."
+            App.ErrHandler.handleError("ClipHist._load: bozuk dosya (beklenen=" expectedCount ", okunan=" items.Length ", boyut=" fileSize " B)", , true)
             App.ErrHandler.backupOnError("ClipHist", Path.Clipboard)
+            DialogCriticalError(msg)
+            State.Script.setLoadedHistoryCount(0)
+            return
+        }
+
         Loop items.Length
             this.history.Push(items[A_Index])
         if (this.history.Length > 0)
             this.lastClip := this.history[1]["text"]
+        State.Script.setLoadedHistoryCount(this.history.Length)
     }
 
     _writeRecord(file, item) {
@@ -204,13 +224,38 @@ class singleClipHist {
             }
 
             local writeCount := Min(combined.Length, this.maxSaveCount)
-            local file := FileOpen(Path.Clipboard, "w")
-            if (!file)
+            local fileSize := FileExist(Path.Clipboard) ? FileGetSize(Path.Clipboard) : 0
+            local loadedCount := State.Script.getLoadedHistoryCount()
+
+            ; Aşama 1: yazılacak kayıt başlangıçta yüklenenden az → veri kaybı ihtimali
+            if (loadedCount > writeCount) {
+                local msg1 := "Yazılacak kayıt (" writeCount ") başlangıçta yüklenen kayıttan (" loadedCount ") az!`nVeri kaybı ihtimali var."
+                App.ErrHandler.handleError("ClipHist._save: " msg1, , true)
+                if (DialogCriticalError(msg1) == "stop")
+                    return
+            }
+
+            ; Aşama 2: dosyada veri var ama yazılacak sıfır kayıt → dosyayı yedekleyip koru
+            if (fileSize > 0 && writeCount == 0) {
+                local msg2 := "Dosyada veri var (" fileSize " bayt) ama yazılacak kayıt sıfır!`nDevam ederseniz dosya yedeklenecek."
+                App.ErrHandler.handleError("ClipHist._save: " msg2, , true)
+                if (DialogCriticalError(msg2) == "continue")
+                    App.ErrHandler.backupOnError("ClipHist._save", Path.Clipboard)
                 return
+            }
+
+            local file := FileOpen(Path.Clipboard, "w")
+            if (!file) {
+                App.ErrHandler.handleError("ClipHist._save: dosya açılamadı: " Path.Clipboard, , true)
+                return
+            }
+
+            ; Header: dosyanın başlangıç tarihi korunur (ne okuduysan onu yaz)
+            local startTs := this._fileStartTs > 0 ? this._fileStartTs : this._nowMs()
 
             local headerBuf := Buffer(20, 0)
             NumPut("UInt", writeCount, headerBuf, 0)
-            NumPut("UInt64", this._nowMs(), headerBuf, 4)
+            NumPut("UInt64", startTs, headerBuf, 4)
             NumPut("UInt", singleClipHist.FILE_VERSION, headerBuf, 12)
             file.RawWrite(headerBuf, 20)
 
@@ -219,7 +264,7 @@ class singleClipHist {
 
             file.Close()
         } catch as err {
-            App.ErrHandler.handleError("ClipHist._save: " err.Message)
+            App.ErrHandler.handleError("ClipHist._save: " err.Message, err, true)
         }
     }
 

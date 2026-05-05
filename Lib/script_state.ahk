@@ -28,6 +28,7 @@ class singleState {
         version := "?"
         startTime := A_Now
         shouldSaveOnExit := true
+        loadedHistoryCount := 0
 
         __New(version) {
             this.version := version
@@ -37,6 +38,8 @@ class singleState {
         getStartTime() => this.startTime
         getShouldSaveOnExit() => this.shouldSaveOnExit
         setShouldSaveOnExit(value) => this.shouldSaveOnExit := value
+        getLoadedHistoryCount() => this.loadedHistoryCount
+        setLoadedHistoryCount(n) => this.loadedHistoryCount := n
     }
 
     ; ═══════════════════════════════════════════════════════════

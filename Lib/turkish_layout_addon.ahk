@@ -32,13 +32,13 @@ global _tkBusy := Map()
 
 _HandleTurkish(key, lower, tkLower, tkUpper) {
     isShift := GetKeyState("Shift", "P")
-    isCaps  := GetKeyState("CapsLock", "T")
+    isCaps := GetKeyState("CapsLock", "T")
     isUpper := isCaps ? !isShift : isShift
 
     ; Bu tuş zaten bir thread tarafından bekleniyor
     if (_tkBusy.Has(key) && _tkBusy[key] > 0) {
         ; 400ms geçmişse → OS key-repeat, yoksay
-        if (A_TickCount - _tkBusy[key] >= 400)
+        if (A_TickCount - _tkBusy[key] >= 300)
             return
         ; 400ms geçmemişse → gerçek hızlı çift basış, direkt gönder
         Send("{Blind}{" lower "}")

@@ -21,7 +21,7 @@ class singleErrorHandler {
         this.lastFullError := ""  ; Yeni: Son hatanın tam detaylarını tutacak string
     }
 
-    handleError(errorMessage, err := unset) {
+    handleError(errorMessage, err := unset, writeNow := false) {
         this.keyCounter.inc("ErrorCount")
 
         ; Eski hataları temizle
@@ -37,9 +37,22 @@ class singleErrorHandler {
             ; err yoksa, sadece mesajı lastFullError olarak ata (geriye uyumluluk için)
             this.lastFullError := errorMessage
         }
-        OutputDebug (this.lastFullError)
-
+        OutputDebug(this.lastFullError)
+        if (writeNow)
+            this._logNow(this.lastFullError)
         this.showError(errorMessage)
+    }
+
+    ; Kritik hatayı anında log.txt'e yazar (kapanış beklenmez)
+    ; Format: YYYYMMDDHHMMSS=message — saveStats'ın error bölümüyle uyumlu
+    _logNow(message) {
+        local line := A_Now "=" message "`n"
+        try {
+            FileAppend(line, Path.Log, "UTF-8")
+        } catch as err {
+            OutputDebug("_logNow: dosyaya yazılamadı [" Path.Log "]: " err.Message "`n")
+            TrayTip("Log Hatası", "Kritik hata dosyaya yazılamadı: " err.Message, 5)
+        }
     }
 
 

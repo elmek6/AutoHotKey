@@ -168,7 +168,7 @@ menuAlwaysOnTop(targetMenu) {
     return targetMenu
 }
 
-DialogPauseGui() {
+DialogPauseGui(criticalMsg := "") {
     Suspend(1)
     _destroyGui() {
         pauseGui.Destroy()
@@ -194,6 +194,11 @@ DialogPauseGui() {
         _destroyGui(),
         ExitApp
     ))
+    if (criticalMsg != "") {
+        pauseGui.SetFont("s9 cRed", "Segoe UI")
+        pauseGui.Add("Text", "w380 y+16 Wrap", "⚠ KRİTİK HATA:`n" criticalMsg)
+        pauseGui.SetFont("s10", "Segoe UI")
+    }
     pauseGui.OnEvent("Close", (*) => (
         Suspend(0) ; pencere kapanınca script devam etsin
     ))
@@ -205,6 +210,34 @@ DialogPauseGui() {
 
     pauseGui.Show("xCenter yCenter")
     SoundBeep(750)
+}
+
+; Kritik hata dialogu: "Devam Et" → normal devam, "Durdur" → DialogPauseGui açar
+; Dönüş değeri: "continue" veya "stop"
+DialogCriticalError(message) {
+    local result := "continue"
+    local decided := false
+
+    dlg := Gui("+AlwaysOnTop", "⚠ KRİTİK HATA")
+    dlg.SetFont("s10", "Segoe UI")
+    dlg.Add("Text", "w420", message)
+    dlg.Add("Button", "w200 h36 y+16", "Devam Et").OnEvent("Click", (*) => (
+        result := "continue", decided := true, dlg.Destroy()
+    ))
+    dlg.Add("Button", "w200 h36 x+10", "Durdur").OnEvent("Click", (*) => (
+        result := "stop", decided := true, dlg.Destroy()
+    ))
+    dlg.OnEvent("Close", (*) => (decided := true))
+    dlg.Show("xCenter yCenter")
+    SoundBeep(400, 600)
+
+    while (!decided)
+        Sleep 50
+
+    if (result == "stop")
+        DialogPauseGui(message)
+
+    return result
 }
 
 ; Enum tipi (class olarak)
