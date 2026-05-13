@@ -58,11 +58,11 @@ class singleState {
         setFree() => this.set(0)
         setActive() => this.set(1)
         setCombo(caller := "") {
-            this.lastCaller := caller
+            this.caller := caller
             this.set(2)
-            OutputDebug("BLOCKED by: " caller "`n")
+            ; OutputDebug("BLOCKED by: " caller "`n")
         }
-        ; getLastCaller() => this.lastCaller
+        ; getLastCaller() => this.caller
     }
 
     ; ═══════════════════════════════════════════════════════════
@@ -93,12 +93,6 @@ class singleState {
             return Mod(this._wheelCount, 2) == 0
         }
 
-        reset() {
-            this.rightClickActive := false
-            this.lastWheelTime := 0
-            this._wheelCount := 0
-            this.middleWheelUsed := false
-        }
     }
 
     ; ═══════════════════════════════════════════════════════════
@@ -144,8 +138,8 @@ class singleState {
         getClass() => this.className
 
         isClass(className) {
-            activeClass := WinGetClass("A")
-            return activeClass == className
+            this.update()
+            return this.className == className
         }
 
         toggleAlwaysOnTop(hwnd := "", title := "") {
@@ -256,9 +250,7 @@ class singleState {
             parts := StrSplit(line, "=")
             if (parts.Length < 2)
                 continue
-            timestamp := Trim(parts[1])
-            errorMessage := Trim(parts[2])
-            App.ErrHandler.errorMap[timestamp] := errorMessage
+            App.ErrHandler.errorMap[Trim(parts[1])] := Trim(parts[2])
         }
         file.Close()
     }

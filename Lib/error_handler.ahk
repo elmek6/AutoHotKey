@@ -29,7 +29,7 @@ class singleErrorHandler {
             this._cleanOldErrors()
         }
 
-        this.errorMap[A_Now] := errorMessage
+        this.errorMap[FormatTime(A_Now, "yyyy_MM_dd-HH_mm_ss") "_" Format("{:03}", A_MSec)] := errorMessage
 
         if (IsSet(err) && IsObject(err)) {
             this.lastFullError := this._formatFullError(err, errorMessage)
@@ -44,9 +44,9 @@ class singleErrorHandler {
     }
 
     ; Kritik hatayı anında log.txt'e yazar (kapanış beklenmez)
-    ; Format: YYYYMMDDHHMMSS=message — saveStats'ın error bölümüyle uyumlu
+    ; Format: yyyy_MM_dd-HH_mm_ss_mmm=message
     _logNow(message) {
-        local line := A_Now "=" message "`n"
+        local line := FormatTime(A_Now, "yyyy_MM_dd-HH_mm_ss") "_" Format("{:03}", A_MSec) "=" message "`n"
         try {
             FileAppend(line, Path.Log, "UTF-8")
         } catch as err {
@@ -81,7 +81,7 @@ class singleErrorHandler {
 
     getRecentErrors(limit := 0, sinceTime := "") {
         if (sinceTime == "") {
-            sinceTime := this.scriptStartTime
+            sinceTime := FormatTime(this.scriptStartTime, "yyyy_MM_dd-HH_mm_ss") "_000"
         }
 
         recentErrors := "Errors:`n"
@@ -89,10 +89,9 @@ class singleErrorHandler {
         count := 0
 
         for timestamp, message in this.errorMap {
-            if (timestamp > sinceTime) {
+            if (StrCompare(timestamp, sinceTime) > 0) {
                 if (limit == 0 || count < limit) {
-                    formattedTimestamp := FormatTime(timestamp, "dd HH:mm:ss")
-                    recentErrors .= formattedTimestamp ": " message "`n"
+                    recentErrors .= timestamp ": " message "`n"
                     hasErrors := true
                     count++
                 }
@@ -116,15 +115,15 @@ class singleErrorHandler {
     }
 
     _cleanOldErrors() {
-        oldest := ""
-        for timestamp, _ in this.errorMap {
-            if (!oldest || timestamp < oldest) {
-                oldest := timestamp
-            }
+        ; Map insertion order = ekleme sırası → ilk 20 kayıt en eskiler. Önce topla, sonra sil.
+        local toRemove := []
+        for ts, _ in this.errorMap {
+            if (toRemove.Length >= 20)
+                break
+            toRemove.Push(ts)
         }
-        if (oldest != "") {
-            this.errorMap.Delete(oldest)
-        }
+        for ts in toRemove
+            this.errorMap.Delete(ts)
     }
 
     ; Test için hata oluştur
@@ -145,5 +144,39 @@ class singleErrorHandler {
             MsgBox(errorMsg, title . " Yedekleme başarısız", "OK Iconi")
             this.handleError(title . " Yedekleme başarısız: " . err.Message, err)
         }
+    }
+}
+
+; ═══════════════════════════════════════════════════════════
+; FileIO — Güvenli dosya yazma yardımcıları.
+; writeText/writeBinary: önce .tmp'ye yaz, sonra rename (OS-atomik aynı diskte).
+; Yarıda kalan yazımda hedef dosya bozulmaz.
+; ═══════════════════════════════════════════════════════════
+class FileIO {
+    static writeText(targetPath, content, encoding := "UTF-8") {
+        local tmpPath := targetPath ".tmp"
+        local file := FileOpen(tmpPath, "w", encoding)
+        if (!file)
+            throw Error("FileIO.writeText: dosya açılamadı: " tmpPath)
+        file.Write(content)
+        file.Close()
+        if (FileExist(targetPath))
+            FileDelete(targetPath)
+        FileMove(tmpPath, targetPath, 1)
+    }
+
+    static writeBinary(targetPath, writeCallback) {
+        local tmpPath := targetPath ".tmp"
+        local file := FileOpen(tmpPath, "w")
+        if (!file)
+            throw Error("FileIO.writeBinary: dosya açılamadı: " tmpPath)
+        try {
+            writeCallback.Call(file)
+        } finally {
+            file.Close()
+        }
+        if (FileExist(targetPath))
+            FileDelete(targetPath)
+        FileMove(tmpPath, targetPath, 1)
     }
 }

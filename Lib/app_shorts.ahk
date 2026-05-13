@@ -36,38 +36,6 @@ class AppProfile {
         }
         return condition
     }
-    playAt(index) {
-        if (index < 1 || index > this.shortCuts.Length) {
-            App.ErrHandler.handleError("Geçersiz shortCut index: " . index)
-            SoundBeep(800)  ; Uyarı sesi
-            return false
-        }
-        shortCut := this.shortCuts[index]
-        shortCut.play()
-        return true
-    }
-    getShortCutsPreview(maxLen := 100) {
-        result := []
-        title := "ESC Profile menu : " . this.profileName
-        result.Push(title)
-        Loop this.shortCuts.Length {
-            sc := this.shortCuts[A_Index]
-            preview := A_Index . ": " . sc.shortCutName
-            strokesSummary := ""
-            if (sc.keyStrokes.Length > 0) {
-                strokesSummary := sc.keyStrokes[1]
-                Loop sc.keyStrokes.Length - 1 {
-                    strokesSummary .= ", " . sc.keyStrokes[A_Index + 1]
-                }
-            }
-            preview .= " [" . (strokesSummary != "" ? strokesSummary : "") . "]"
-            if (StrLen(preview) > maxLen) {
-                preview := SubStr(preview, 1, maxLen - 3) . "..."
-            }
-            result.Push(preview)
-        }
-        return result
-    }
 }
 class SingleProfile {
     static instance := ""
@@ -459,12 +427,7 @@ class SingleProfile {
                 jsonStruct["profiles"].Push(profMap)
             }
             local jsonData := jsongo.Stringify(jsonStruct)
-            local file := FileOpen(Path.Profile, "w", "UTF-8")
-            if (!file) {
-                throw Error("Dosya açılamadı: " . Path.Profile)
-            }
-            file.Write(jsonData)
-            file.Close()
+            FileIO.writeText(Path.Profile, jsonData, "UTF-8")
         } catch as err {
             App.ErrHandler.handleError("save! Profil kaydetme hatası: " . err.Message, err)
         }

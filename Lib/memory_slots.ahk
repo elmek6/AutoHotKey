@@ -12,15 +12,18 @@ class singleMemorySlot {
         if (singleMemorySlot.instance) {
             throw Error("MemorySlotsManager zaten oluşturulmuş! getInstance kullan.")
         }
+        this.gui := ""
+        this.isDestroyed := false
+        this.slotLV := ""
+        this.historyLV := ""
+        this.fKeysEnabled := ""
     }
 
     start() {
-        try {
-            if (this.gui && !this.isDestroyed) {
-                this.gui.Show()
-                WinActivate(this.gui.hwnd)
-                return
-            }
+        if (this.gui && !this.isDestroyed) {
+            this.gui.Show()
+            WinActivate(this.gui.hwnd)
+            return
         }
         this.previousState := State.Clipboard.getMode()
         State.Clipboard.setMemSlots()
@@ -472,6 +475,5 @@ class singleMemorySlot {
             this.gui.Destroy()
             this.gui := ""
         }
-        singleMemorySlot.instance := ""
     }
 }

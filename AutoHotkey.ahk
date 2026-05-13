@@ -22,7 +22,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_175_b")
+global State := singleState.getInstance("ver_176_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -97,6 +97,7 @@ ExitSettings(ExitReason, ExitCode) {
     State.saveStats(State.Script.getStartTime())
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
+    ; App.AppShorts ve App.Repo: değişiklik anında save() ediyor, exit'te ekstra yazıma gerek yok.
     State.Window.clearAllOnTop()
 }
 reloadScript() {

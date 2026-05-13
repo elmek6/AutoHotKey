@@ -124,11 +124,6 @@ menuStats() {
         menuStats.Add(stat, ((s) => (*) => A_Clipboard := s)(stat))
     }
     menuStats.Add()
-
-    latestError := ""
-    for timestamp, message in App.ErrHandler.getAllErrors() {
-        latestError := FormatTime(timestamp, "dd HH:mm:ss") ": " message
-    }
     menuStats.Add("Copy last error", (*) => (App.ErrHandler.copyLastError()))
 
     return menuStats
@@ -300,26 +295,3 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
         }
     } }
 
-; --------------------------------------------------------------
-
-class QuickMenu {
-    ; Basit liste göster, callback'e seçilen text ve index döner
-    static Show(items, callback, title := "") {
-        qm := Menu()
-
-        if (title != "") {
-            qm.Add(title, (*) => 0)
-            qm.Disable(title)
-            qm.Add()
-        }
-
-        for i, item in items {
-            local text := IsObject(item) && item.HasOwnProp("text") ? item.text : item
-            local key := IsObject(item) && item.HasOwnProp("key") ? item.key : i
-            local display := key ": " text
-            qm.Add(display, ((t, idx) => (*) => callback(t, idx))(text, i))
-        }
-
-        qm.Show()
-    }
-}

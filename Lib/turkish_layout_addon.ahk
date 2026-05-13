@@ -2,8 +2,8 @@
 ; Dizilim 1 (Long Press): uzun basışla Türkçe → c=çÇ  s=şŞ  i=ıİ  g=ğĞ
 ; Dizilim 2 (Direct):     direkt remap        → ü=ğĞ  sc00D=üÜ  ö=şŞ  ä=ıİ  ,=öÖ  .=çÇ  i=ıİ
 ;
-; ScrollLock OFF     → Türkçe özellikler aktif
-; ScrollLock ON      → Türkçe özellikler devre dışı
+; ScrollLock OFF     → Türkçe özellikler devre dışı
+; ScrollLock ON      → Türkçe özellikler aktif
 ; ScrollLock uzun    → dizilim değiştir (1 ↔ 2)
 
 global TkLayout := 1
@@ -20,7 +20,7 @@ global TkLayout := 1
         ShowTip("Türkçe dizilim: " TkLayout, TipType.Info, 1200)
     } else {
         SetScrollLockState(!GetKeyState("ScrollLock", "T"))
-        ShowTip(GetKeyState("ScrollLock", "T") ? "TR: Kapalı" : "TR: Açık", TipType.Info, 800)
+        ShowTip(GetKeyState("ScrollLock", "T") ? "TR: Açık" : "TR: Kapalı", TipType.Info, 800)
     }
 }
 
@@ -54,13 +54,14 @@ _HandleTurkish(key, lower, tkLower, tkUpper) {
         Send("{BackSpace}")
         SendText(isUpper ? tkUpper : tkLower)
     }
-    _tkBusy[key] := 0
+    ; Map sonsuz büyümesin: entry'yi sil (gerekiyorsa tekrar eklenir)
+    _tkBusy.Delete(key)
 }
 
 ; ─── Dizilim 1: Uzun basış ───────────────────────────────────────────────────
 ; $ = sadece modifier'sız ve Shift kombinasyonunu yakala → Ctrl+C, Alt+G vb. geçer
 #MaxThreadsPerHotkey 2
-#HotIf TkLayout = 1 && !GetKeyState("ScrollLock", "T")
+#HotIf TkLayout = 1 && GetKeyState("ScrollLock", "T")
 $c:: _HandleTurkish("c", "c", "ç", "Ç")
 $+c:: _HandleTurkish("c", "c", "ç", "Ç")
 $s:: _HandleTurkish("s", "s", "ş", "Ş")
@@ -81,7 +82,7 @@ _TkDirect(lower, upper) {
     SendText((isShift ^ isCaps) ? upper : lower)
 }
 
-#HotIf TkLayout = 2 && !GetKeyState("ScrollLock", "T")
+#HotIf TkLayout = 2 && GetKeyState("ScrollLock", "T")
 $ü:: _TkDirect("ğ", "Ğ")
 $+ü:: _TkDirect("ğ", "Ğ")
 $sc01B:: _TkDirect("ü", "Ü")

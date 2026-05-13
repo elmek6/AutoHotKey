@@ -80,10 +80,6 @@ class singleClipHist {
         return this.history
     }
 
-    getHistoryItem(index) {
-        return (index > 0 && index <= this.history.Length) ? this.history[index]["text"] : ""
-    }
-
     clearHistory() {
         choice := MsgBox("Pano geçmişi silinsin mi?", "Onay", "YesNo")
         if (choice = "Yes") {
@@ -186,6 +182,11 @@ class singleClipHist {
         State.Script.setLoadedHistoryCount(this.history.Length)
     }
 
+    _writeAllRecords(file, combined, writeCount) {
+        Loop writeCount
+            this._writeRecord(file, combined[A_Index])
+    }
+
     _writeRecord(file, item) {
         local text := item["text"]
         local reqBytes := StrPut(text, "UTF-8") - 1
@@ -244,25 +245,16 @@ class singleClipHist {
                 return
             }
 
-            local file := FileOpen(Path.Clipboard, "w")
-            if (!file) {
-                App.ErrHandler.handleError("ClipHist._save: dosya açılamadı: " Path.Clipboard, , true)
-                return
-            }
-
             ; Header: dosyanın başlangıç tarihi korunur (ne okuduysan onu yaz)
             local startTs := this._fileStartTs > 0 ? this._fileStartTs : this._nowMs()
-
-            local headerBuf := Buffer(20, 0)
-            NumPut("UInt", writeCount, headerBuf, 0)
-            NumPut("UInt64", startTs, headerBuf, 4)
-            NumPut("UInt", singleClipHist.FILE_VERSION, headerBuf, 12)
-            file.RawWrite(headerBuf, 20)
-
-            Loop writeCount
-                this._writeRecord(file, combined[A_Index])
-
-            file.Close()
+            FileIO.writeBinary(Path.Clipboard, (file) => (
+                hdr := Buffer(20, 0),
+                NumPut("UInt", writeCount, hdr, 0),
+                NumPut("UInt64", startTs, hdr, 4),
+                NumPut("UInt", singleClipHist.FILE_VERSION, hdr, 12),
+                file.RawWrite(hdr, 20),
+                this._writeAllRecords(file, combined, writeCount)
+            ))
         } catch as err {
             App.ErrHandler.handleError("ClipHist._save: " err.Message, err, true)
         }
@@ -310,20 +302,6 @@ class singleClipHist {
         ShowTip(content, TipType.Paste, 600)
     }
 
-    getHistoryPreviewList() {
-        if (this.history.Length = 0)
-            return ["(Boş)"]
-        local previewList := []
-        Loop Min(9, this.history.Length) {
-            local item := this.history[A_Index]
-            local display := StrReplace(SubStr(item["text"], 1, 100), "`n", " ")
-            if (StrLen(item["text"]) > 100)
-                display .= "..."
-            previewList.Push("Clip " . A_Index . ": " . display)
-        }
-        return previewList
-    }
-
     showHistorySearch() {
         if (this.history.Length == 0) {
             ShowTip("Geçmiş boş!", TipType.Warning, 1500)
@@ -361,10 +339,6 @@ class singleClipHist {
         if (StrLen(text) > 60)
             display .= "..."
         menu.Add(prefix . display, (*) => (A_Clipboard := text, Send("^v")))
-    }
-
-    showClipboardPreview() {
-        ShowTip(A_Clipboard, TipType.Info)
     }
 
     __Delete() {

@@ -132,27 +132,6 @@ class singleHotCascade {
                 }
             }
 
-            ; Preview göster
-            State.Busy.setActive()
-            previewText := ""
-            if (IsObject(b.previewCallback)) {
-                currentPressType := mainKeyExecuted ? 1 : KeyBuilder.getPressType(A_TickCount - startTime, b.shortTime, b.longTime)
-                previewList := b.previewCallback.Call(this, currentPressType)
-                if (previewList.Length > 0) {
-                    for item in previewList {
-                        previewText .= item "`n"
-                    }
-                    ToolTip(previewText)
-                }
-            }
-
-
-            ; ; Süre aşımı: timeOut sonunda menü kapanır
-            ; if (previewList.Length > 0) {
-            ;     ; OutputDebug("Menü süre aşımı (" timeOut "ms), kapanıyor`n")
-            ;     ToolTip()
-            ; }
-
         } catch Error as err {
             App.ErrHandler.handleError(err.Message " " key, err)
         } finally {

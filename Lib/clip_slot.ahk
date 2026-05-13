@@ -43,12 +43,7 @@ class singleClipSlot {
             local fullData := this.readFullJson()
             fullData["defaultGroupName"] := newName
             local jsonStr := jsongo.Stringify(fullData)
-            local file := FileOpen(Path.Slot, "w", "UTF-8")
-            if (!file) {
-                throw
-            }
-            file.Write(jsonStr)
-            file.Close()
+            FileIO.writeText(Path.Slot, jsonStr, "UTF-8")
             this.loadSlots()
             return true
         } catch as err {
@@ -68,14 +63,14 @@ class singleClipSlot {
         this.groups[newGroupName] := newGroup
         this.saveSlots()
     }
-    getName(groupName := this.defaultGroupName, slotIndex) {
+    getName(groupName, slotIndex) {
         if (!this.groups.Has(groupName)) {
             return ""
         }
         values := this.groups[groupName]["values"]
         return (slotIndex >= 1 && slotIndex <= values.Length) ? values[slotIndex]["name"] : ""
     }
-    setName(groupName := this.defaultGroupName, slotIndex, newName) {
+    setName(groupName, slotIndex, newName) {
         if (!this.groups.Has(groupName)) {
             return
         }
@@ -85,14 +80,14 @@ class singleClipSlot {
         }
         values[slotIndex]["name"] := newName
     }
-    getContent(groupName := this.defaultGroupName, slotIndex) {
+    getContent(groupName, slotIndex) {
         if (!this.groups.Has(groupName)) {
             return ""
         }
         values := this.groups[groupName]["values"]
         return (slotIndex <= values.Length) ? values[slotIndex]["content"] : ""
     }
-    setContent(groupName := this.defaultGroupName, slotIndex, newContent) {
+    setContent(groupName, slotIndex, newContent) {
         if (!this.groups.Has(groupName)) {
             return
         }
@@ -102,7 +97,7 @@ class singleClipSlot {
         }
         values[slotIndex]["content"] := newContent
     }
-    getSlotPreview(groupName := this.defaultGroupName, slotIndex, maxLength := 60) {
+    getSlotPreview(groupName, slotIndex, maxLength := 60) {
         if (groupName == "" && slotIndex == 10) {
             return "***"
         }
@@ -133,12 +128,7 @@ class singleClipSlot {
             fullData["groups"] := groupsArray
             fullData["defaultGroupName"] := this.defaultGroupName
             local jsonStr := jsongo.Stringify(fullData)
-            local file := FileOpen(Path.Slot, "w", "UTF-8")
-            if (!file) {
-                throw
-            }
-            file.Write(jsonStr)
-            file.Close()
+            FileIO.writeText(Path.Slot, jsonStr, "UTF-8")
             return true
         } catch as err {
             App.ErrHandler.backupOnError("ClipSlot.saveSlots!", Path.Slot)
@@ -152,7 +142,7 @@ class singleClipSlot {
         try {
             local file := FileOpen(Path.Slot, "r", "UTF-8")
             if (!file) {
-                throw
+                throw Error("readFullJson: dosya açılamadı: " Path.Slot)
             }
             local data := file.Read()
             file.Close()
@@ -283,7 +273,7 @@ class singleClipSlot {
         }
         ArrayFilter.getInstance().Show(slotsArray, "Slotlarda Arama")
     }
-    promptAndSaveSlot(groupName := this.defaultGroupName, slotIndex) {
+    promptAndSaveSlot(groupName, slotIndex) {
         try {
             local content := A_Clipboard
 

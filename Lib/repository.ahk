@@ -13,9 +13,6 @@ class Item {
         this.uuid := FormatTime(A_Now, "yyyyMMdd_HHmmss") "_" A_TickCount "_" Random(1000, 9999)
     }
 
-    ShowInfo() {
-        MsgBox("Title: " this.title "`nCategory: " this.category "`n`n" this.text "`n`nTags: " StrJoin(this.tags, ", "))
-    }
 }
 
 class SingleRepository {
@@ -128,12 +125,7 @@ class SingleRepository {
 
             ; Stringify ve kaydet
             local jsonStr := jsongo.Stringify(jsonData)
-            local file := FileOpen(Path.Repository, "w", "UTF-8")
-            if (!file) {
-                throw Error(Path.Repository . " yazılamadı")
-            }
-            file.Write(jsonStr)
-            file.Close()
+            FileIO.writeText(Path.Repository, jsonStr, "UTF-8")
             return true
         } catch as err {
             App.ErrHandler.backupOnError("Repository.saveAll!", Path.Repository)
@@ -211,16 +203,6 @@ class SingleRepository {
         return StrSplit(str, "`n", "`r")
     }
 
-    FilterByTag(tagName) {
-        results := []
-        for item in this.items {
-            if (this.HasTagMatch(item.tags, tagName)) {
-                results.Push(item)
-            }
-        }
-        return results
-    }
-
     FilterByTags(tagArray, source := this.items) {
         results := []
         for item in source {
@@ -270,10 +252,6 @@ class SingleRepository {
             }
         }
         return false
-    }
-
-    ShowAllTags() {
-        MsgBox("All Tags:`n" StrJoin(this.tags, "`n"))
     }
 
     showGui() {

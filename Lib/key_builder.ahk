@@ -12,7 +12,6 @@ class KeyBuilder {
         this.combos := []
         this._tips := []
 
-        this.previewCallback := ""
         this.exitOnPressType := -1
 
         this.gestures := []
@@ -46,15 +45,6 @@ class KeyBuilder {
     combo(key, desc, fn) {
         this.combos.Push({ key: key, desc: desc, action: fn })
         this._tips.Push(key ": " desc)
-        return this
-    }
-
-    setPreview(callback) {
-        if (IsObject(callback)) {
-            this.previewCallback := callback
-        } else {
-            throw Error("setPreview: Callback bir fonksiyon olmalı!")
-        }
         return this
     }
 

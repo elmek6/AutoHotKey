@@ -135,9 +135,6 @@ class singleHotHook {
                 return
             }
 
-            ; Preview göster (busy 2 kaldırıldı - hook zaten consume ediyor)
-            previewText := ""
-
             ; Otomatik preview oluştur
             if (autoPreview) {
                 qm := Menu()
@@ -146,21 +143,6 @@ class singleHotHook {
                 }
                 qm.Show()
                 return
-            }
-            ; Özel preview callback varsa onu kullan
-            else if (IsObject(b.previewCallback)) {
-                finalPressType := mainKeyExecuted ? 1 : pressType
-                previewList := b.previewCallback.Call(b, finalPressType)
-                if (previewList && previewList.Length > 0) {
-                    for item in previewList {
-                        previewText .= item "`n"
-                    }
-                }
-            }
-
-            ; Preview göster
-            if (previewText != "") {
-                ToolTip(previewText, , , 1)
             }
 
             ; InputHook ile tek tuş bekle
