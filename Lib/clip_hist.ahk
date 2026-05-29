@@ -319,6 +319,13 @@ class singleClipHist {
         ArrayFilter.getInstance().Show(historyArray, "Clipboard History Search")
     }
 
+    ; ── Stats ──────────────────────────────────────────────────────────────
+
+    getStatsInfo() {
+        local fileSize := FileExist(Path.Clipboard) ? FileGetSize(Path.Clipboard) : 0
+        return ["Clip history: " this.history.Length " kayıt, " Round(fileSize / 1024, 1) " KB"]
+    }
+
     ; ── Helpers ──────────────────────────────────────────────────────────────
 
     _nowMs() {

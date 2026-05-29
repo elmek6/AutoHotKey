@@ -7,6 +7,11 @@ getStatsArray(showMsgBox := false) {
         statsArray.Push(key ": " count)
     }
 
+    for line in App.ClipHist.getStatsInfo() {
+        stats .= line "`n"
+        statsArray.Push(line)
+    }
+
     recentErrors := App.ErrHandler.getRecentErrors(10) ;0 for all
     if (recentErrors == "") {
         stats .= "no new error (log.txt save all)"

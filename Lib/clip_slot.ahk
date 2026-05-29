@@ -255,23 +255,30 @@ class singleClipSlot {
         }
         return saveSlotMenu
     }
-    showSlotsSearch(groupName := "") {
+    showSlotsSearch() {
         local slotsArray := []
-        local values := this.groups[groupName]["values"]
-        Loop Min(9, values.Length) {
-            if (StrLen(this.getContent(groupName, A_Index)) > 0) {
-                slotsArray.Push(Map(
-                    "slotNumber", A_Index,
-                    "name", this.getName(groupName, A_Index),
-                    "content", this.getContent(groupName, A_Index)
-                ))
+        for gName, group in this.groups {
+            local values := group["values"]
+            Loop values.Length {
+                if (gName == "" && A_Index == 10) ; ***
+                    continue
+                local content := this.getContent(gName, A_Index)
+                if (StrLen(content) > 0) {
+                    ; Önce grup adı, sonra slot adı: "grup-slotAdı"
+                    local label := (gName != "" ? gName "-" : "") . this.getName(gName, A_Index)
+                    slotsArray.Push(Map(
+                        "slotNumber", A_Index,
+                        "name", label,
+                        "content", content
+                    ))
+                }
             }
         }
         if (slotsArray.Length == 0) {
             ShowTip("Slotlar boş!", TipType.Warning, 1000)
             return
         }
-        ArrayFilter.getInstance().Show(slotsArray, "Slotlarda Arama")
+        ArrayFilter.getInstance().Show(slotsArray, "Tüm Slotlarda Arama")
     }
     promptAndSaveSlot(groupName, slotIndex) {
         try {

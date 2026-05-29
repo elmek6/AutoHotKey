@@ -5,6 +5,8 @@ class ArrayFilter {
     listView := ""
     searchBox := ""
     previewBox := ""
+    caseChk := ""
+    regexChk := ""
     CheckFocus := ""
     results := []
     arrayData := []
@@ -131,7 +133,7 @@ class ArrayFilter {
             if (StrLen(slot["content"]) > 120)
                 contentPreview .= "..."
             
-            if (!search || InStr(StrLower(slot["name"]), StrLower(search)) || InStr(StrLower(slot["content"]), StrLower(search))) {
+            if (this.MatchItem(search, slot)) {
                 this.listView.Add("", "", slot["name"], contentPreview)
                 this.results.Push(slot)
             }
@@ -146,6 +148,24 @@ class ArrayFilter {
         }
         try this.listView.Opt("+Redraw")
         this.UpdateVisibleLabels()
+    }
+
+    ; Arama eşleştirme: Case ve RegExp checkbox'larına göre davranır.
+    ; RegExp seçiliyse pattern'i regex olarak uygular (geçersizse hiç eşleşmez);
+    ; değilse düz metin (InStr) araması yapar.
+    MatchItem(search, slot) {
+        if (!search)
+            return true
+        local caseSensitive := this.caseChk.Value
+        if (this.regexChk.Value) {
+            local opts := caseSensitive ? "" : "i)"
+            try {
+                return RegExMatch(slot["name"], opts search) || RegExMatch(slot["content"], opts search)
+            } catch {
+                return false  ; geçersiz pattern: kullanıcı yazmayı bitirene kadar eşleşme yok
+            }
+        }
+        return InStr(slot["name"], search, caseSensitive) || InStr(slot["content"], search, caseSensitive)
     }
 
     UpdatePreviewContent(rowIndex) {
@@ -205,16 +225,20 @@ class ArrayFilter {
         local guiWidth := A_ScreenWidth * 0.40
         this.myGui := Gui("+AlwaysOnTop +ToolWindow", title)
         this.myGui.SetFont("s10", "Segoe UI")
-        this.searchBox := this.myGui.AddEdit("x10 y10 w" . (guiWidth - 20), "")        
+        this.searchBox := this.myGui.AddEdit("x10 y10 w" . (guiWidth - 20 - 190), "")
+        this.caseChk := this.myGui.AddCheckbox("x+10 yp+4 w85", "Case")
+        this.regexChk := this.myGui.AddCheckbox("x+5 yp w90", "RegExp")
         ; r12: Sabit 12 satır yüksekliği
         this.listView := this.myGui.AddListView("x10 y+10 w" . (guiWidth - 20) . " r12 Grid -Multi Count100", ["F#", "İsim", "İçerik"])
-        this.previewBox := this.myGui.AddEdit("x10 y+10 w" . (guiWidth - 20) . " h100 ReadOnly Multi +VScroll", "")
+        this.previewBox := this.myGui.AddEdit("x10 y+10 w" . (guiWidth - 20) . " h150 ReadOnly Multi +VScroll", "")
         ; Kolon Genişlikleri
         this.listView.ModifyCol(1, 40)              ; F#
-        this.listView.ModifyCol(2, guiWidth * 0.08) ; İsim
-        this.listView.ModifyCol(3, guiWidth * 0.80) ; İçerik (Geriye kalanı kapla)
+        this.listView.ModifyCol(2, guiWidth * 0.18) ; İsim (grup-slotAdı sığsın)
+        this.listView.ModifyCol(3, guiWidth * 0.70) ; İçerik (Geriye kalanı kapla)
         ; --- EVENTLER ---
         this.searchBox.OnEvent("Change", (*) => this.UpdateList())
+        this.caseChk.OnEvent("Click", (*) => this.UpdateList())
+        this.regexChk.OnEvent("Click", (*) => this.UpdateList())
         this.listView.OnEvent("DoubleClick", (*) => this.SelectFocused())
         this.listView.OnEvent("ItemSelect", (guiCtrl, item, selected) => selected ? this.UpdatePreviewContent(item) : "")
         this.myGui.OnEvent("Escape", (*) => (this.searchBox.Value ? (this.searchBox.Value := "", this.UpdateList()) : this.closeGuiAndHotkeys()))

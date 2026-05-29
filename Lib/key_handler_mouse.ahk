@@ -135,7 +135,8 @@ class singleHotMouse {
                 for g in gestures {
                     this.hgs.Register(g.Direction, g.Callback)
                 }
-                this.hgs.Start(key)
+
+                this.hgs.Start(key, (*) => (_checkCombo(b.combos), State.Busy.isCombo())) ; Combo tusa basildi gesture yerine kombinasyon calissin
                 if (this.hgs.WasGestureFired()) {
                     return
                 }
@@ -239,7 +240,7 @@ class singleHotMouse {
             .combo("F14", "LB + F14", () => Send("L F14"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Copy all", () => Send("^a^c"))
-            .combo("F15", "###", () => (App.ClipSlot.loadFromSlot("", 10)) Send("{Sleep 200}{Enter}"))
+            .combo("F15", "###", () => (App.ClipSlot.loadFromHistory("", 10)) Send("{Sleep 200}{Enter}"))
             .build()
         this.handle(builder)
     }
@@ -253,7 +254,7 @@ class singleHotMouse {
                 App.MemSlots.pasteFromSlot(no)
             } else {
                 ; Normal modda ClipSlot'tan yükle
-                App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, no)
+                App.ClipSlot.loadFromHistory(App.ClipSlot.defaultGroupName, no)
             }
         }
         builder := KeyBuilder()
@@ -308,15 +309,15 @@ class singleHotMouse {
                 }
             })
             .combo("F14", "panic", () => WinMinimize("A"))
-            .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 6))
-            .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 5))
-            .combo("F17", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 4))
-            .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 3))
-            .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 2))
-            .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, 1))
+            .combo("F15", "Clip 6", () => App.ClipHist.loadFromHistory(6))
+            .combo("F16", "Clip 5", () => App.ClipHist.loadFromHistory(5))
+            .combo("F17", "Clip 4", () => App.ClipHist.loadFromHistory(4))
+            .combo("F18", "Clip 3", () => App.ClipHist.loadFromHistory(3))
+            .combo("F19", "Clip 2", () => App.ClipHist.loadFromHistory(2))
+            .combo("F20", "Clip 1", () => App.ClipHist.loadFromHistory(1))
             ; .extend(EM.visual([""]))
             .extend(EM.enableDoubleClick())
-            .extend(EM.repeatKey(350))
+            ; .extend(EM.repeatKey(350))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "#{NumpadAdd}" : "#{NumpadSub}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => Send(pos > 0 ? "{Volume_Up}" : "{Volume_Down}"))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.once | HotVectors.bDir.downLeft, (pos) => WinMinimize("A"))))
@@ -331,17 +332,17 @@ class singleHotMouse {
                 switch (pt) {
                     case 1: showF14menu()
                     case 2: App.ClipSlot.showQuickSlotsMenu(true)
-                    case 4: App.MemSlots.start()
+                    case 4: App.ClipSlot.showSlotsSearch()
                 }
             })
             .combo("F13", "panic", () => WinMinimize("A"))
             .combo("LButton", "test", () => OutputDebug("test"))
-            .combo("F15", "Slot 1", () => App.ClipSlot.loadFromSlot("", 6))
-            .combo("F16", "Slot 1", () => App.ClipSlot.loadFromSlot("", 5))
-            .combo("F17", "Slot 1", () => App.ClipSlot.loadFromSlot("", 4))
-            .combo("F18", "Slot 1", () => App.ClipSlot.loadFromSlot("", 3))
-            .combo("F19", "Slot 1", () => App.ClipSlot.loadFromSlot("", 2))
-            .combo("F20", "Slot 1", () => App.ClipSlot.loadFromSlot("", 1))
+            .combo("F15", "Clip 6", () => App.ClipSlot.loadFromHistory("", 6))
+            .combo("F16", "Clip 5", () => App.ClipSlot.loadFromHistory("", 5))
+            .combo("F17", "Clip 4", () => App.ClipSlot.loadFromHistory("", 4))
+            .combo("F18", "Clip 3", () => App.ClipSlot.loadFromHistory("", 3))
+            .combo("F19", "Clip 2", () => App.ClipSlot.loadFromHistory("", 2))
+            .combo("F20", "Clip 1", () => App.ClipSlot.loadFromHistory("", 1))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight | HotVectors.bDir.unlock, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
             .extend(EM.visual(["Cut", "MemClip"]))
@@ -353,7 +354,7 @@ class singleHotMouse {
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.left, (pos) => Mod(pos, 5) == 0 ? Send("{BackSpace}") : Sleep(5))))
             ; .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.right, (pos) => Mod(pos, 5) == 0 ? Send("{Delete}") : Sleep(5))))
             .extend(EM.enableDoubleClick())
-            .extend(EM.repeatKey(250))
+            ; .extend(EM.repeatKey(250))
             .build()
         this.handle(builder)
     }
