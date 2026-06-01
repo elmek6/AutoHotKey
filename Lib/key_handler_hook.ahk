@@ -203,6 +203,7 @@ class singleHotHook {
             .combo("9", "Pause script",    () => DialogPauseGui())
             .combo("0", "Exit script",     () => ExitApp())
             .combo("r", "Repository GUI",  () => App.Repo.showGui())
+            .combo("i", (App.Incognito.isActive() ? "✓ Incognito (kapat)" : "Incognito (aç)"), () => App.Incognito.toggle())
             .combo("a", "TrayTip test",    () => TrayTip("Başlık", "Mesaj içeriği", 1))
             .extend(EH.autoPreview(true))   ; qMenu ile göster
             .extend(EH.setTimeOut(30000))

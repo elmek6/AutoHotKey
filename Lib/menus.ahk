@@ -51,6 +51,10 @@ showF13menu() {
     menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
+    menuF13.Add("Incognito modu", (*) => App.Incognito.toggle())
+    if (App.Incognito.isActive())
+        menuF13.Check("Incognito modu")
+
     menuF13.Add()
     menuAlwaysOnTop(menuF13)
 
@@ -73,8 +77,7 @@ showF14menu() {
     menuF14.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuF14.Add()
-    menuF14.Add("Settings", menuSettings())
-    menuF14.Add("Statistics " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
+    menuF14.Add("System " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
     menuF14.Show()
 }
 
@@ -110,18 +113,11 @@ buildSideSlotMenu() {
     return m
 }
 
-menuSettings() {
-    local menuSettings := Menu()
-    menuSettings.Add("Reload", (*) => reloadScript())
-    menuSettings.Add("Pause script", (*) => DialogPauseGui())
-    menuSettings.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
-    ; menuSettings.Add("Awake ...", (*) => InputAwake())
-    return menuSettings
-}
-
 menuStats() {
     local menuStats := Menu()
-    menuStats.Add("Show stats", (*) => (getStatsArray(true)))
+    menuStats.Add("Reload", (*) => reloadScript())
+    menuStats.Add("Pause script", (*) => DialogPauseGui())
+    menuStats.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
     menuStats.Add()
 
     statsArray := getStatsArray()
@@ -129,6 +125,7 @@ menuStats() {
         menuStats.Add(stat, ((s) => (*) => A_Clipboard := s)(stat))
     }
     menuStats.Add()
+    menuStats.Add("Show stats", (*) => (getStatsArray(true)))
     menuStats.Add("Copy last error", (*) => (App.ErrHandler.copyLastError()))
 
     return menuStats
@@ -157,12 +154,12 @@ menuAlwaysOnTop(targetMenu) {
     title := State.Window.getTitle()
     hwnd := State.Window.getHwnd()
 
-    if (!State.Window.onTopWindows.Has(hwnd)) {
+    if (!State.Window.onTopWindows.Has(hwnd))
         targetMenu.Add("📍 Add " . title, (*) => State.Window.toggleAlwaysOnTop(hwnd, title))
-    }
 
     for key, value in State.Window.onTopWindows {
-        targetMenu.Add("📌Remove " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value))
+        targetMenu.Add("📌 " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value))
+        targetMenu.Check("📌 " . value)
     }
 
     return targetMenu

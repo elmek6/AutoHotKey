@@ -18,11 +18,12 @@
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
+#Include <incognito>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_177_b")
+global State := singleState.getInstance("ver_178_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -35,6 +36,7 @@ class App {
     static Recorder := SingleMacroRec.getInstance(300) ; maxRecordTime
     static AppShorts := SingleProfile.getInstance()
     static Repo := SingleRepository.getInstance()
+    static Incognito := singleIncognito.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
@@ -290,3 +292,13 @@ GlobalErrorHandler(thrownValue, mode) {
     }
     return "Return"
 }
+
+; Su ana kadar bilinen hatalar
+;   • v2.1-alpha: çıplak ternary-STATEMENT ("a ? b : c") syntax error verir —
+;     '?' postfix maybe-operatörüyle çakışıyor. Statement'ta if/else kullan.
+;     (Ternary'yi DEĞER olarak, ör. arg/return içinde kullanmak sorunsuz.)
+;   • v2.1-alpha: hiçbir yerde atanmamış global/class referansı (jsongo, State,
+;     TipType, ShowTip...) bir metot HİÇ çağrılmasa bile YÜKLEME hatası. Bu modül
+;     bu yüzden tek başına yüklenemez; AutoHotkey.ahk içinde #Include edilmeli.
+;   • AHK GUI uygulaması: hatayı stderr/ErrorStdOut'a yazmaz, EKRANDA pencerede
+;     gösterir. Başsız test ederken hata satırını görmek için script'i elle çalıştır.
