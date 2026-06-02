@@ -19,6 +19,9 @@ class singleClipHist {
         this.ignoreNextChange := false
         this._fileRecordCount := 0   ; header'dan okunan toplam kayıt sayısı
         this._fileStartTs := 0       ; header'dan okunan başlangıç tarihi (en eski kayıt)
+        this.clipReadDelay := 100    ; ms — pano okumasını ertele (Win+V uyumu, aşağıya bak)
+        this.pendingSeq := 0         ; bildirim anındaki clipboard sequence number (tazelik kontrolü)
+        this.processBound := this.processClipboard.Bind(this)  ; tek referans → timer coalescing
         State.Clipboard.setHistory()
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this._load(maxSaveCount)
@@ -40,6 +43,30 @@ class singleClipHist {
                 ShowTip("⛵")
                 return
             }
+            ; ── Win+V uyumu ────────────────────────────────────────────────
+            ; Pano değişiminin TAM içinde A_Clipboard'ı OKUMUYORUZ. Aksi halde AHK
+            ; OpenClipboard ile kilidi alır; aynı WM_CLIPBOARDUPDATE'i alan Windows
+            ; pano geçmişi servisi (cbdhsvc) panoyu açamayıp RETRY ETMEDEN vazgeçer
+            ; ve öğe Win+V'ye düşmez. Büyük veride kilit (delayed-render IPC + büyük
+            ; kopya) ms'lerce açık kaldığından sorun yalnız orada görünür. cbdhsvc'nin
+            ; "yakaladım" sinyali OLMADIĞI için tek çare okumayı kısa süre ertelemek
+            ; (WPF clipboard API'si de 100ms kullanır). Detay: bkz. commit notu.
+            this.pendingSeq := DllCall("GetClipboardSequenceNumber", "UInt")
+            SetTimer(this.processBound, -this.clipReadDelay)
+        } catch as err {
+            App.ErrHandler.handleError("ClipHist.clipboardWatcher: " err.Message, err)
+        }
+    }
+
+    ; Pano içeriğini (ertelenmiş olarak) okuyup AHK geçmişine ekler.
+    processClipboard() {
+        try {
+            ; Tazelik kontrolü: bekleme sırasında pano tekrar değiştiyse (yeni kopya)
+            ; bu çağrı bayattır — daha yeni bir watcher zaten yeni timer kurdu, bırak o
+            ; halletsin. (seq sadece YAZMADA artar, okumada değil; bkz. watcher notu.)
+            local currentSeq := DllCall("GetClipboardSequenceNumber", "UInt")
+            if (currentSeq != this.pendingSeq)
+                return
             local text := A_Clipboard
             ShowTip(text, TipType.Copy)
             if (StrLen(text) = 0)
@@ -50,7 +77,7 @@ class singleClipHist {
                 return
             this.addToHistory(text)
         } catch as err {
-            App.ErrHandler.handleError("ClipHist.clipboardWatcher: " err.Message, err)
+            App.ErrHandler.handleError("ClipHist.processClipboard: " err.Message, err)
         }
     }
 

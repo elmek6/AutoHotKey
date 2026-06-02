@@ -48,6 +48,9 @@ showF13menu() {
     subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
     menuF13.Add("Special keys", subKeyMenu)
 
+    menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
+    menuF13.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
+
     menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
@@ -68,13 +71,11 @@ showF14menu() {
     menuF14.Add("Paste enter", (*) => Send("^v{Enter}"))
     menuF14.Add("Select All + Cut", (*) => Send("^a^x"))
     menuF14.Add("Unformatted paste", (*) => Send("^+v"))
-    menuF14.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
     menuF14.Add()
     menuF14.Add("Load from slot", App.ClipSlot.buildLoadSlotMenu())
     menuF14.Add("Save to slot", App.ClipSlot.buildSaveSlotMenu())
     local sideLabel := "Side slot" . (App.ClipSlot.defaultGroupName != "" ? " [" . App.ClipSlot.defaultGroupName . "]" : "")
     menuF14.Add(sideLabel, buildSideSlotMenu())
-    menuF14.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuF14.Add()
     menuF14.Add("System " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
@@ -118,12 +119,6 @@ menuStats() {
     menuStats.Add("Reload", (*) => reloadScript())
     menuStats.Add("Pause script", (*) => DialogPauseGui())
     menuStats.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
-    menuStats.Add()
-
-    statsArray := getStatsArray()
-    for stat in statsArray {
-        menuStats.Add(stat, ((s) => (*) => A_Clipboard := s)(stat))
-    }
     menuStats.Add()
     menuStats.Add("Show stats", (*) => (getStatsArray(true)))
     menuStats.Add("Copy last error", (*) => (App.ErrHandler.copyLastError()))
