@@ -17,6 +17,10 @@ class singleMemorySlot {
         this.slotLV := ""
         this.historyLV := ""
         this.fKeysEnabled := ""
+        ; Watcher'ı bir kez kaydet (start() içinde değil) — aksi halde her aç/kapa'da
+        ; yeni bir binding birikiyordu. Aktif değilken zaten erken return ediyor.
+        this._clipWatcher := this.clipboardWatcher.Bind(this)
+        OnClipboardChange(this._clipWatcher)
     }
 
     start() {
@@ -50,7 +54,7 @@ class singleMemorySlot {
         ; ama 10 astiysa ne yapmak lazim o da düşünülmeli
         this.activeList := this.activeViewerEnum.history
         this.ignoreNextClip := false
-        OnClipboardChange(this.clipboardWatcher.Bind(this))
+        ; OnClipboardChange __New'de bir kez kaydedildi (her start()'ta tekrar değil)
 
         fullHistory := App.ClipHist.getHistory()
         count := Min(10, fullHistory.Length)

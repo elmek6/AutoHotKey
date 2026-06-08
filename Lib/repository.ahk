@@ -199,7 +199,7 @@ class SingleRepository {
 
     _sortArray(arr) {
         str := StrJoin(arr, "`n")
-        Sort (str)
+        str := Sort(str)   ; v2'de Sort() yeni string döndürür; yerinde değiştirmez (eski "Sort (str)" sonucu atıyordu)
         return StrSplit(str, "`n", "`r")
     }
 
@@ -276,7 +276,9 @@ class SingleRepository {
 
         ; Sol alt: Tag'ler
         this.gui.Add("Text", "x10 y230 w270", "Tagler (Alfabetik, Çoklu Seç):")
-        this.tagList := this.gui.Add("ListBox", "x10 y250 w270 h200 Multi Sort", this.tags)
+        ; 'Sort' YOK: seçim index'i this.tags dizisine eşleniyor (_applyFilters);
+        ; this.tags zaten _sortArray ile sıralı, liste sırası = dizi sırası olmalı.
+        this.tagList := this.gui.Add("ListBox", "x10 y250 w270 h200 Multi", this.tags)
         this.tagList.OnEvent("Change", (*) => this._applyFilters())
 
         ; Orta: Sonuçlar

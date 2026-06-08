@@ -135,12 +135,12 @@ class SingleMacroRec {
         lines.Push("; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss"))
         lines.Push("; run sample.ahk --repeat=1{1 to n} --speedUp=0.0{sleep * n} --keyDelay=30")
         lines.Push("#SingleInstance Force")
-        lines.Push("prnRepeatCount := 1")
+        lines.Push("prmRepeatCount := 1")
         lines.Push("prmSpeedUp := " this.prmSpeedUp)
         lines.Push("prmSetKeyDelay := " this.prmSetKeyDelay)
         lines.Push("for _, arg in A_Args {")
         lines.Push("    if (RegExMatch(arg, `"(?:-r|--repeat)=(\d+)`", &m))")
-        lines.Push("        prnRepeatCount := m[1]")
+        lines.Push("        prmRepeatCount := m[1]")
         lines.Push("    else if (RegExMatch(arg, `"--keyDelay=(\d+)`", &m))")
         lines.Push("        prmSetKeyDelay := m[1]")
         lines.Push("    else if (RegExMatch(arg, `"--speedUp=([\d\.]+)`", &m))")
@@ -152,7 +152,7 @@ class SingleMacroRec {
         lines.Push("    ExitApp(3)")
         lines.Push("}")
         lines.Push("")
-        lines.Push("Loop (prnRepeatCount) {")
+        lines.Push("Loop (prmRepeatCount) {")
         lines.Push("SetKeyDelay(prmSetKeyDelay)")
         lines.Push("SendMode(`"Event`")")
         lines.Push("SetTitleMatchMode(2)")
@@ -206,8 +206,8 @@ class SingleMacroRec {
             return
         }
         ; command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
-        prnRepeatCount := 1
-        params := Format(" --repeat={} --speedUp={} --keyDelay={}", prnRepeatCount, this.prmSpeedUp, this.prmSetKeyDelay)
+        prmRepeatCount := 1
+        params := Format(" --repeat={} --speedUp={} --keyDelay={}", prmRepeatCount, this.prmSpeedUp, this.prmSetKeyDelay)
         command := ahk . " `"" . this.logFile . "`" " . params
         scriptExitCode := RunWait(command)
         this.playing := false

@@ -1,33 +1,27 @@
 getStatsArray(showMsgBox := false) {
-    stats := "Busy status: " State.Busy.get() "`n"
     statsArray := ["Busy status: " State.Busy.get()]
 
     for key, count in App.KeyCounts.getAll() {
-        stats .= key ": " count "`n"
         statsArray.Push(key ": " count)
     }
 
     for line in App.ClipHist.getStatsInfo() {
-        stats .= line "`n"
         statsArray.Push(line)
     }
 
     recentErrors := App.ErrHandler.getRecentErrors(10) ;0 for all
     if (recentErrors == "") {
-        stats .= "no new error (log.txt save all)"
         statsArray.Push("no new error (log.txt save all)")
     } else {
-        stats .= recentErrors
-        errors := StrSplit(recentErrors, "`n")
-        for err in errors {
+        for err in StrSplit(recentErrors, "`n") {
             if (Trim(err) != "" && Trim(err) != "Errors:") {
                 statsArray.Push(err)
             }
         }
     }
-    sinceDateTime := FormatTime(State.Script.getStartTime(), "yyyy-MM-dd HH:mm:ss")
     if (showMsgBox) {
-        MsgBox(stats, State.Script.getVersion() " - Stats and errors " sinceDateTime)
+        sinceDateTime := FormatTime(State.Script.getStartTime(), "yyyy-MM-dd HH:mm:ss")
+        MsgBox(StrJoin(statsArray, "`n"), State.Script.getVersion() " - Stats and errors " sinceDateTime)
     }
     return statsArray
 }
@@ -128,10 +122,7 @@ menuStats() {
 
 menuAppProfile(targetMenu) {
     profile := App.AppShorts.findProfileByWindow()
-    title := State.Window.getTitle()
-    hwnd := State.Window.getHwnd()
     className := State.Window.getClass()
-    profile := App.AppShorts.findProfileByWindow()
 
     if (profile) {
         for sc in profile.shortCuts {

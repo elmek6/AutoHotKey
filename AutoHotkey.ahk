@@ -6,7 +6,7 @@
 #Include <error_handler>
 #Include <script_state>
 #Include <menus>
-#Include <key_counter>
+; key_counter, error_handler tarafından zaten #Include ediliyor (bağımlılığı orada)
 #Include <clip_hist>
 #Include <clip_slot>
 #Include <memory_slots>

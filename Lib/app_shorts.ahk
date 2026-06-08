@@ -74,7 +74,9 @@ class SingleProfile {
         this._gui.SetFont("s9", "Segoe UI")
         this._gui.OnEvent("Close", (*) => this._onGuiClose())
         this._gui.AddText("x10 y10 w270", "Profiles:")
-        this._profileList := this._gui.AddListBox("x10 y30 w270 h240 Sort", this._getProfileNames())
+        ; 'Sort' YOK: seçim index'i this.profiles dizisine eşleniyor; sıralı görünüm
+        ; index'i kaydırıp yanlış profil seçtiriyordu. Liste sırası = dizi sırası.
+        this._profileList := this._gui.AddListBox("x10 y30 w270 h240", this._getProfileNames())
         this._profileList.OnEvent("Change", (*) => this._onProfileSelect())
         this._gui.AddText("x10 y280 w270", "Profile Name:")
         this._profileNameEdit := this._gui.AddEdit("x10 y300 w270")
@@ -137,6 +139,8 @@ class SingleProfile {
                 this._profileNameEdit.Focus()
                 this._clearActionFields()  ; Yeni modda aksiyonları temizle
                 this._actionList.Delete()
+            } catch as e {
+                OutputDebug("editProfileForActiveWindow: " e.Message "`n")
             }
         }
     }

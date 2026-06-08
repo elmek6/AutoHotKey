@@ -63,6 +63,8 @@ class singleHotMouse {
                         case EM.tRepeatKey: repeatInterval := item.data
                     }
                 }
+            } catch as e {
+                OutputDebug("HotMouse.handle extension parse: " e.Message "`n")
             }
         }
 
@@ -240,7 +242,7 @@ class singleHotMouse {
             .combo("F14", "LB + F14", () => Send("L F14"))
             .combo("F19", "All + Paste + Enter", () => Send("^a^v{Enter}"))
             .combo("F20", "Copy all", () => Send("^a^c"))
-            .combo("F15", "###", () => (App.ClipSlot.loadFromHistory("", 10)) Send("{Sleep 200}{Enter}"))
+            .combo("F15", "Slot 10 + Enter", () => (App.ClipSlot.loadFromSlot("", 10), Sleep(200), Send("{Enter}")))
             .build()
         this.handle(builder)
     }
@@ -254,7 +256,7 @@ class singleHotMouse {
                 App.MemSlots.pasteFromSlot(no)
             } else {
                 ; Normal modda ClipSlot'tan yükle
-                App.ClipSlot.loadFromHistory(App.ClipSlot.defaultGroupName, no)
+                App.ClipSlot.loadFromSlot(App.ClipSlot.defaultGroupName, no)
             }
         }
         builder := KeyBuilder()
@@ -337,12 +339,12 @@ class singleHotMouse {
             })
             .combo("F13", "panic", () => WinMinimize("A"))
             .combo("LButton", "test", () => OutputDebug("test"))
-            .combo("F15", "Clip 6", () => App.ClipSlot.loadFromHistory("", 6))
-            .combo("F16", "Clip 5", () => App.ClipSlot.loadFromHistory("", 5))
-            .combo("F17", "Clip 4", () => App.ClipSlot.loadFromHistory("", 4))
-            .combo("F18", "Clip 3", () => App.ClipSlot.loadFromHistory("", 3))
-            .combo("F19", "Clip 2", () => App.ClipSlot.loadFromHistory("", 2))
-            .combo("F20", "Clip 1", () => App.ClipSlot.loadFromHistory("", 1))
+            .combo("F15", "Clip 6", () => App.ClipSlot.loadFromSlot("", 6))
+            .combo("F16", "Clip 5", () => App.ClipSlot.loadFromSlot("", 5))
+            .combo("F17", "Clip 4", () => App.ClipSlot.loadFromSlot("", 4))
+            .combo("F18", "Clip 3", () => App.ClipSlot.loadFromSlot("", 3))
+            .combo("F19", "Clip 2", () => App.ClipSlot.loadFromSlot("", 2))
+            .combo("F20", "Clip 1", () => App.ClipSlot.loadFromSlot("", 1))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight | HotVectors.bDir.unlock, (pos) => Send(pos < 0 ? "{Left}" : "{Right}"))))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.upDown, (pos) => Send(pos > 0 ? "{Up}" : "{Down}"))))
             .extend(EM.visual(["Cut", "MemClip"]))

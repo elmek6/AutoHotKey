@@ -37,10 +37,10 @@ _HandleTurkish(key, lower, tkLower, tkUpper) {
 
     ; Bu tuş zaten bir thread tarafından bekleniyor
     if (_tkBusy.Has(key) && _tkBusy[key] > 0) {
-        ; 400ms geçmişse → OS key-repeat, yoksay
+        ; 300ms geçmişse → OS key-repeat, yoksay
         if (A_TickCount - _tkBusy[key] >= 300)
             return
-        ; 400ms geçmemişse → gerçek hızlı çift basış, direkt gönder
+        ; 300ms geçmemişse → gerçek hızlı çift basış, direkt gönder
         Send("{Blind}{" lower "}")
         return
     }

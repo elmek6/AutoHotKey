@@ -192,6 +192,8 @@ class singleIncognito {
             }
             if (IniRead(this.vlcIni, "OpenDialog", "netMRL", "") != "")
                 IniWrite("", this.vlcIni, "OpenDialog", "netMRL")
+        } catch as e {
+            OutputDebug("incognito._clearVlcRecents: " e.Message "`n")
         }
     }
 
