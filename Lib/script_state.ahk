@@ -237,7 +237,9 @@ class singleState {
             if (line == "*") {
                 break
             }
-            parts := StrSplit(line, "=")
+            parts := StrSplit(line, "=", , 2) ; limit 2: değer '=' içerebilir
+            if (parts.Length < 2)             ; bozuk satır yüklemeyi düşürmesin
+                continue
             key := Trim(parts[1])
             val := Trim(parts[2])
             if (App.KeyCounts.has(key)) {
@@ -247,7 +249,7 @@ class singleState {
 
         while !file.AtEOF {
             line := file.ReadLine()
-            parts := StrSplit(line, "=")
+            parts := StrSplit(line, "=", , 2) ; limit 2: hata mesajları '=' içerebilir, kırpılmasın
             if (parts.Length < 2)
                 continue
             App.ErrHandler.errorMap[Trim(parts[1])] := Trim(parts[2])

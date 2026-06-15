@@ -46,16 +46,21 @@ _HandleTurkish(key, lower, tkLower, tkUpper) {
     }
 
     _tkBusy[key] := A_TickCount
-    Send("{Blind}{" lower "}")
-    released := KeyWait(key, "T0.4")
+    try {
+        Send("{Blind}{" lower "}")
+        released := KeyWait(key, "T0.4")
 
-    if (!released) {
-        KeyWait key
-        Send("{BackSpace}")
-        SendText(isUpper ? tkUpper : tkLower)
+        if (!released) {
+            KeyWait key
+            Send("{BackSpace}")
+            SendText(isUpper ? tkUpper : tkLower)
+        }
+    } finally {
+        ; Map sonsuz büyümesin: entry'yi sil (gerekiyorsa tekrar eklenir).
+        ; finally şart: thread hata ile ölürse entry sahipsiz kalıp
+        ; o harfi ScrollLock açıkken KALICI yutuyordu.
+        _tkBusy.Delete(key)
     }
-    ; Map sonsuz büyümesin: entry'yi sil (gerekiyorsa tekrar eklenir)
-    _tkBusy.Delete(key)
 }
 
 ; ─── Dizilim 1: Uzun basış ───────────────────────────────────────────────────

@@ -22,8 +22,9 @@ class EM {    ; Enhancements for KeyBuilder
     static gesture(gestureObj) => EM.Create(EM.tGesture, gestureObj)
     static enableDoubleClick(v := true) => EM.Create(EM.tDBClick, v)
     static workOnlyOnCombo(v) => EM.Create(EM.tOnCombo, v)
-    static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v)
-    static repeatKey(interval := 500) => EM.Create(EM.tRepeatKey, interval)
+    ; Kullanılmıyor (üstteki nota bakın) — gerekirse yorumdan aç:
+    ; static triggerByPressType(v := 0) => EM.Create(EM.tTriggerPressType, v)
+    ; static repeatKey(interval := 500) => EM.Create(EM.tRepeatKey, interval)
 }
 
 class singleHotMouse {

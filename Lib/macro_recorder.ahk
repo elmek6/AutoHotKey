@@ -118,13 +118,17 @@ class SingleMacroRec {
         }
 
         ;-> Sadece Send ve Sleep içeren satırları filtrele
-        s := ""
-        For k, v in this.logArr {
-            if (InStr(v, "Sleep(") || InStr(v, "Send(")) {
-                s .= v "`n" ;yalnizca tus degerlerini al
+        ; NOT: log() satırları 'Send "{Blind}..."' formatında (parantezsiz) yazıyor;
+        ; eski 'InStr(v, "Send(")' filtresi hiçbir tuş satırıyla eşleşmiyordu.
+        ; Payload (örn. {Blind}abc) çıkarılır — ShortCut.play() ham tuş dizisi bekler.
+        ; Stroke-only modda dosyaya YAZILMAZ (rec1.ahk'nın üzerine basıyordu).
+        if (returnOnly || this.isStrokeOnlyMode) {
+            s := ""
+            For k, v in this.logArr {
+                if (RegExMatch(v, 'i)^\s*Send\s+"(.*)"$', &m)) {
+                    s .= m[1] "`n" ;yalnizca tus degerlerini al
+                }
             }
-        }
-        if (returnOnly) {
             return s
         }
         ;-> Sadece Send ve Sleep içeren satırları filtrele
@@ -184,7 +188,7 @@ class SingleMacroRec {
         this.stopRecording(false)
     }
 
-    playKeyAction(fileNumber, params := "") {
+    playKeyAction(fileNumber, repeatCount := 1) {
         if (this.recording || this.playing)
             this.stop()
         this.outputFile := "rec" . fileNumber . ".ahk"
@@ -206,8 +210,8 @@ class SingleMacroRec {
             return
         }
         ; command := A_IsCompiled ? (ahk . " /script /restart `"" . this.logFile . "`" " . params) : (ahk . " /restart `"" . this.logFile . "`" " . params)
-        prmRepeatCount := 1
-        params := Format(" --repeat={} --speedUp={} --keyDelay={}", prmRepeatCount, this.prmSpeedUp, this.prmSetKeyDelay)
+        ; repeatCount parametreden gelir — eskiden burada 1'e sabitlenip çağrıdaki değer yok sayılıyordu
+        params := Format(" --repeat={} --speedUp={} --keyDelay={}", repeatCount, this.prmSpeedUp, this.prmSetKeyDelay)
         command := ahk . " `"" . this.logFile . "`" " . params
         scriptExitCode := RunWait(command)
         this.playing := false
@@ -219,19 +223,26 @@ class SingleMacroRec {
     }
 
     catchPressedHotkey(enable := false, isStrokeOnly := false) {
+        ; vk/sc listesi bir kez kurulup cache'lenir — her aç/kapa/pause'da
+        ; 254 kez GetKeyName + regex koşturmaya gerek yok
+        static keyList := ""
+        if (!IsObject(keyList)) {
+            keyList := []
+            Loop 254 {
+                k := GetKeyName(vk := Format("vk{:X}", A_Index))
+                if (!(k ~= "^(?i:|Control|Alt|Shift|LButton|RButton|MButton)$"))
+                    keyList.Push(vk)
+            }
+            For i, k in StrSplit("NumpadEnter|Home|End|PgUp|PgDn|Left|Right|Up|Down|Delete|Insert", "|") {
+                keyList.Push(Format("sc{:03X}", GetKeySC(k)))
+            }
+        }
         state := enable ? "On" : "Off"
         keyFn := enable ? (*) => this.logKey() : (*) => 0
 
         ; Klavye hotkey'leri
-        Loop 254 {
-            k := GetKeyName(vk := Format("vk{:X}", A_Index))
-            if (!(k ~= "^(?i:|Control|Alt|Shift|LButton|RButton|MButton)$"))
-                Hotkey("~*" vk, keyFn, state)
-        }
-        For i, k in StrSplit("NumpadEnter|Home|End|PgUp|PgDn|Left|Right|Up|Down|Delete|Insert", "|") {
-            sc := Format("sc{:03X}", GetKeySC(k))
-            if (!(k ~= "^(?i:|Control|Alt|Shift)$"))
-                Hotkey("~*" sc, keyFn, state)
+        for vksc in keyList {
+            Hotkey("~*" vksc, keyFn, state)
         }
 
         ; Fare hotkey'leri: açarken koşullu, kapatırken her zaman kapat
@@ -425,24 +436,24 @@ class SingleMacroRec {
     }
 
     showCustomTip(s := "", pos := "y35", color := "Red|00FFFF") {
-        static ShowTip := ""
+        static recTip := ""   ; eski adı 'ShowTip' global ShowTip() fonksiyonunu gölgeliyordu
         if (SingleMacroRec.bak = color "," pos "," s)
             return
         SetTimer(this._boundShowTipChangeColor, 0)
         SingleMacroRec.bak := color "," pos "," s
-        if (IsObject(ShowTip))
-            ShowTip.Destroy()
+        if (IsObject(recTip))
+            recTip.Destroy()
         SingleMacroRec.RecordingControl := ""
         if (s = "")
             return
-        ShowTip := Gui("+LastFound +AlwaysOnTop +ToolWindow -Caption +E0x08000020", "ShowTip")
+        recTip := Gui("+LastFound +AlwaysOnTop +ToolWindow -Caption +E0x08000020", "ShowTip")
         WinSetTransColor("FFFFF0 150")
-        ShowTip.BackColor := "cFFFFF0"
-        ShowTip.MarginX := 10
-        ShowTip.MarginY := 5
-        ShowTip.SetFont("q3 s20 bold c" . (InStr(s, "Playing") ? "Green" : "Red"))
-        SingleMacroRec.RecordingControl := ShowTip.Add("Text", , s)
-        ShowTip.Show("NA " . pos)
+        recTip.BackColor := "cFFFFF0"
+        recTip.MarginX := 10
+        recTip.MarginY := 5
+        recTip.SetFont("q3 s20 bold c" . (InStr(s, "Playing") ? "Green" : "Red"))
+        SingleMacroRec.RecordingControl := recTip.Add("Text", , s)
+        recTip.Show("NA " . pos)
         SetTimer(this._boundShowTipChangeColor, 1000)
     }
 
@@ -491,7 +502,7 @@ class SingleMacroRec {
         playBtn := pauseGui.Add("Button", "w80 h25 x180 y40", "▶️")
         playBtn.OnEvent("Click", (*) => (
             fileNumber := SubStr(fileCombo.Text, 4, 1),
-            this.playKeyAction(fileNumber, "")
+            this.playKeyAction(fileNumber),  ; virgül eksikti: örtük string birleştirmeyle "tesadüfen" çalışıyordu
             _destroyGui()
         ))
 

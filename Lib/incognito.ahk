@@ -252,8 +252,11 @@ class singleIncognito {
                 f.Close()
                 local parsed := jsongo.Parse(data)
                 if (parsed is Map) {
-                    parsed.CaseSense := "Off"
-                    return parsed
+                    ; CaseSense yalnızca BOŞ Map'te değiştirilebilir; dolu parse
+                    ; sonucuna atamak "Map must be empty" fırlatıyordu. Bunun
+                    ; yerine girdileri baştan CaseSense=Off kurulmuş m'ye kopyala.
+                    for k, v in parsed
+                        m[k] := v
                 }
             }
         } catch as e {

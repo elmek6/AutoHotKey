@@ -160,8 +160,8 @@ class FileIO {
             throw Error("FileIO.writeText: dosya açılamadı: " tmpPath)
         file.Write(content)
         file.Close()
-        if (FileExist(targetPath))
-            FileDelete(targetPath)
+        ; FileMove(.., 1) zaten üzerine yazar; önce FileDelete yapmak
+        ; "hedef dosya yok" penceresi açıyordu (yarıda kesilirse veri kaybı)
         FileMove(tmpPath, targetPath, 1)
     }
 
@@ -175,8 +175,6 @@ class FileIO {
         } finally {
             file.Close()
         }
-        if (FileExist(targetPath))
-            FileDelete(targetPath)
-        FileMove(tmpPath, targetPath, 1)
+        FileMove(tmpPath, targetPath, 1)  ; overwrite=1: ön-silmeye gerek yok
     }
 }

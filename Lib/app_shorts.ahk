@@ -327,6 +327,12 @@ class SingleProfile {
     ; Makro kaydet (timer-based, GUI donmaz)
     _recordMacro() {
         recorder := SingleMacroRec.getInstance()
+        if (recorder.recording) {
+            ; İkinci basış: kaydı durdur (toggle) — eskiden tekrar başlatıp logArr'ı siliyordu,
+            ; "durdurmak için tekrar bas" hiç çalışmıyordu
+            recorder.stopRecording()
+            return
+        }
         ShowTip("Kayıt başladı, durdurmak için tekrar bas", TipType.Info, 3000)
         recorder.recordStrokes(SingleMacroRec.recType.key)
         this._boundRecordCheck := ObjBindMethod(this, "_onRecordComplete")
@@ -337,11 +343,13 @@ class SingleProfile {
         if (recorder.recording || recorder.status == SingleMacroRec.macroStatusType.pause)
             return
         SetTimer(this._boundRecordCheck, 0)
-        ; logArr'dan sadece Send/Sleep komutlarını al
+        ; logArr'dan sadece Send komutlarını al
+        ; NOT: satırlar 'Send "{Blind}..."' formatında — eski 'InStr(v, "Send(")'
+        ; hiçbir tuşla eşleşmiyordu. Payload çıkarılır; ShortCut.play() ham dizi bekler.
         keyStrokes := ""
         for k, v in recorder.logArr {
-            if (InStr(v, "Send(") || InStr(v, "Sleep(")) {
-                keyStrokes .= (keyStrokes ? "`n" : "") . v
+            if (RegExMatch(v, 'i)^\s*Send\s+"(.*)"$', &m)) {
+                keyStrokes .= (keyStrokes ? "`n" : "") . m[1]
             }
         }
         if (keyStrokes != "" && this._keyStrokesEdit)
@@ -453,10 +461,12 @@ class SingleProfile {
                 shortCuts := []
                 if (profData.Has("shortCuts")) {
                     for scData in profData["shortCuts"] {
-                        shortCuts.Push(ShortCut(scData["shortCutName"], scData["keyDescription"], scData["keyStrokes"]))
+                        shortCuts.Push(ShortCut(scData.Get("shortCutName", ""), scData.Get("keyDescription", ""), scData.Get("keyStrokes", [])))
                     }
                 }
-                profile := AppProfile(profData["profileName"], profData["className"], profData["title"], shortCuts)
+                ; .Get(default): tek bir eksik alan eskiden tüm profiles.json'ın
+                ; yedeklenip sıfırlanmasına yol açıyordu
+                profile := AppProfile(profData.Get("profileName", ""), profData.Get("className", ""), profData.Get("title", ""), shortCuts)
                 this.profiles.Push(profile)
             }
         } catch as err {

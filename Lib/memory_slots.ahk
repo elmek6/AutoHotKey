@@ -134,13 +134,11 @@ class singleMemorySlot {
     ; F tuşlarını kur/aç yada kapat
     _setupFKeys(enable) {
         mode := enable ? "On" : "Off"
-        CreateHotkeyHandler(idx) {
-            return (*) => this._handleFKey(idx)
-        }
         Loop 10 {
             try {
                 if (enable) {
-                    Hotkey("F" A_Index, CreateHotkeyHandler(A_Index), mode)
+                    ; IIFE: kod tabanındaki ortak closure-yakalama deyimi
+                    Hotkey("F" A_Index, ((i) => (*) => this._handleFKey(i))(A_Index), mode)
                 } else {
                     Hotkey("F" A_Index, , mode)
                 }
@@ -221,6 +219,8 @@ class singleMemorySlot {
 
     ; Çift basım: clipboard'ı o slota kaydet
     _saveToSlot(index) {
+        ; watcher tetiklenip _autoFillSlot ile İKİNCİ bir slota daha yazmasın
+        this.ignoreNextClip := true
         SendInput("^c")
         ClipWait(0.2)
         if (A_Clipboard == "") {
@@ -273,6 +273,7 @@ class singleMemorySlot {
             return
         }
         content := this.slots[row]
+        this.ignoreNextClip := true   ; watcher aynı içeriği başka slota kopyalamasın
         A_Clipboard := content
         ClipWait(0.5)
         ShowTip(content, TipType.Paste, 700)
@@ -466,7 +467,8 @@ class singleMemorySlot {
         this.activeList := this.activeViewerEnum.slots
         Loop 10 {
             this.slots[A_Index] := ""
-            this.slotLV.Modify(A_Index, "", "F" . A_Index . "..", "")
+            ; etiket formatı _updateSlotDisplay ile aynı olsun ("F01" gibi)
+            this.slotLV.Modify(A_Index, "", "F" . Format("{:02}", A_Index), "")
         }
     }
 

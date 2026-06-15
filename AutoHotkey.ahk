@@ -23,7 +23,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_179_b")
+global State := singleState.getInstance("ver_180_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -66,9 +66,16 @@ Pause & Home:: {
 Pause & End:: {
     ExitApp()
 }
-Pause & Delete:: {
-    ProcessClose("AutoHotkey64.exe") ; tamamen öldür
-    Sleep 300
+Pause & Delete:: { ; tamamen öldür: önce DİĞER AHK süreçleri, sonra kendisi
+    ; Eski hali ProcessClose("AutoHotkey64.exe") kendi sürecini de vurabiliyordu;
+    ; Sleep/ExitApp'a hiç ulaşılmıyor, OnExit (kayıtlar) atlanıyordu.
+    myPid := ProcessExist()
+    try {
+        for proc in ComObjGet("winmgmts:").ExecQuery("SELECT ProcessId FROM Win32_Process WHERE Name='AutoHotkey64.exe'") {
+            if (proc.ProcessId != myPid)
+                ProcessClose(proc.ProcessId)
+        }
+    }
     ExitApp()
 }
 Pause & c:: State.Busy.setFree()
@@ -100,10 +107,14 @@ ExitSettings(ExitReason, ExitCode) {
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
     ; App.AppShorts ve App.Repo: değişiklik anında save() ediyor, exit'te ekstra yazıma gerek yok.
+    ; Çıkışta AHK nesneleri yok ederken __Delete bir kez daha çalışır;
+    ; ikinci kez dosya yazmasın diye bayrağı kapat
+    State.Script.setShouldSaveOnExit(false)
     State.Window.clearAllOnTop()
 }
 reloadScript() {
-    State.saveStats(State.Script.getStartTime())
+    ; saveStats burada ÇAĞRILMAZ: Reload OnExit'i tetikler, ExitSettings zaten
+    ; kaydeder — çift çağrı log dosyasını iki kez yazıp WriteCount'u 2x artırıyordu
     SoundBeep(500)
     Reload
 }
@@ -130,7 +141,7 @@ LButton:: {
 *8:: return
 *9:: return
 *0:: return
-*s:: return
+; *s:: return ; kalıntı: hiçbir cascade combo'da 's' yok (hook tarafı InputHook ile tüketiyor)
 ; *RButton:: return
 #HotIf
 
@@ -260,11 +271,11 @@ AppsKey & a:: { ;work
     SetTimer(() => ToolTip("AppsKey + A basıldı"), -80)
 }
 
-; F13 basılı tutulurken mouse wheel ile ses kontrolü
+; F14 basılı tutulurken mouse wheel ile ses kontrolü
 ~F14 & WheelUp:: Send("{Volume_Up}")
 ~F14 & WheelDown:: Send("{Volume_Down}")
 
-; F14 basılı iken mouse wheel ile zoom
+; F13 basılı iken mouse wheel ile zoom
 ~F13 & WheelDown:: Send("#{NumpadSub}")
 ~F13 & WheelUp:: Send("#{NumpadAdd}")
 

@@ -208,6 +208,9 @@ class HotVectors {
             callback.Call(1)
             this.__gestureFired := true
         }
+        ; Stop birden çok kez çağrılabiliyor (Start sonu + handler + finally);
+        ; map temizlenmezse 'once' gesture'lar her çağrıda tekrar ateşlenirdi
+        this.__onceTriggered := Map()
         this.__tip.Hide()
     }
 

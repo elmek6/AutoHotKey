@@ -24,6 +24,9 @@ class ArrayFilter {
         if (ArrayFilter.instance) {
             throw Error("ArrayFilter zaten oluşturulmuş! getInstance kullan.")
         }
+        ; OnMessage kayıt VE kaldırma aynı nesneyle yapılmalı — her seferinde yeni
+        ; ObjBindMethod üretmek kaldırmayı sessizce başarısız kılıp handler biriktiriyordu
+        this._hoverHandler := ObjBindMethod(this, "OnMouseHover")
     }
 
     __Delete() {
@@ -33,7 +36,7 @@ class ArrayFilter {
     Cleanup() {
         ; 1. Mesaj Dinlemeyi Durdur (En Kritik Adım)
         ; DÜZELTME: instance method kullan, static değil
-        try OnMessage(0x200, ObjBindMethod(this, "OnMouseHover"), 0)
+        try OnMessage(0x200, this._hoverHandler, 0)
 
         ; 2. Timer'ları durdur
         if (this.CheckFocus) {
@@ -73,12 +76,9 @@ class ArrayFilter {
         try Hotkey("Enter", sw ? (*) => this.SelectFocused() : "", mode)
         try Hotkey("NumpadEnter", sw ? (*) => this.SelectFocused() : "", mode)
 
-        CreateHotkeyHandler(fKeyIndex) {
-            return (*) => this.SelectByFKey(fKeyIndex)
-        }
-
         Loop 12 {
-            try Hotkey("F" A_Index, sw ? CreateHotkeyHandler(A_Index) : "", mode)
+            ; IIFE: kod tabanındaki ortak closure-yakalama deyimi
+            try Hotkey("F" A_Index, sw ? ((i) => (*) => this.SelectByFKey(i))(A_Index) : "", mode)
         }
     }
 
@@ -249,8 +249,8 @@ class ArrayFilter {
         Hotkey("Down", (*) => this.MoveSelection(1), "On")
 
         ; MOUSE HOVER - Her Show() çağrısında yeniden kaydet
-        ; ObjBindMethod ile instance method'a bağla
-        OnMessage(0x200, ObjBindMethod(this, "OnMouseHover"))
+        ; ObjBindMethod ile instance method'a bağla (__New'de bir kez oluşturuldu)
+        OnMessage(0x200, this._hoverHandler)
 
         this.changeHotKeyMode(true)
         this.UpdateList()

@@ -234,21 +234,18 @@ class singleClipHist {
         try {
             local fileItems := this._readRecords(0)
             local combined := []
-            Loop this.history.Length
+            local seen := Map()   ; text -> true; O(n+m) dedupe (eski iç içe döngü O(n*m) idi)
+            Loop this.history.Length {
                 combined.Push(this.history[A_Index])
+                seen[this.history[A_Index]["text"]] := true
+            }
 
             Loop fileItems.Length {
                 local candidate := fileItems[A_Index]
-                local candidateLen := StrLen(candidate["text"])
-                local isDupe := false
-                Loop combined.Length {
-                    if (StrLen(combined[A_Index]["text"]) == candidateLen && combined[A_Index]["text"] == candidate["text"]) {
-                        isDupe := true
-                        break
-                    }
-                }
-                if (!isDupe)
+                if (!seen.Has(candidate["text"])) {
+                    seen[candidate["text"]] := true
                     combined.Push(candidate)
+                }
             }
 
             local writeCount := Min(combined.Length, this.maxSaveCount)
@@ -298,7 +295,9 @@ class singleClipHist {
             this._addClipToMenu(historyMenu, "Clip " . A_Index . ": ", item["text"])
         }
         historyMenu.Add()
-        historyMenu.Add("Clear history", this.clearHistory.Bind(this))
+        ; Menü callback'i 3 parametre (ItemName, ItemPos, Menu) ile çağrılır;
+        ; doğrudan Bind(this) "too many parameters" hatası veriyordu
+        historyMenu.Add("Clear history", (*) => this.clearHistory())
         return historyMenu
     }
 
@@ -323,6 +322,7 @@ class singleClipHist {
     }
 
     _pasteContent(content) {
+        this.ignoreNextChange := true   ; geçmişten yapıştırma öğeyi tekrar öne taşımasın (loadFromHistory ile tutarlı)
         A_Clipboard := content
         ClipWait(0.2)
         SendInput("^v")
@@ -372,7 +372,7 @@ class singleClipHist {
         local display := SubStr(text, 1, 60)
         if (StrLen(text) > 60)
             display .= "..."
-        menu.Add(prefix . display, (*) => (A_Clipboard := text, Send("^v")))
+        menu.Add(prefix . display, (*) => (this.ignoreNextChange := true, A_Clipboard := text, Send("^v")))
     }
 
     __Delete() {

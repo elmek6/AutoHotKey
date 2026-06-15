@@ -185,13 +185,16 @@ class singleHotHook {
 
     ; Sistem komut menüsü — backtick (´) tuşuyla açılır
     sysCommands() {
+        ; NOT: handle() içindeki press-type bloğu yorumda olduğu için mainKey ve
+        ; setExitOnPressType şu an ÖLÜ — tuşa basınca doğrudan menü açılıyor.
+        ; Press-type bloğu geri açılırsa builder'a şunları da ekle:
+        ;     .mainKey((dt) {
+        ;         switch (dt) {
+        ;             case 1: SendInput("´")  ; Kısa basım: normal karakter
+        ;         }
+        ;     })
+        ;     .setExitOnPressType(2)  ; Uzun basımda hook devreye girer
         builder := KeyBuilder(350)  ; 2-level mode
-            .mainKey((dt) {
-                switch (dt) {
-                    case 1: SendInput("´")  ; Kısa basım: normal karakter
-                }
-            })
-            .setExitOnPressType(2)  ; Uzun basımda hook devreye girer
             .combo("1", "Reload script",   () => reloadScript())
             .combo("2", "Show stats",      () => getStatsArray(true))
             .combo("3", "Profile manager", () => App.AppShorts.showManagerGui())

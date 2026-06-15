@@ -126,8 +126,9 @@ menuAppProfile(targetMenu) {
 
     if (profile) {
         for sc in profile.shortCuts {
-            local lambda := sc
-            targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), (*) => lambda.play())
+            ; IIFE şart: closure değişkeni referansla yakalar, tek 'lambda' değişkeni
+            ; kullanılınca tüm menü öğeleri SON kısayolu oynatıyordu
+            targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), ((s) => (*) => s.play())(sc))
         }
         targetMenu.Add("Profili düzenle", (*) => App.AppShorts.showManagerGui(profile))
     } else {
@@ -210,7 +211,7 @@ DialogCriticalError(message) {
     dlg.Add("Button", "w200 h36 x+10", "Durdur").OnEvent("Click", (*) => (
         result := "stop", decided := true, dlg.Destroy()
     ))
-    dlg.OnEvent("Close", (*) => (decided := true))
+    dlg.OnEvent("Close", (*) => (decided := true, dlg.Destroy()))  ; X ile kapatınca pencere gizli kalıp sızıyordu
     dlg.Show("xCenter yCenter")
     SoundBeep(400, 600)
 
@@ -237,6 +238,14 @@ class TipType {
 
 ShowTip(msg, type := TipType.Info, duration := 800) {
     static tipGui := ""
+    static hideTimer := ""
+
+    ; Bekleyen eski kapatma timer'ını iptal et — yoksa kısa süreli eski tip'in
+    ; timer'ı, yeni gösterilen tip'i süresinden önce yok ediyordu
+    if (hideTimer) {
+        SetTimer(hideTimer, 0)
+        hideTimer := ""
+    }
 
     ; Önceki tip varsa yok et
     if (tipGui && IsObject(tipGui)) {
@@ -274,12 +283,14 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
     MouseGetPos(&x, &y)
     tipGui.Show("x" (x + 16) " y" (y + 16) " AutoSize NoActivate")
 
-    SetTimer(() => DestroyTip(), -duration)
+    hideTimer := DestroyTip
+    SetTimer(hideTimer, -duration)
 
     DestroyTip() {
         if (tipGui && IsObject(tipGui)) {
             try tipGui.Destroy()
             tipGui := ""
         }
+        hideTimer := ""
     } }
 
