@@ -141,8 +141,10 @@ menuAlwaysOnTop(targetMenu) {
     title := State.Window.getTitle()
     hwnd := State.Window.getHwnd()
 
-    if (!State.Window.onTopWindows.Has(hwnd))
-        targetMenu.Add("📍 Add " . title, (*) => State.Window.toggleAlwaysOnTop(hwnd, title))
+    if (!State.Window.onTopWindows.Has(hwnd)) {
+        local label := SubStr(title, 1, 60)
+        targetMenu.Add("📍 Add " . label, (*) => State.Window.toggleAlwaysOnTop(hwnd, title))
+    }
 
     for key, value in State.Window.onTopWindows {
         targetMenu.Add("📌 " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value))
@@ -255,7 +257,8 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
 
     msg := Trim(msg, " `t`n`r") ; yalnizca bas ve sondaki boşlukları ve gereksiz enter'ları kaldırir (cok hizli)
     if (StrLen(msg) > 5000) {
-        msg := "➡️" . SubStr(msg, 1, 5000) . "`n[..................]"
+        local byteCount := StrPut(msg, "UTF-8") - 1
+        msg := byteCount " B ➡️" . SubStr(msg, 1, 5000) . "`n[..................]"
     }
 
     tipGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20", "CustomTip")
