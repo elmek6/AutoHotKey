@@ -9,6 +9,10 @@ getStatsArray(showMsgBox := false) {
         statsArray.Push(line)
     }
 
+    for line in App.ClipImages.getStatsInfo() {
+        statsArray.Push(line)
+    }
+
     recentErrors := App.ErrHandler.getRecentErrors(10) ;0 for all
     if (recentErrors == "") {
         statsArray.Push("no new error (log.txt save all)")
@@ -44,6 +48,7 @@ showF13menu() {
 
     menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
     menuF13.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
+    menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
 
     menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
@@ -296,4 +301,3 @@ ShowTip(msg, type := TipType.Info, duration := 800) {
         }
         hideTimer := ""
     } }
-

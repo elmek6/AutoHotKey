@@ -22,6 +22,7 @@ class singleClipHist {
         this.clipReadDelay := 100    ; ms — pano okumasını ertele (Win+V uyumu, aşağıya bak)
         this.pendingSeq := 0         ; bildirim anındaki clipboard sequence number (tazelik kontrolü)
         this.processBound := this.processClipboard.Bind(this)  ; tek referans → timer coalescing
+        this.imageBound := this.processImage.Bind(this)        ; görsel yolu, ayrı timer
         State.Clipboard.setHistory()
         OnClipboardChange(this.clipboardWatcher.Bind(this))
         this._load(maxSaveCount)
@@ -39,10 +40,6 @@ class singleClipHist {
             }
             if (Type == 0)
                 return
-            if (Type == 2) {
-                ShowTip("⛵")
-                return
-            }
             ; ── Win+V uyumu ────────────────────────────────────────────────
             ; Pano değişiminin TAM içinde A_Clipboard'ı OKUMUYORUZ. Aksi halde AHK
             ; OpenClipboard ile kilidi alır; aynı WM_CLIPBOARDUPDATE'i alan Windows
@@ -52,6 +49,18 @@ class singleClipHist {
             ; "yakaladım" sinyali OLMADIĞI için tek çare okumayı kısa süre ertelemek
             ; (WPF clipboard API'si de 100ms kullanır). Detay: bkz. commit notu.
             this.pendingSeq := DllCall("GetClipboardSequenceNumber", "UInt")
+
+            ; Type 2 = metin olmayan içerik. GÖRSEL YOLU TAMAMEN AYRI: metin işleme
+            ; hattına sokmuyoruz, yoksa zengin kopyalarda (metin + görsel formatları
+            ; birlikte) aynı içerik için ikinci kez tooltip basılıyordu.
+            if (Type == 2) {
+                if (!singleClipImageStore.clipboardHasImage()) {
+                    ShowTip("⛵")
+                    return
+                }
+                SetTimer(this.imageBound, -this.clipReadDelay)
+                return
+            }
             SetTimer(this.processBound, -this.clipReadDelay)
         } catch as err {
             App.ErrHandler.handleError("ClipHist.clipboardWatcher: " err.Message, err)
@@ -78,6 +87,25 @@ class singleClipHist {
             this.addToHistory(text)
         } catch as err {
             App.ErrHandler.handleError("ClipHist.processClipboard: " err.Message, err)
+        }
+    }
+
+    ; Görsel yolu — processClipboard'ın ikizi, metin hattından bağımsız.
+    ; Aynı tazelik kontrolünü uygular; PNG kodlaması burada (timer thread'inde)
+    ; yapıldığı için kopyalama anında takılma hissedilmez.
+    processImage() {
+        try {
+            if (DllCall("GetClipboardSequenceNumber", "UInt") != this.pendingSeq)
+                return
+            if (App.Incognito.isActive()) {
+                ShowTip("🕶 Görsel kaydedilmedi (incognito)", TipType.Info, 900)
+                return
+            }
+            local slot := App.ClipImages.saveFromClipboard()
+            if (slot >= 0)
+                ShowTip("🖼 Görsel kaydedildi", TipType.Copy, 900)
+        } catch as err {
+            App.ErrHandler.handleError("ClipHist.processImage: " err.Message, err)
         }
     }
 

@@ -9,6 +9,7 @@
 ; key_counter, error_handler tarafından zaten #Include ediliyor (bağımlılığı orada)
 #Include <clip_hist>
 #Include <clip_slot>
+#Include <clip_image_dialog>   ; clip_image_store + gdip_mini'yi kendi çeker
 #Include <memory_slots>
 #Include <key_builder>
 #Include <key_handler_cascade>
@@ -32,6 +33,8 @@ class App {
     static HotHook := singleHotHook.getInstance()
     static ClipHist := singleClipHist.getInstance(1000, 2500) ; maxHistory, maxSaveCount
     static ClipSlot := singleClipSlot.getInstance()
+    static ClipImages := singleClipImageStore.getInstance()
+    static ClipImageDlg := singleClipImageDialog.getInstance()
     static MemSlots := singleMemorySlot.getInstance()
     static Recorder := SingleMacroRec.getInstance(300) ; maxRecordTime
     static AppShorts := SingleProfile.getInstance()
@@ -48,6 +51,8 @@ class Path {
     static Dir := "Files\"
     static Log := Path.Dir "log.txt"
     static Clipboard := Path.Dir "clipboards.bin"
+    static ClipImgIdx := Path.Dir "clipimg.idx"
+    static ClipImgDat := Path.Dir "clipimg.dat"
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
     static Repository := Path.Dir "repository.json"
@@ -96,11 +101,50 @@ LoadSettings() {
         ;MsgBox(A_ComputerName, A_UserName) ; LAPTOP-UTN6L5PA
         ShowTip("Work profile active", TipType.Info, 1000)
         App.currentConfig := App.stateConfig.work
+        startOutlookMinimized()
     } else {
         TrayTip("AHK", "Home profile " . State.Script.getVersion(), 1)
         App.currentConfig := App.stateConfig.home
     }
     Path.initDirectory()
+}
+; Work profilinde Outlook'u simge durumunda baslat.
+; Reload da LoadSettings'i tekrar cagirdigi icin once surec kontrolu yapiliyor.
+startOutlookMinimized() {
+    if (ProcessExist("OUTLOOK.EXE")) {
+        return
+    }
+    exe := ""
+    try {
+        exe := RegRead("HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\OUTLOOK.EXE")
+    }
+    if (exe = "" || !FileExist(exe)) {
+        exe := A_ProgramFiles "\Microsoft Office\root\Office16\OUTLOOK.EXE"
+    }
+    if (!FileExist(exe)) {
+        App.ErrHandler.handleError("Outlook bulunamadi: " exe)
+        return
+    }
+    try {
+        Run('"' exe '"', , "Min")
+    } catch as err {
+        App.ErrHandler.handleError("Outlook baslatilamadi: " exe, err)
+        return
+    }
+    ; Outlook "Min" bayragini bazen yok sayip pencereyi one getiriyor;
+    ; acilan ana pencereyi bekleyip kucult (bloklamadan, tek atislik timer ile)
+    SetTimer(minimizeOutlookWindow.Bind(20), -1500)
+}
+minimizeOutlookWindow(triesLeft) {
+    if (WinExist("ahk_class rctrl_renwnd32 ahk_exe OUTLOOK.EXE")) {
+        if (WinGetMinMax() != -1) { ; -1 = zaten simge durumunda
+            WinMinimize()
+        }
+        return
+    }
+    if (triesLeft > 0) {
+        SetTimer(minimizeOutlookWindow.Bind(triesLeft - 1), -1000)
+    }
 }
 ExitSettings(ExitReason, ExitCode) {
     State.saveStats(State.Script.getStartTime())
@@ -278,6 +322,9 @@ AppsKey & a:: { ;work
 ; F13 basılı iken mouse wheel ile zoom
 ~F13 & WheelDown:: Send("#{NumpadSub}")
 ~F13 & WheelUp:: Send("#{NumpadAdd}")
+
+; F13 + i → pano görsel geçmişi
+~F13 & i:: App.ClipImageDlg.show()
 
 ; ═══════════════════════════════════════════════════════════
 ; GlobalErrorHandler — OnError ile kayıtlı, tüm thread hatalarını yakalar.
