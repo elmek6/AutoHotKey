@@ -19,7 +19,9 @@
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
+#Include <trace_store>
 #Include <incognito>
+#Include <magnifier>
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
@@ -40,6 +42,7 @@ class App {
     static AppShorts := SingleProfile.getInstance()
     static Repo := SingleRepository.getInstance()
     static Incognito := singleIncognito.getInstance()
+    static Magnifier := singleMagnifier.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
@@ -150,6 +153,11 @@ ExitSettings(ExitReason, ExitCode) {
     State.saveStats(State.Script.getStartTime())
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
+    ; Reload / normal Exit de incognito'yu AÇIK bırakabilirdi (badge'in "Kapat"
+    ; butonundan geçmeden): policy (TrackDocs/TrackProgs) ve snapshot kalıcı
+    ; askıda kalır, sıradaki enable() "çökme kurtarma" sorusunu boşuna sorar.
+    ; disable() zaten inaktifken no-op, koşulsuz çağırmak güvenli.
+    App.Incognito.disable()
     ; App.AppShorts ve App.Repo: değişiklik anında save() ediyor, exit'te ekstra yazıma gerek yok.
     ; Çıkışta AHK nesneleri yok ederken __Delete bir kez daha çalışır;
     ; ikinci kez dosya yazmasın diye bayrağı kapat
