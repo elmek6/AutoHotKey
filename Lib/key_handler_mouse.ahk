@@ -311,7 +311,7 @@ class singleHotMouse {
                     case 4: App.ClipHist.showHistorySearch() ; App.ClipSlot.showSlotsSearch(App.ClipSlot.defaultGroupName)
                 }
             })
-            .combo("F14", "panic", () => WinMinimize("A"))
+            .combo("F14", "Magnifier", () => App.Magnifier.toggle())
             .combo("F15", "Clip 6", () => App.ClipHist.loadFromHistory(6))
             .combo("F16", "Clip 5", () => App.ClipHist.loadFromHistory(5))
             .combo("F17", "Clip 4", () => App.ClipHist.loadFromHistory(4))
@@ -338,7 +338,7 @@ class singleHotMouse {
                     case 4: App.ClipSlot.showSlotsSearch()
                 }
             })
-            .combo("F13", "panic", () => WinMinimize("A"))
+            .combo("F13", "Magnifier", () => App.Magnifier.toggle())
             .combo("LButton", "test", () => OutputDebug("test"))
             .combo("F15", "Clip 6", () => App.ClipSlot.loadFromSlot("", 6))
             .combo("F16", "Clip 5", () => App.ClipSlot.loadFromSlot("", 5))
@@ -401,6 +401,7 @@ class singleHotMouse {
                     case 3: Send("{End}")
                 }
             })
+            .combo("F18", "panic", () => (App.Magnifier.reset(), WinMinimize("A")))
             ; .combo("LButton", "2x Click + Delete", () => (Click("Left", 2), Send("{Delete}")))
             .extend(EM.visual("Del", "End"))
             .extend(EM.gesture(HotVectors.Gesture(HotVectors.bDir.leftRight, (pos) => pos > 0 ? Send("{Delete}") : Mod(pos, 5) == 0 ? Send("^z") : Sleep(5))))
@@ -419,7 +420,7 @@ class singleHotMouse {
                     case 3: Send("{Home}")
                 }
             })
-            ; .combo("F17", "Cut", () => Send("^x"))
+            .combo("F17", "panic", () => (App.Magnifier.reset(), WinMinimize("A")))
             ; .combo("F20", "3x Click + Copy", () => (Click("Left", 3), Send("^c")))
             .combo("LButton", "Del line VSCode", () => SendInput("^+k"))
             .combo("MButton", "tooltip", () => ShowTip("RButton + MButton: Zoom in/out"))
