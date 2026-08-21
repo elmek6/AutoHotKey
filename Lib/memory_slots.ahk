@@ -95,6 +95,10 @@ class singleMemorySlot {
             this.slotLV.ModifyCol(2, 350)
             this.slotLV.OnEvent("Click", (*) => this._onSlotClick())
             this.slotLV.OnEvent("DoubleClick", (*) => this._onSlotDoubleClick())
+            ; Satırı dışarı sürükle — Notepad'den metin sürüklemenin aynısı
+            OleDragSource.attachListView(this.slotLV,
+                (row) => (row <= 10 ? this.slots[row] : ""),
+                () => this.ignoreNextClip := true)
 
             Loop 10 {
                 this.slotLV.Add("", A_Index, "")
@@ -109,6 +113,9 @@ class singleMemorySlot {
             this.historyLV.ModifyCol(2, 350)
             this.historyLV.OnEvent("Click", (*) => this._onHistoryClick())
             this.historyLV.OnEvent("DoubleClick", (*) => this._onHistoryDoubleClick())
+            OleDragSource.attachListView(this.historyLV,
+                (row) => (row <= this.clipHistory.Length ? this.clipHistory[row]["text"] : ""),
+                () => this.ignoreNextClip := true)
             this._populateHistory()
             this._activeViewerBackground()
             this._selectHistoryViewer(1)

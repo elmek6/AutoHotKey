@@ -12,8 +12,9 @@
 ; ── İKİ AKIŞ ────────────────────────────────────────────────
 ; 1) snipInteractive()  (F13+o, ana akış)
 ;    Seç → alan ekranda KALIR, kenarlarından büyütülüp küçültülebilir,
-;    içinden sürüklenip taşınabilir. Altında panel: metin (seçilebilir,
-;    düzenlenebilir), solda dil, ortada kolon biçimi, sağda Kopyala.
+;    içinden sürüklenip taşınabilir. Panel seçimin YANINA (sağda/solda hangisi
+;    genişse) açılır: metin (seçilebilir, düzenlenebilir), altında dil, kolon
+;    biçimi, ayraç kutusu ve Kopyala.
 ; 2) snip(mode)  (menüden "Hızlı")
 ;    Seç → oku → panoya. Pencere yok. Tek atışlık kullanım için.
 ;
@@ -52,6 +53,26 @@ class singleScreenOcr {
     ; Tutamaçlar bu boyutun altında üst üste binip birbirini yiyor (tek-çift
     ; dolgu kuralı) — küçük seçimde yalnız çerçeve gösteriliyor.
     static GRIP_MIN := 44
+    ; Panel ile seçili alan arasındaki boşluk (px).
+    static PANEL_GAP := 16
+
+    ; "Kolonlu (ayraçlı)" biçiminde hücreleri birleştiren karakter için hazır
+    ; seçenekler. Panelde DÜZENLENEBİLİR bir ComboBox olarak sunuluyor: listeden
+    ; seçilebilir ya da doğrudan yazılabilir (ör. " | ", "\t", " — ").
+    ; label = kullanıcıya görünen ad, v = gerçek metin.
+    ; DİKKAT: etiketlerde BOŞLUK + ";" dizisi kullanılamaz. Bu dizi çok satırlı
+    ; ifadenin devam satırlarında string içinde bile YORUM başlangıcı sayılıyor
+    ; ve yükleme anında `Missing "` hatası veriyor — sembol bu yüzden başa alındı.
+    static SEPS := [
+        { label: "Tab",              v: "`t" },
+        { label: ",  Virgül",        v: ","  },
+        { label: ".  Nokta",         v: "."  },
+        { label: ";  Noktalı virgül", v: ";" },
+        { label: ":  İki nokta",     v: ":"  },
+        { label: "|  Boru",          v: "|"  },
+        { label: "-  Tire",          v: "-"  },
+        { label: "Boşluk",           v: " "  }
+    ]
 
     static getInstance() {
         if (!singleScreenOcr.instance)
@@ -67,6 +88,7 @@ class singleScreenOcr {
         this.grips   := 0       ; 8 tutamaç karesi
         this.panel   := 0       ; sonuç paneli
         this.txtBox := 0, this.langBox := 0, this.modeBox := 0, this.statusTxt := 0
+        this.sepBox := 0
         this.session := false
         this.rect    := 0
         this.shot    := 0       ; yakalanan HBITMAP sarmalayıcısı (kendi __Delete'i var)
@@ -76,6 +98,7 @@ class singleScreenOcr {
         this.scale   := 2       ; OCR öncesi büyütme; 96 DPI'da 8-9pt UI fontları sınırda
         this.grayscale := true  ; ClearType alt-piksel izini temizler
         this.gutter  := 0       ; kolon ayracı eşiği (px); 0 = otomatik
+        this.sep     := "`t"    ; "Kolonlu (ayraçlı)" biçiminde hücre ayracı
         this.lastMs  := 0
         ; Hotkey/OnMessage kayıt VE kaldırma AYNI nesneyle yapılmalı — her
         ; seferinde yeni ObjBindMethod üretmek kaldırmayı sessizce başarısız
@@ -140,7 +163,7 @@ class singleScreenOcr {
         m.Add()
         m.Add("Hızlı — düz metin", (*) => this.snip("plain"))
         m.Add("Hızlı — kolonlu (sırayla)", (*) => this.snip("columns"))
-        m.Add("Hızlı — tablo (TAB ayraçlı)", (*) => this.snip("table"))
+        m.Add("Hızlı — kolonlu (" this._sepLabel(this.sep) " ayraçlı)", (*) => this.snip("table"))
         m.Add("Aktif pencereyi oku", (*) => this.readWindow())
         m.Add()
 
@@ -158,6 +181,7 @@ class singleScreenOcr {
             m.Check("Gri tonlama")
 
         m.Add("Kolon boşluk eşiği", this._buildGutterMenu())
+        m.Add("Ayraç: " this._sepLabel(this.sep), this._buildSepMenu())
         this._ensureLang()
         m.Add("Dil: " (this.lang == "" ? "yok!" : this.lang), this._buildLangMenu())
         return m
@@ -177,6 +201,75 @@ class singleScreenOcr {
                 m.Check(g "px")
         }
         return m
+    }
+
+    ; ── Ayraç ────────────────────────────────────────────────────────────────
+    ;
+    ; Ayraç YALNIZCA "Kolonlu (ayraçlı)" biçiminde kullanılır: aynı satırın
+    ; hücreleri bununla birleştirilir. Excel/Sheets için TAB, CSV için virgül,
+    ; okunur çıktı için " | " tipik. Panelde düzenlenebilir ComboBox var —
+    ; listeden seçmek de elle yazmak da mümkün.
+
+    _buildSepMenu() {
+        local m := Menu()
+        for s in singleScreenOcr.SEPS {
+            m.Add(s.label, ((v) => (*) => this._setSep(v))(s.v))
+            if (s.v == this.sep)
+                m.Check(s.label)
+        }
+        m.Add()
+        m.Add("Özel...", (*) => this._askSep())
+        return m
+    }
+
+    ; Elle giriş. \t \n \s kaçışları çözülür, böylece görünmez karakterler de
+    ; yazılabilir; kutuya yazılan boşluklar da aynen korunur.
+    _askSep() {
+        local ib := InputBox("Hücre ayracı olarak kullanılacak metin.`n"
+                           . "Kaçışlar: \t = TAB, \n = satır sonu, \s = boşluk",
+                             "OCR ayracı", "w360 h150", this._sepEscape(this.sep))
+        if (ib.Result != "OK")
+            return
+        this._setSep(this._sepUnescape(ib.Value))
+    }
+
+    ; Ayracın kullanıcıya gösterilecek adı. Hazır seçeneklerden biriyse etiketi,
+    ; değilse kaçışlanmış hali (görünmez karakter "boş" görünmesin diye).
+    _sepLabel(v) {
+        for s in singleScreenOcr.SEPS {
+            if (s.v == v)
+                return s.label
+        }
+        return "«" this._sepEscape(v) "»"
+    }
+
+    _sepEscape(v) {
+        v := StrReplace(v, "\", "\\")
+        v := StrReplace(v, "`t", "\t")
+        v := StrReplace(v, "`r`n", "\n")
+        v := StrReplace(v, "`n", "\n")
+        return v
+    }
+
+    _sepUnescape(v) {
+        ; \\ önce korunur, sonra geri konur — yoksa "\\t" yanlışlıkla TAB olur.
+        v := StrReplace(v, "\\", "`f")
+        v := StrReplace(v, "\t", "`t")
+        v := StrReplace(v, "\n", "`n")
+        v := StrReplace(v, "\s", " ")
+        return StrReplace(v, "`f", "\")
+    }
+
+    ; ComboBox'a yazılan/seçilen metni gerçek ayraca çevirir: önce hazır
+    ; etiketlerle eşleştirilir, eşleşmezse yazılan metnin kendisi kullanılır.
+    _sepFromText(txt) {
+        for s in singleScreenOcr.SEPS {
+            if (txt == s.label)
+                return s.v
+        }
+        if (SubStr(txt, 1, 1) == "«" && SubStr(txt, -1) == "»")
+            txt := SubStr(txt, 2, StrLen(txt) - 2)
+        return this._sepUnescape(txt)
     }
 
     ; Sistemde OCR yeteneği KURULU dillerin listesi. Boşsa dil paketi yok demektir.
@@ -323,13 +416,16 @@ class singleScreenOcr {
 
         local nCol := splits.Length + 1
         local suffix := nCol " kolon × " rows.Length " satır · eşik " gutterMin "px"
-        if (mode == "table")
-            return { text: this._tableText(rows, splits, nCol), info: "tablo · " suffix }
+        if (mode == "table") {
+            return { text: this._tableText(rows, splits, nCol, this.sep)
+                   , info: "ayraç " this._sepLabel(this.sep) " · " suffix }
+        }
         return { text: this._columnsText(rows, splits, nCol), info: "kolon · " suffix }
     }
 
-    ; Satırlar hizalı, hücreler TAB ayraçlı → Excel'e doğrudan yapıştırılır.
-    _tableText(rows, splits, nCol) {
+    ; Satırlar hizalı, hücreler seçilen ayraçla → TAB ise Excel'e doğrudan
+    ; yapıştırılır, virgül ise CSV olur.
+    _tableText(rows, splits, nCol, sep) {
         local out := ""
         for row in rows {
             local cells := []
@@ -341,7 +437,7 @@ class singleScreenOcr {
             }
             local line := ""
             loop nCol
-                line .= (A_Index == 1 ? "" : "`t") cells[A_Index]
+                line .= (A_Index == 1 ? "" : sep) cells[A_Index]
             if (Trim(line, " `t") != "")
                 out .= line "`n"
         }
@@ -478,7 +574,8 @@ class singleScreenOcr {
         }
         this.band := 0, this.grips := 0, this.panel := 0
         this.txtBox := 0, this.langBox := 0, this.modeBox := 0, this.statusTxt := 0
-        this.shot := 0        ; sarmalayıcının __Delete'i HBITMAP+DC'yi bırakır
+        this.sepBox := 0
+        this.shot := 0       ; sarmalayıcının __Delete'i HBITMAP+DC'yi bırakır
         this.lastRes := 0
     }
 
@@ -498,52 +595,102 @@ class singleScreenOcr {
         this.panel.SetFont("s10", "Segoe UI")
         ; Düzenlenebilir bırakıldı: OCR l/1/I ve 0/O karıştırır, elle düzeltmek
         ; yeniden taramaktan hızlı. Seçim yapılırsa Kopyala YALNIZ seçimi alır.
-        this.txtBox := this.panel.AddEdit("w660 r12 +VScroll Multi")
+        ; Genişlik DAR tutuluyor: panel artık seçimin YANINA konuyor (_placePanel)
+        ; ve geniş bir panel yan boşluğa sığmayıp alta düşerdi. Pencere +Resize,
+        ; uzun metinde elle genişletilebilir.
+        this.txtBox := this.panel.AddEdit("w558 r14 +VScroll Multi")
 
         this.panel.SetFont("s8 c505050")
-        this.statusTxt := this.panel.AddText("xm y+4 w660 h16", "okunuyor...")
+        this.statusTxt := this.panel.AddText("xm y+4 w558 h16", "okunuyor...")
         this.panel.SetFont("s10")
 
         this.panel.SetFont("s9")
-        this.panel.AddText("xm y+8 w150 h16", "Dil")
-        this.panel.AddText("x+8 yp w230 h16", "Biçim")
+        this.panel.AddText("xm y+8 w120 h16", "Dil")
+        this.panel.AddText("x+8 yp w190 h16", "Biçim")
+        this.panel.AddText("x+8 yp w110 h16", "Ayraç")
         ; LİSTE, dropdown DEĞİL. İki sebep:
         ;  1) Tek tıkla seçim — aç / seç / kapan turu yok.
         ;  2) Açık bir DropDownList'in listesi (ComboLBox) AYRI bir ÜST DÜZEY
         ;     penceredir. ~LButton kancamız oradaki tıklamayı "tuvale tıklandı"
         ;     sanıp seçimi iptal ediyordu; seçim de bu yüzden commit olmuyor,
         ;     biçim hep "Düz metin"e geri dönüyordu. Liste alt kontrol, sorun yok.
-        this.langBox := this.panel.AddListBox("xm y+2 w150 r4 Choose" chosen, this.langs)
-        this.modeBox := this.panel.AddListBox("x+8 yp w230 r4 Choose1",
-                            ["Düz metin", "Kolonlu (sırayla)", "Tablo (TAB ayraçlı)"])
-        this.panel.AddButton("x+12 yp w120 h36 Default", "Kopyala").OnEvent("Click", (*) => this._copy())
+        this.langBox := this.panel.AddListBox("xm y+2 w120 r4 Choose" chosen, this.langs)
+        this.modeBox := this.panel.AddListBox("x+8 yp w190 r4 Choose1",
+                            ["Düz metin", "Kolonlu (sırayla)", "Kolonlu (ayraçlı)"])
+        ; DÜZENLENEBİLİR ComboBox: listeden seç ya da doğrudan yaz. Yukarıdaki
+        ; "liste kullan" kuralının istisnası — elle giriş DropDownList'te yok.
+        ; Açılan liste (ComboLBox) ayrı bir üst düzey pencere; _isOverCanvas
+        ; artık KENDİ sürecimizin pencerelerini tuval saymıyor, bu yüzden
+        ; eskiden seçimi iptal eden çakışma burada yaşanmıyor.
+        local sepLabels := []
+        for s in singleScreenOcr.SEPS
+            sepLabels.Push(s.label)
+        this.sepBox := this.panel.AddComboBox("x+8 yp w110", sepLabels)
+        this.sepBox.Text := this._sepLabel(this.sep)
+        this.panel.AddButton("x+12 yp w110 h36 Default", "Kopyala").OnEvent("Click", (*) => this._copy())
 
         ; Dil değişince yeniden OCR gerekir ama EKRANI TEKRAR ÇEKMEYE GEREK YOK
         ; (this.shot duruyor). Kolon biçimi ise OCR bile gerektirmez.
         this.langBox.OnEvent("Change", (*) => this._onLangChange())
-        this.modeBox.OnEvent("Change", (*) => this._applyLayout())
+        this.modeBox.OnEvent("Change", (*) => this._onModeChange())
+        ; Change hem listeden seçimde hem de kutuya yazarken tetiklenir; ikisi de
+        ; yalnız yeniden biçimlendirme demek, OCR tekrarlanmaz.
+        this.sepBox.OnEvent("Change", (*) => this._onSepChange())
         this.panel.OnEvent("Escape", (*) => this._closeSession())
         this.panel.OnEvent("Close", (*) => this._closeSession())
     }
 
-    ; Seçilen alanın altına yerleştir; altta yer yoksa üstüne al.
+    ; YERLEŞİM: önce YAN taraflar. Panel yüksek ama dar; ekranın üstü/altı
+    ; genelde dar kaldığı için panel seçime yapışıyor ya da ekran dışına
+    ; taşıyordu. Sağda ve solda kalan boşluktan GENİŞ olanı seçiliyor, panel
+    ; oraya seçimle dikey ortalanarak konuyor. İki yan da sığmıyorsa eski
+    ; davranışa (alt, olmazsa üst) düşülüyor.
+    ;
+    ; Sanal ekran değil, seçimin bulunduğu monitörün ÇALIŞMA ALANI kullanılıyor:
+    ; panel görev çubuğunun altında kalmıyor ve komşu monitöre kaçmıyor.
     _placePanel() {
         if (!this.panel)
             return
         local pw := 0, ph := 0
         this.panel.GetPos(, , &pw, &ph)
-        local vx := SysGet(76), vy := SysGet(77), vw := SysGet(78), vh := SysGet(79)
-        local px := this.rect.x
-        local py := this.rect.y + this.rect.h + 16
-        if (py + ph > vy + vh)
-            py := this.rect.y - ph - 16
-        if (py < vy)
-            py := vy
-        if (px + pw > vx + vw)
-            px := vx + vw - pw
-        if (px < vx)
-            px := vx
-        this.panel.Move(px, py)
+        local r := this.rect
+        local gap := singleScreenOcr.PANEL_GAP
+        local wl := 0, wt := 0, wr := 0, wb := 0
+        this._workArea(r.x + r.w // 2, r.y + r.h // 2, &wl, &wt, &wr, &wb)
+
+        local spaceR := wr - (r.x + r.w) - gap
+        local spaceL := (r.x - gap) - wl
+        local px := 0, py := 0
+        if (spaceR >= pw && spaceR >= spaceL) {
+            px := r.x + r.w + gap
+            py := r.y + (r.h - ph) // 2
+        } else if (spaceL >= pw) {
+            px := r.x - gap - pw
+            py := r.y + (r.h - ph) // 2
+        } else {
+            px := r.x
+            py := r.y + r.h + gap
+            if (py + ph > wb)
+                py := r.y - ph - gap
+        }
+        ; Kıstırma: sol/üst kenar her zaman görünür kalsın (panel çalışma
+        ; alanından büyükse Max sonda olduğu için o kenar kazanır).
+        this.panel.Move(Max(Min(px, wr - pw), wl), Max(Min(py, wb - ph), wt))
+    }
+
+    ; (x, y) noktasını içeren monitörün çalışma alanı. Bulunamazsa birincil.
+    _workArea(x, y, &l, &t, &r, &b) {
+        loop MonitorGetCount() {
+            local ml := 0, mt := 0, mr := 0, mb := 0
+            try MonitorGet(A_Index, &ml, &mt, &mr, &mb)
+            catch
+                continue
+            if (x >= ml && x < mr && y >= mt && y < mb) {
+                MonitorGetWorkArea(A_Index, &l, &t, &r, &b)
+                return
+            }
+        }
+        MonitorGetWorkArea(, &l, &t, &r, &b)
     }
 
     ; Panel seçili alanı örtüyor mu? Örtüyorsa yakalamadan önce gizlenmeli.
@@ -556,6 +703,32 @@ class singleScreenOcr {
             return false
         local r := this.rect
         return !(px > r.x + r.w || px + pw < r.x || py > r.y + r.h || py + ph < r.y)
+    }
+
+    ; Biçim "Kolonlu (ayraçlı)" yapıldığında ayraç kutusunun listesini KENDİLİĞİNDEN
+    ; açıyoruz — "hangi ayraç?" sorusu böyle soruluyor: kullanıcı ya listeden
+    ; seçer ya da kutuya yazar. Diğer biçimlerde ayraç kullanılmıyor.
+    _onModeChange() {
+        this._applyLayout()
+        if (this._modeKey() != "table" || !this.sepBox)
+            return
+        try {
+            this.sepBox.Focus()
+            SendMessage(0x014F, 1, 0, this.sepBox.Hwnd)     ; CB_SHOWDROPDOWN
+        }
+    }
+
+    _onSepChange() {
+        if (!this.sepBox)
+            return
+        local v := this._sepFromText(this.sepBox.Text)
+        if (v == "")
+            return          ; kutu boşaltıldı; kullanıcı hâlâ yazıyor olabilir
+        this.sep := v
+        ; Ayraç seçen kullanıcı zaten ayraçlı çıktı istiyor — biçimi oraya al.
+        if (this.modeBox && this.modeBox.Value != 3)
+            try this.modeBox.Value := 3
+        this._applyLayout()
     }
 
     _onLangChange() {
@@ -757,13 +930,22 @@ class singleScreenOcr {
             return false
         if (this._isChromeHwnd(hw))
             return true
-        if (this.panel) {
-            try {
-                if (hw == this.panel.Hwnd)
-                    return false
-            }
-        }
+        ; KENDİ sürecimizin diğer pencereleri (panel, açık ComboBox listesi,
+        ; ShowTip balonu, menü) asla tuval değildir. Tek tek hwnd karşılaştırmak
+        ; yerine süreç kimliğine bakmak, sonradan eklenen her pencere için de
+        ; doğru çalışır — ayraç ComboBox'ının listesi bu sayede seçimi iptal etmiyor.
+        if (this._isOwnWindow(hw))
+            return false
         return this._hitTest(mx, my) != ""
+    }
+
+    _isOwnWindow(hwnd) {
+        static self := DllCall("GetCurrentProcessId", "UInt")
+        local pid := 0
+        try DllCall("GetWindowThreadProcessId", "Ptr", hwnd, "UInt*", &pid)
+        catch
+            return false
+        return pid == self
     }
 
     _onCanvasClick() {
@@ -1031,6 +1213,19 @@ class singleScreenOcr {
         this.grayscale := !this.grayscale
         ShowTip("Gri tonlama: " (this.grayscale ? "açık" : "kapalı"), TipType.Info, 700)
         this._reOcr()
+    }
+
+    ; Menüden ayraç değişimi. Panel açıksa kutu da senkron kalsın.
+    _setSep(v) {
+        if (v == "") {
+            ShowTip("Ayraç boş olamaz", TipType.Warning, 1200)
+            return
+        }
+        this.sep := v
+        ShowTip("OCR ayracı: " this._sepLabel(v), TipType.Info, 700)
+        if (this.sepBox)
+            try this.sepBox.Text := this._sepLabel(v)
+        this._applyLayout()
     }
 
     _setGutter(v) {

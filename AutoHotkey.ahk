@@ -10,6 +10,7 @@
 #Include <clip_hist>
 #Include <clip_slot>
 #Include <clip_image_dialog>   ; clip_image_store + gdip_mini'yi kendi çeker
+#Include <ole_drag_source>   ; memory_slots ListView'larindan disari surukleme
 #Include <memory_slots>
 #Include <key_builder>
 #Include <key_handler_cascade>
