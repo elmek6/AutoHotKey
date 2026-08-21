@@ -44,19 +44,18 @@ showF13menu() {
     subKeyMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
     subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
     subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
-    menuF13.Add("Special keys", subKeyMenu)
 
+    menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
     menuF13.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
     menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
-
-    menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("OCR ayarlari / hizli mod", App.ScreenOcr.buildMenu())
     menuF13.Add("Ekrandan metin oku (OCR)", (*) => App.ScreenOcr.snipInteractive())
     menuF13.Add("Select text with OCR", (*) => Send("{LWin down}{Shift down}t{Shift up}{LWin up}"))
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
     menuF13.Add("Incognito modu", (*) => App.Incognito.toggle())
+    menuF13.Add("Special keys", subKeyMenu)
     if (App.Incognito.isActive())
         menuF13.Check("Incognito modu")
 

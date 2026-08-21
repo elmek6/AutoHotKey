@@ -99,6 +99,7 @@ class singleScreenOcr {
         this.grayscale := true  ; ClearType alt-piksel izini temizler
         this.gutter  := 0       ; kolon ayracı eşiği (px); 0 = otomatik
         this.sep     := "`t"    ; "Kolonlu (ayraçlı)" biçiminde hücre ayracı
+        this.panelPlaced := false   ; panel bu oturumda bir kez yerleştirildi mi
         this.lastMs  := 0
         ; Hotkey/OnMessage kayıt VE kaldırma AYNI nesneyle yapılmalı — her
         ; seferinde yeni ObjBindMethod üretmek kaldırmayı sessizce başarısız
@@ -106,6 +107,8 @@ class singleScreenOcr {
         this.cursorBound     := ObjBindMethod(this, "_onSetCursor")
         this.canvasIfBound   := (*) => this._isOverCanvas()
         this.canvasClickBound := (*) => this._onCanvasClick()
+        this.sessionIfBound   := (*) => this.session
+        this.cancelBound      := (*) => this._closeSession()
     }
 
     ; ── Genel API ────────────────────────────────────────────────────────────
@@ -545,6 +548,7 @@ class singleScreenOcr {
 
     _openSession(r) {
         this.session := true
+        this.panelPlaced := false
         this.rect := r
         this._buildPanel()
         this._drawChrome()
@@ -555,6 +559,13 @@ class singleScreenOcr {
         ; hotkey varyantı kaydedilir ve varyantlar birikirdi.
         HotIf(this.canvasIfBound)
         Hotkey("~LButton", this.canvasClickBound, "On")
+        HotIf()
+        ; Panel odakta değilken de kapanabilsin: Gui'nin Escape olayı yalnız
+        ; pencere ETKİNKEN çalışır, oysa tuvale tıkladıktan sonra odak orada
+        ; olmuyor. Kriter this.session — oturum dışında tuşlar hiç kancalanmıyor.
+        HotIf(this.sessionIfBound)
+        Hotkey("Escape", this.cancelBound, "On")
+        Hotkey("MButton", this.cancelBound, "On")
         HotIf()
         OnMessage(0x20, this.cursorBound)
         this._refreshCapture()
@@ -567,6 +578,12 @@ class singleScreenOcr {
             Hotkey("~LButton", "Off")
             HotIf()
         }
+        try {
+            HotIf(this.sessionIfBound)
+            Hotkey("Escape", "Off")
+            Hotkey("MButton", "Off")
+            HotIf()
+        }
         try OnMessage(0x20, this.cursorBound, 0)
         for g in [this.band, this.grips, this.panel] {
             if (g)
@@ -575,6 +592,7 @@ class singleScreenOcr {
         this.band := 0, this.grips := 0, this.panel := 0
         this.txtBox := 0, this.langBox := 0, this.modeBox := 0, this.statusTxt := 0
         this.sepBox := 0
+        this.panelPlaced := false
         this.shot := 0       ; sarmalayıcının __Delete'i HBITMAP+DC'yi bırakır
         this.lastRes := 0
     }
@@ -648,11 +666,22 @@ class singleScreenOcr {
     ;
     ; Sanal ekran değil, seçimin bulunduğu monitörün ÇALIŞMA ALANI kullanılıyor:
     ; panel görev çubuğunun altında kalmıyor ve komşu monitöre kaçmıyor.
-    _placePanel() {
-        if (!this.panel)
+    ;
+    ; ÖLÇÜM VE TAŞIMA WinGetPos/WinMove İLE. Gui.GetPos/Gui.Move DPI ÖLÇEKLİ
+    ; (mantıksal) koordinat verir ve bekler; this.rect ise ekranın FİZİKSEL
+    ; pikselleri. %100 dışı bir ölçekte ikisi karışınca panel yanlış tarafa
+    ; düşüyordu — solda yer yokken sola açılmasının sebebi buydu. Win* ailesi
+    ; her zaman fiziksel koordinat kullanır, böylece ikisi aynı birime gelir.
+    ;
+    ; BİR KEZ yerleştiriliyor: ilk açılıştaki karar korunur; seçim taşınıp
+    ; boyutlandıkça panel oradan oraya ZIPLAMAZ (force ile yeniden hesaplanır).
+    _placePanel(force := false) {
+        if (!this.panel || (this.panelPlaced && !force))
             return
         local pw := 0, ph := 0
-        this.panel.GetPos(, , &pw, &ph)
+        try WinGetPos(, , &pw, &ph, this.panel.Hwnd)
+        catch
+            return
         local r := this.rect
         local gap := singleScreenOcr.PANEL_GAP
         local wl := 0, wt := 0, wr := 0, wb := 0
@@ -675,7 +704,8 @@ class singleScreenOcr {
         }
         ; Kıstırma: sol/üst kenar her zaman görünür kalsın (panel çalışma
         ; alanından büyükse Max sonda olduğu için o kenar kazanır).
-        this.panel.Move(Max(Min(px, wr - pw), wl), Max(Min(py, wb - ph), wt))
+        WinMove(Max(Min(px, wr - pw), wl), Max(Min(py, wb - ph), wt), , , this.panel.Hwnd)
+        this.panelPlaced := true
     }
 
     ; (x, y) noktasını içeren monitörün çalışma alanı. Bulunamazsa birincil.
@@ -698,7 +728,10 @@ class singleScreenOcr {
         if (!this.panel)
             return false
         local px := 0, py := 0, pw := 0, ph := 0
-        try this.panel.GetPos(&px, &py, &pw, &ph)
+        ; Gui.GetPos DEĞİL: o DPI ölçekli koordinat verir, this.rect ise
+        ; fiziksel piksel. Karışırsa örtüşme yanlış hesaplanır ve panel
+        ; yakalama sırasında gizlenmeyip görüntünün içine karışır.
+        try WinGetPos(&px, &py, &pw, &ph, this.panel.Hwnd)
         catch
             return false
         local r := this.rect
@@ -970,10 +1003,11 @@ class singleScreenOcr {
             this._drawChrome()
             Sleep(16)
         }
-        if (moved) {
-            this._placePanel()
+        ; Panel burada TAŞINMIYOR. Seçim her ayarlandığında yeniden
+        ; yerleştirilince pencere sağdan sola zıplıyor ve kullanıcının koyduğu
+        ; yer bozuluyordu; ilk açılıştaki karar geçerli kalır.
+        if (moved)
             this._refreshCapture()
-        }
     }
 
     ; Tutulan kenara göre dikdörtgeni güncelle. Kullanıcı karşı kenarı geçerse
@@ -1087,7 +1121,7 @@ class singleScreenOcr {
 
             ; 1) Sol tuşa basılmasını bekle
             while (!GetKeyState("LButton", "P")) {
-                if (GetKeyState("Escape", "P") || GetKeyState("RButton", "P"))
+                if (this._cancelPressed())
                     return 0
                 Sleep(10)
             }
@@ -1095,7 +1129,8 @@ class singleScreenOcr {
 
             ; 2) Sürükle — clip_image_dialog._dragPan ile aynı deyim
             while (GetKeyState("LButton", "P")) {
-                if (GetKeyState("Escape", "P"))
+                ; Sürükleme başladıktan SONRA da vazgeçilebilir.
+                if (this._cancelPressed())
                     return 0
                 MouseGetPos(&x2, &y2)
                 this._drawSelection(Min(x1, x2), Min(y1, y2), Abs(x2 - x1), Abs(y2 - y1), 2, false)
@@ -1113,6 +1148,13 @@ class singleScreenOcr {
         if (w < singleScreenOcr.MIN_SIZE || h < singleScreenOcr.MIN_SIZE)
             return 0
         return { x: Min(x1, x2), y: Min(y1, y2), w: w, h: h }
+    }
+
+    ; Seçimden vazgeçme: Escape, SAĞ tuş veya ORTA tuş. Üçü de fiziksel tuş
+    ; durumundan okunuyor (örtü NA, odak almıyor; mesaj beklemenin anlamı yok).
+    _cancelPressed() {
+        return GetKeyState("Escape", "P") || GetKeyState("RButton", "P")
+            || GetKeyState("MButton", "P")
     }
 
     ; Örtüyü kapat. Çerçeve/tutamaçlar oturum devam ediyorsa YAŞAR — bu yüzden
