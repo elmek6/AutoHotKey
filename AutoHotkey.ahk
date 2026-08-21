@@ -22,6 +22,7 @@
 #Include <trace_store>
 #Include <incognito>
 #Include <magnifier>
+#Include <screen_ocr>    ; OCR.ahk'yi (Descolada, MIT) kendi ceker
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
@@ -43,6 +44,7 @@ class App {
     static Repo := SingleRepository.getInstance()
     static Incognito := singleIncognito.getInstance()
     static Magnifier := singleMagnifier.getInstance()
+    static ScreenOcr := singleScreenOcr.getInstance()
     static stateConfig := { none: 0, home: 1, work: 2 }
     static currentConfig := App.stateConfig.none
 }
@@ -333,6 +335,9 @@ AppsKey & a:: { ;work
 
 ; F13 + i → pano görsel geçmişi
 ~F13 & i:: App.ClipImageDlg.show()
+
+; F13 + o → ekrandan alan seç, içindeki metni OCR ile oku, panoya koy
+~F13 & o:: App.ScreenOcr.snipInteractive()
 
 ; ═══════════════════════════════════════════════════════════
 ; GlobalErrorHandler — OnError ile kayıtlı, tüm thread hatalarını yakalar.

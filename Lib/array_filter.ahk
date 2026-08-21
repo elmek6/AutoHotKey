@@ -1,12 +1,17 @@
 class ArrayFilter {
     static instance := ""
+    ; Arama modu diyalog örnekleri arasında korunur. Instance alanına koysaydık
+    ; Cleanup() her kapanışta instance'ı öldürdüğü için mod sıfırlanırdı.
+    static lastMode := 1        ; 1=Metin  2=Joker  3=RegExp
     
     myGui := ""
     listView := ""
     searchBox := ""
     previewBox := ""
     caseChk := ""
-    regexChk := ""
+    modeDdl := ""
+    baseTitle := ""
+    patternError := false
     CheckFocus := ""
     results := []
     arrayData := []
@@ -121,7 +126,8 @@ class ArrayFilter {
     }
 
     UpdateList() {
-        local search := this.searchBox.Value        
+        local search := this.searchBox.Value
+        this.patternError := false
         try this.listView.Opt("-Redraw")
         this.listView.Delete()
         this.results := []
@@ -147,25 +153,62 @@ class ArrayFilter {
             this.previewBox.Value := ""
         }
         try this.listView.Opt("+Redraw")
+        this._updateTitle()
         this.UpdateVisibleLabels()
     }
 
-    ; Arama eşleştirme: Case ve RegExp checkbox'larına göre davranır.
-    ; RegExp seçiliyse pattern'i regex olarak uygular (geçersizse hiç eşleşmez);
-    ; değilse düz metin (InStr) araması yapar.
+    ; Sonuç sayısı / pattern hatası pencere başlığında gösterilir.
+    ; DİKKAT: WatchDog() WinActive(this.myGui.Title) ile odak kontrolü yapıyor;
+    ; başlığı değiştirdiğimiz için orada SABİT bir başlık cache'lenmemeli —
+    ; myGui.Title her çağrıda taze okunduğu sürece sorun yok.
+    _updateTitle() {
+        if (!this.myGui)
+            return
+        local suffix := this.patternError ? " (pattern?)" : " (" this.results.Length ")"
+        try this.myGui.Title := this.baseTitle suffix
+    }
+
+    ; Arama eşleştirme: mod DDL'i + Case checkbox'ına göre davranır.
+    ; Üç mod BİRBİRİNİ DIŞLADIĞI için checkbox değil dropdown: iki checkbox'la
+    ; "RegExp + Joker ikisi de işaretli" gibi geçersiz durum oluşuyor ve kodda
+    ; bastırmak gerekiyordu. Case ortogonal (üç modla da birleşir) → checkbox kaldı.
     MatchItem(search, slot) {
         if (!search)
             return true
         local caseSensitive := this.caseChk.Value
-        if (this.regexChk.Value) {
-            local opts := caseSensitive ? "" : "i)"
-            try {
-                return RegExMatch(slot["name"], opts search) || RegExMatch(slot["content"], opts search)
-            } catch {
-                return false  ; geçersiz pattern: kullanıcı yazmayı bitirene kadar eşleşme yok
-            }
+        local mode := this.modeDdl.Value
+
+        if (mode == 1)   ; düz metin
+            return InStr(slot["name"], search, caseSensitive) || InStr(slot["content"], search, caseSensitive)
+
+        local pattern := (mode == 2) ? this._wildToRegex(search) : search
+        ; Joker modunda ek "s" (DOTALL) bayragi: PCRE'de "." varsayilan olarak
+        ; SATIR SONUNU eslestirmez, oysa pano kayitlarinin cogu cok satirli.
+        ; Onsuz "SELECT*FROM" iki ayri satirdaki kelimeleri bulamazdi.
+        ; RegExp modunda EKLENMEZ: orada bayragi kullanici kendi yazar.
+        local flags := (caseSensitive ? "" : "i") (mode == 2 ? "s" : "")
+        local opts := (flags == "") ? "" : flags ")"
+        try {
+            return RegExMatch(slot["name"], opts pattern) || RegExMatch(slot["content"], opts pattern)
+        } catch {
+            ; Geçersiz pattern: kullanıcı yazmayı bitirene kadar eşleşme yok.
+            ; Bayrak başlıkta "(pattern?)" göstermek için — eskiden sessizce 0 sonuç
+            ; dönüyordu ve "kayıt mı yok, pattern mi bozuk" ayırt edilemiyordu.
+            this.patternError := true
+            return false
         }
-        return InStr(slot["name"], search, caseSensitive) || InStr(slot["content"], search, caseSensitive)
+    }
+
+    ; Joker (* ve ?) → regex çevirisi.
+    ; SIRA KRİTİK: önce TÜM regex metakarakterleri kaçırılır, SONRA yalnız joker
+    ; olan ikisi geri açılır. Ters yapılırsa kullanıcının yazdığı "." de joker olur.
+    ; Bilerek anchor YOK: arama kutusu semantiği alt-dize aramasıdır, yani
+    ; "abc*def" metnin ortasında da eşleşmeli (^...$ eklersek tam eşleşme olurdu).
+    _wildToRegex(pat) {
+        local esc := RegExReplace(pat, "([\\.^$|()\[\]{}*+?\/-])", "\$1")
+        esc := StrReplace(esc, "\*", ".*")
+        esc := StrReplace(esc, "\?", ".")
+        return esc
     }
 
     UpdatePreviewContent(rowIndex) {
@@ -217,6 +260,7 @@ class ArrayFilter {
             this.Cleanup()
 
         this.arrayData := arrayData
+        this.baseTitle := title
         this.results := []
         this.lastTopIndex := -1
         this.lastHoveredRow := -1
@@ -225,9 +269,11 @@ class ArrayFilter {
         local guiWidth := A_ScreenWidth * 0.40
         this.myGui := Gui("+AlwaysOnTop +ToolWindow", title)
         this.myGui.SetFont("s10", "Segoe UI")
-        this.searchBox := this.myGui.AddEdit("x10 y10 w" . (guiWidth - 20 - 190), "")
-        this.caseChk := this.myGui.AddCheckbox("x+10 yp+4 w85", "Case")
-        this.regexChk := this.myGui.AddCheckbox("x+5 yp w90", "RegExp")
+        this.searchBox := this.myGui.AddEdit("x10 y10 w" . (guiWidth - 20 - 185), "")
+        this.caseChk := this.myGui.AddCheckbox("x+10 yp+4 w60", "Case")
+        ; yp-4: checkbox Edit'e göre 4px indirilmişti, DDL daha uzun olduğu için geri alınıyor
+        this.modeDdl := this.myGui.AddDropDownList("x+5 yp-4 w110 Choose" . ArrayFilter.lastMode,
+                                                   ["Metin", "Joker *?", "RegExp"])
         ; r12: Sabit 12 satır yüksekliği
         this.listView := this.myGui.AddListView("x10 y+10 w" . (guiWidth - 20) . " r12 Grid -Multi Count100", ["F#", "İsim", "İçerik"])
         this.previewBox := this.myGui.AddEdit("x10 y+10 w" . (guiWidth - 20) . " h150 ReadOnly Multi +VScroll", "")
@@ -238,7 +284,7 @@ class ArrayFilter {
         ; --- EVENTLER ---
         this.searchBox.OnEvent("Change", (*) => this.UpdateList())
         this.caseChk.OnEvent("Click", (*) => this.UpdateList())
-        this.regexChk.OnEvent("Click", (*) => this.UpdateList())
+        this.modeDdl.OnEvent("Change", (*) => (ArrayFilter.lastMode := this.modeDdl.Value, this.UpdateList()))
         this.listView.OnEvent("DoubleClick", (*) => this.SelectFocused())
         this.listView.OnEvent("ItemSelect", (guiCtrl, item, selected) => selected ? this.UpdatePreviewContent(item) : "")
         this.myGui.OnEvent("Escape", (*) => (this.searchBox.Value ? (this.searchBox.Value := "", this.UpdateList()) : this.closeGuiAndHotkeys()))
