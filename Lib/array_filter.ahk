@@ -39,8 +39,10 @@ class ArrayFilter {
     }
 
     Cleanup() {
-        ; 1. Mesaj Dinlemeyi Durdur (En Kritik Adım)
-        ; DÜZELTME: instance method kullan, static değil
+        ; 1. Mesaj dinlemeyi durdur (EN KRİTİK ADIM). Kaldırma, kayıtta
+        ;    kullanılan AYNI nesneyle yapılmalı — bu yüzden this._hoverHandler
+        ;    saklanıyor; her seferinde yeni bir bound üretmek sessizce
+        ;    başarısız olup handler biriktiriyordu.
         try OnMessage(0x200, this._hoverHandler, 0)
 
         ; 2. Timer'ları durdur
@@ -108,7 +110,6 @@ class ArrayFilter {
             topIndex := SendMessage(0x1027, 0, 0, this.listView.Hwnd)
             targetIndex := topIndex + fKeyIndex
             
-            ; Listenin sınırları içinde mi?
             if (targetIndex <= this.results.Length) {
                 this.SelectAndClose(targetIndex)
             }
@@ -277,7 +278,6 @@ class ArrayFilter {
         ; r12: Sabit 12 satır yüksekliği
         this.listView := this.myGui.AddListView("x10 y+10 w" . (guiWidth - 20) . " r12 Grid -Multi Count100", ["F#", "İsim", "İçerik"])
         this.previewBox := this.myGui.AddEdit("x10 y+10 w" . (guiWidth - 20) . " h150 ReadOnly Multi +VScroll", "")
-        ; Kolon Genişlikleri
         this.listView.ModifyCol(1, 40)              ; F#
         this.listView.ModifyCol(2, guiWidth * 0.18) ; İsim (grup-slotAdı sığsın)
         this.listView.ModifyCol(3, guiWidth * 0.70) ; İçerik (Geriye kalanı kapla)

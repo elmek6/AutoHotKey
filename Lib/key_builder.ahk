@@ -67,7 +67,7 @@ class KeyBuilder {
         get => this._tips
     }
 
-    ; Static metod olarak getPressType
+    ; Basılı tutma süresi -> 1 kısa, 2 orta, 3 uzun (longTime boşsa 2 seviye).
     static getPressType(duration, shortTime, longTime) {
         if (longTime == "") {
             return (duration <= shortTime) ? 1 : 2

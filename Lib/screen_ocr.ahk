@@ -78,12 +78,12 @@ class singleScreenOcr {
         { label: "Boşluk",           v: " "  }
     ]
 
-    ; Kolon ayracı sayılacak en küçük boş dikey şerit için hazır değerler.
-    ; Çok küçük → kelime araları kolon sanılır. Çok büyük → kolonlar birleşir.
-    ; Panelde düzenlenebilir kutu; listede olmayan bir sayı da yazılabilir.
     ; Ayraç kutusundaki "listede yok, elle gireceğim" satırı.
     static SEP_CUSTOM := "Özel..."
 
+    ; Kolon ayracı sayılacak en küçük boş dikey şerit. Çok küçük → kelime araları
+    ; kolon sanılır; çok büyük → kolonlar birleşir. Panelde düzenlenebilir kutu,
+    ; listede olmayan bir sayı da yazılabilir.
     static GUTTERS := ["Otomatik", "20px", "40px", "80px", "150px"]
 
     static getInstance() {

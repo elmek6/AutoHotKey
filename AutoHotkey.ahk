@@ -10,8 +10,8 @@
 #Include <clip_hist>
 #Include <clip_slot>
 #Include <clip_image_dialog>   ; clip_image_store + gdip_mini'yi kendi çeker
-#Include <ole_drag_source>   ; memory_slots ListView'larindan disari surukleme
 #Include <memory_slots>
+#Include <ole_drag_source>   ; memory_slots ListView'larindan disari surukleme
 #Include <key_builder>
 #Include <key_handler_cascade>
 #Include <key_handler_mouse>
@@ -20,15 +20,15 @@
 #Include <macro_recorder>
 #Include <app_shorts>
 #Include <repository>
-#Include <trace_store>
 #Include <incognito>
+#Include <trace_store> ; incognito
 #Include <magnifier>
 #Include <screen_ocr>    ; OCR.ahk'yi (Descolada, MIT) kendi ceker
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_180_h")
+global State := singleState.getInstance("ver_190_h")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()

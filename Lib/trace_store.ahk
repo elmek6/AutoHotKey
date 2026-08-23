@@ -3,11 +3,9 @@
 ; ────────────────────────────────────────────────────────────────────────
 ;  Bir dosyanın izi tek yerde durmuyor: aynı indirme Recent\*.lnk'te,
 ;  RecentDocs'ta, ComDlg32 MRU'larında ve jump list'te kayıt bırakıyor.
-;  Her kaynağı tek tip arayüzle temsil eden modül.
 ;
 ;  ÇEKİRDEK FİKİR: açılırken yedek al, kapanırken aynen geri yaz. Oturumda
-;  ne oluştuysa yok olur, ÖNCEKİ geçmiş hiç bozulmaz — "hepsini sil"den
-;  farkı bu.
+;  ne oluştuysa yok olur, ÖNCEKİ geçmiş hiç bozulmaz.
 ;
 ;  KURALLAR:
 ;   • Registry hive'ı FileOpen ile kilitlenemez -> snapshot/restore şart.
@@ -15,16 +13,14 @@
 ;     ZORUNLU; yoksa oturumda eklenenler yerinde kalır.
 ;   • Jump list dosyaları aktifken kilitli: snapshot kilitlemeden ÖNCE,
 ;     restore kilit açıldıktan SONRA.
-;   • Maliyet depolara eşit dağılmıyor — 18 deponun 1'i işin ~%90'ıydı.
-;     Hız işi "genel olarak hızlandırmak" değil, o depoya dokunmamak:
-;     beginWatch (dokunulmamışı atla) + RegDeltaStore (tam yedek yerine
-;     delta) + en ağır depo en önce başlasın sıralaması.
+;   • Maliyet depolara eşit dağılmıyor — 18 deponun 1'i işin ~%90'ıydı;
+;     hız işi o depoya DOKUNMAMAK (beginWatch + RegDeltaStore + ağır depo
+;     en önce).
 ; ════════════════════════════════════════════════════════════════════════
 
 ; ── Soyut taban ─────────────────────────────────────────────────────────
 class TraceStore {
-    ; tier: "core" = dosya adı taşıyan izler (varsayılan açık),
-    ;       "deep" = klasör/program izleri (varsayılan kapalı).
+    ; tier: "core" = dosya adı taşıyan izler, "deep" = klasör/program izleri.
     ; Seçim incognito.ahk _selectStores() içinde.
     __New(name, tier := "core") {
         this.name := name
@@ -35,15 +31,12 @@ class TraceStore {
     restore(root) => false      ; root klasöründeki yedeği geri yaz
     purge() => 0                ; tamamen sil, silinen sayısını döndür
 
-    ; cleanNow()'un aldığı KALICI yedek. Varsayılan olarak snapshot() ile
-    ; aynı; farkı olan tek depo FileGlobStore (oturum yedeği hız için tek
-    ; dosyalık pakete yazılıyor, kalıcı yedek ise elle karıştırılabilsin
-    ; diye düz klasör kopyası kalıyor).
+    ; cleanNow()'un aldığı KALICI yedek. Tek farklı depo FileGlobStore:
+    ; oturum yedeği tek pakete, kalıcı yedek düz klasör kopyasına gider.
     archive(root) => this.snapshot(root)
 
     ; ── Paralel toplu snapshot/restore arayüzü ──────────────────────────
-    ; Varsayılan: senkron snapshot()/restore() zaten hızlı (dış süreç yok),
-    ; beklenecek async iş yok. Süreç başlatan depolar (RegStore) override eder.
+    ; Varsayılan senkron (dış süreç yok); RegStore süreç başlattığı için override eder.
     beginSnapshot(root) {
         this.snapshot(root)
         return 0
@@ -59,8 +52,7 @@ class TraceStore {
         return pending.done
     }
 
-    ; Denetim satırı (boş = gösterilecek bir şey yok). Varsayılan: yedekten
-    ; türetilen taban ile şimdiki sayıyı karşılaştır. Taban türetilemiyorsa
+    ; Denetim satırı (boş = gösterilecek bir şey yok). Taban türetilemiyorsa
     ; (baselineCount = -1) depo denetimde sessizce atlanır.
     auditLine(root) {
         local base := this.baselineCount(root)
@@ -73,19 +65,16 @@ class TraceStore {
         return Format("{1}: {2}{3}   ({4} → {5})", this.name, (diff > 0 ? "+" : ""), diff, base, now)
     }
 
-    ; Taban sayımı YEDEKTEN türetilir. "enable() ANINDAKİ sayı" sonradan
-    ; registry'den okunamaz — ama yedek tanım gereği o anın kopyası, sayı
-    ; zaten içinde. Böylece enable()'a maliyet yazılmıyor.
+    ; Taban sayımı YEDEKTEN türetilir: yedek tanım gereği enable() anının
+    ; kopyası, sayı zaten içinde -> maliyet enable()'a yazılmıyor.
     ; Dönüş: -1 = türetilemedi (denetimde o depo atlanır).
     baselineCount(root) => -1
 
-    ; Toplu (tek cmd.exe) başlatma yolu yalnız reg.exe kullanan depolar için;
-    ; bkz. incognito._snapshotBegin.
+    ; Toplu (tek cmd.exe) başlatma yolu; bkz. incognito._snapshotBegin.
     usesRegExport() => false
 
     ; ── Değişiklik gözcüsü (bkz. RegStore.beginWatch) ───────────────────
-    ; Varsayılan gözcüsüz -> hasChanged() HEP true, hiçbir iş atlanmaz.
-    ; Atlamak POZİTİF kanıt ister.
+    ; Gözcüsüz varsayılan -> hasChanged() HEP true. Atlamak POZİTİF kanıt ister.
     beginWatch() {
     }
     hasChanged() => true
@@ -103,14 +92,12 @@ class RegStore extends TraceStore {
     }
 
     _file(root) => root this.name ".reg"
-    ; "Anahtar enable() anında hiç yoktu" işareti. Olmadan restore(),
-    ; "hiç yedek alınmadı" (dokunma) ile "anahtar yoktu" (oturumda sıfırdan
-    ; oluştuysa sil) durumlarını ayıramıyor; RunMRU/TypedPaths gibi ilk kez
-    ; oluşan anahtarlar kalıcı olarak yerinde kalıyordu.
+    ; "Anahtar enable() anında hiç yoktu" işareti. Olmadan restore(), "hiç
+    ; yedek alınmadı" (dokunma) ile "anahtar yoktu" (sil) durumlarını
+    ; ayıramıyor; RunMRU/TypedPaths ilk kez oluşunca kalıcı kalıyordu.
     _absentFile(root) => root this.name ".absent"
 
-    ; Değer + alt anahtar sayısı (özyinelemeli). Anahtar yoksa Loop Reg
-    ; sessizce hiç dönmez -> 0 döner, ayrı bir varlık kontrolü gerekmiyor.
+    ; Değer + alt anahtar sayısı. Anahtar yoksa Loop Reg sessizce hiç dönmez -> 0.
     count() {
         local n := 0
         try {
@@ -127,9 +114,8 @@ class RegStore extends TraceStore {
         return pid
     }
 
-    ; Eski yedeği temizler ve export komutunu METİN olarak döndürür — süreci
-    ; BAŞLATMAZ. incognito._launchRegBatch bunları tek cmd.exe'de zincirliyor
-    ; (her ayrı `Run` bizim thread'imizde ~17 ms).
+    ; Export komutunu METİN döndürür, süreci BAŞLATMAZ — incognito._launchRegBatch
+    ; hepsini tek cmd.exe'de zincirliyor (her ayrı `Run` thread'imizde ~17 ms).
     prepareExport(root) {
         try FileDelete(this._file(root))
         try FileDelete(this._absentFile(root))
@@ -138,13 +124,10 @@ class RegStore extends TraceStore {
 
     usesRegExport() => true
 
-    ; Taban: .reg dosyasını say. count() ile BİREBİR aynı şeyi saymalı,
-    ; yoksa denetim her depoda sabit bir sapma gösterir. count() =
-    ; `Loop Reg key,"KVR"` = kökün ALTINDAKİLER; export kök için de bir
-    ; `[...]` satırı yazdığından anahtar sayısından 1 düşüyoruz.
+    ; Taban: .reg dosyasını say. count() ile BİREBİR aynı şeyi saymalı, yoksa
+    ; denetim sabit sapma gösterir. count() = kökün ALTINDAKİLER; export kök
+    ; için de `[...]` yazdığından anahtar sayısından 1 düşülür.
     ; Satır başları: `\n[` anahtar, `\n"` adlı değer, `\n@=` varsayılan.
-    ; (Hex devam satırları iki boşlukla başlıyor, REG_SZ içinde ham satır
-    ; sonu olmuyor — çok satırlı veri hex(2)/hex(7) yazılıyor.)
     baselineCount(root) {
         if (FileExist(this._absentFile(root)))
             return 0            ; enable() anında anahtar hiç yoktu
@@ -165,15 +148,26 @@ class RegStore extends TraceStore {
     }
 
     endSnapshot(root, pid) {
-        if (pid)
-            try ProcessWaitClose(pid, 5)   ; 5sn üst sınır — tek bir takılan reg.exe enable()'ı sonsuza kilitlemesin
+        ; 5sn üst sınır: takılan tek bir reg.exe enable()'ı kilitlemesin.
+        ; DÖNÜŞÜ YUTMA — zaman aşımında 0 döner ve .reg dosyası o an VAR ama
+        ; YARIM olabilir. "Var = sağlam" sayarsak restore anahtarı silip
+        ; kırpılmış hali import eder, yani kullanıcının geçmişini yok eder.
+        ; Güvenli taraf: güvenilmez yedeği at, restore o depoya dokunmasın.
+        if (pid) {
+            local stillRunning := 0     ; ProcessWaitClose: kapandıysa 0, zaman aşımında pid
+            try stillRunning := ProcessWaitClose(pid, 5)
+            if (stillRunning) {
+                try FileDelete(this._file(root))
+                return false
+            }
+        }
         local f := this._file(root)
         if (FileExist(f))
             return true
         ; Dosya yok. İKİ AYRI DURUM, karıştırmak VERİ KAYBI demek:
-        ;  (a) anahtar gerçekten yoktu       -> ".absent" koy
-        ;  (b) reg.exe patladı / zaman aşımı -> marker KOYMA; koyarsak
-        ;      restore, duran DOLU bir anahtarı "oturumda doğmuş" sanıp siler.
+        ;  (a) anahtar gerçekten yoktu -> ".absent" koy
+        ;  (b) reg.exe patladı -> marker KOYMA; koyarsak restore, duran DOLU
+        ;      bir anahtarı "oturumda doğmuş" sanıp siler.
         if (!this._keyExists())
             try FileAppend("1", this._absentFile(root))
         return false
@@ -183,14 +177,12 @@ class RegStore extends TraceStore {
         return this.endSnapshot(root, this.beginSnapshot(root))
     }
 
-    ; delete+import BİR depo İÇİNDE sıralı kalmak ZORUNDA (import merge
-    ; yapıyor), ama farklı depolar bağımsız: silme senkron, asıl ağır iş
-    ; olan import async başlatılıp _restoreAll'da hep birlikte bekleniyor.
-    ; Dönüş: { pid, done }.
+    ; delete+import BİR depo İÇİNDE sıralı olmak ZORUNDA (import merge yapıyor),
+    ; farklı depolar bağımsız: silme senkron, import async başlatılıp
+    ; _restoreAll'da hep birlikte bekleniyor. Dönüş: { pid, done }.
     beginRestore(root) {
         if (FileExist(this._absentFile(root))) {
             ; enable() anında anahtar yoktu -> oturumda oluştuysa komple sil.
-            ; Tek işlem (import yok), async'e gerek yok.
             this._deleteKey()
             return { pid: 0, done: true }
         }
@@ -206,8 +198,14 @@ class RegStore extends TraceStore {
     }
 
     endRestore(root, pending) {
-        if (pending.pid)
-            try ProcessWaitClose(pending.pid, 8)   ; 8sn üst sınır — takılan tek bir import disable()'ı kilitlemesin
+        ; 8sn üst sınır: takılan tek bir import disable()'ı kilitlemesin.
+        ; Zaman aşımında import yarım kalmış olabilir -> "geri yüklendi" sayma.
+        if (pending.pid) {
+            local stillRunning := 0     ; kapandıysa 0, zaman aşımında pid
+            try stillRunning := ProcessWaitClose(pending.pid, 8)
+            if (stillRunning)
+                return false
+        }
         return pending.done
     }
 
@@ -222,9 +220,8 @@ class RegStore extends TraceStore {
         return this._deleteKey() ? n : 0
     }
 
-    ; Anahtarı alt anahtarlarıyla sil. RegDeleteKey özyinelemeli çalışıyor
-    ; (ampirik: 3 seviyeli test ağacı kökü dahil tek çağrıda silindi) ve
-    ; reg.exe'nin aksine süreç başlatmıyor — 12 depoda ~1.2 sn -> ~0.4 sn.
+    ; Anahtarı alt anahtarlarıyla sil. RegDeleteKey özyinelemeli ve reg.exe'nin
+    ; aksine süreç başlatmıyor — 12 depoda ~1.2 sn -> ~0.4 sn.
     ; Dönüş: silindi mi (anahtar zaten yoksa false).
     _deleteKey() {
         try {
@@ -237,18 +234,15 @@ class RegStore extends TraceStore {
 
     ; ── Değişiklik gözcüsü ───────────────────────────────────────────────
     ; RegNotifyChangeKeyValue = çekirdeğin alt-ağaç bildirimi. enable()'da
-    ; anahtar başına bir event kurulur (maliyeti ~0), disable()'da 0
-    ; timeout'lu WaitForSingleObject ile "bu ağaca hiç dokunuldu mu?" diye
-    ; sorulur. Dokunulmadıysa sil+geri yaz TAMAMEN atlanır — aynı içeriği
-    ; silip aynen geri yazmakla birebir aynı sonuç.
+    ; anahtar başına bir event kurulur (maliyet ~0); disable()'da 0 timeout'lu
+    ; WaitForSingleObject "bu ağaca hiç dokunuldu mu?" diye sorar,
+    ; dokunulmadıysa sil+geri yaz TAMAMEN atlanır (sonuç birebir aynı).
     ;
-    ; TEK YÖNLÜ: yalnız iş ATLAR, asla iş EKSİLTMEZ. Gözcü kurulamadıysa,
-    ; event sinyallendiyse ya da script yeniden başladıysa hasChanged()
-    ; true döner ve tam sil+geri yükle yolu işler.
+    ; TEK YÖNLÜ: yalnız iş ATLAR, asla EKSİLTMEZ — gözcü kurulamazsa da,
+    ; script yeniden başlarsa da hasChanged() true döner ve tam yol işler.
     ;
-    ; SIRALAMA ŞART: gözcü export'tan ÖNCE kurulur (bkz. _snapshotBegin) —
-    ; export sürerken düşen bir iz yedeğe karışabilir, o zaman depo
-    ; "değişti" işaretlenip tam geri yükleme yapılsın.
+    ; SIRALAMA ŞART: gözcü export'tan ÖNCE kurulur (bkz. _snapshotBegin);
+    ; export sürerken düşen iz yedeğe karışırsa depo "değişti" sayılsın.
     beginWatch() {
         static KEY_NOTIFY := 0x0010
         ; NAME | ATTRIBUTES | LAST_SET | SECURITY
@@ -297,9 +291,8 @@ class RegStore extends TraceStore {
         }
     }
 
-    ; Anahtar VAR MI? `Loop Reg` anahtar yoksa da boşsa da sessizce hiç
-    ; dönmüyor; ikisini ayırmak ".absent" sözleşmesi için şart (bkz.
-    ; endSnapshot). RegDeltaStore da bunu kullanır.
+    ; Anahtar VAR MI? `Loop Reg` yok ile boşu ayırt etmiyor; ikisini ayırmak
+    ; ".absent" sözleşmesi için şart (bkz. endSnapshot).
     _keyExists() {
         static KEY_READ := 0x20019
         local parts := this._splitKey()
@@ -333,25 +326,20 @@ class RegStore extends TraceStore {
 }
 
 ; ── Registry anahtarı — DELTA ("yalnız oturumda eklenenleri sil") ───────
-; Tam snapshot/restore bir depoda saçma kaçıyordu: ShellBags_UsrClass
-; 8.2 MB / 47k kayıt, export 812 + silme 650 + import 1808 ms. Oysa bir
-; oturumda eklenen şey birkaç alt anahtar. Bu sınıf tam yedek yerine yalnız
-; en yüksek sayısal alt anahtar numarasını (high-water mark) not eder ve
-; geri yüklemede sadece onun ÜSTÜNDEKİLERİ siler.
+; Tam yedek yerine yalnız en yüksek sayısal alt anahtar numarasını (high-water
+; mark) not eder, geri yüklemede sadece onun ÜSTÜNDEKİLERİ siler.
 ;
-; NEDEN DOĞRU: Bags alt anahtarları tam sayı ve tahsis SIRALI (ölçüm:
-; 1..2427, boşluk yok) — yeni klasör her zaman max+1 alıyor. Sayısal
-; olmayan kardeşler ("AllFolders") dikkate alınmaz.
+; NEDEN: ShellBags_UsrClass 8.2 MB / 47k kayıt (export 812 + silme 650 +
+; import 1808 ms), oysa bir oturumda eklenen birkaç alt anahtar. Üstelik
+; reg.exe import 8.882 anahtarın LastWriteTime'ını içe aktarma anına çekip
+; yıllara yayılmış geçmişi tek 5 saniyelik pencereye sıkıştırıyordu.
 ;
-; SADECE HIZ DEĞİL: reg.exe import anahtarları yeniden yazdığı için 8.882
-; anahtarın LastWriteTime'ını içe aktarma anına çekiyordu — yıllara yayılmış
-; bir geçmiş tek 5 saniyelik pencereye sıkışıyordu. Delta yolunda eski
-; anahtarlara dokunulmuyor.
+; NEDEN DOĞRU: Bags alt anahtarları tam sayı ve tahsis SIRALI (ölçüm 1..2427,
+; boşluk yok) — yeni klasör hep max+1 alıyor. Sayısal olmayanlar sayılmaz.
 ;
-; DİKKAT — TEK BAŞINA DOĞRU DEĞİL: silme boş NodeSlot bırakıyor ve Windows
-; onu yeniden kullanabilir (bitmap BagMRU kökünde). Reuse olursa yeni bag
-; hwm'in ALTINDA doğar ve delta onu kaçırır. Engelleyen şey kardeş BagMRU
-; deposunun TAM geri yüklenmesi; incognito.ahk `this.coupled` bunu zorluyor.
+; DİKKAT — TEK BAŞINA DOĞRU DEĞİL: silme boş NodeSlot bırakıyor, Windows onu
+; yeniden kullanırsa yeni bag hwm'in ALTINDA doğar ve delta kaçırır. Engelleyen
+; şey kardeş BagMRU deposunun TAM geri yüklenmesi (incognito.ahk `this.coupled`).
 ; O listeyi bozarsan bu depo sessizce sızdırır.
 class RegDeltaStore extends RegStore {
     ; Yedek "dosyası" tek satırlık bir sayı; .reg değil.
@@ -359,8 +347,7 @@ class RegDeltaStore extends RegStore {
 
     usesRegExport() => false        ; süreç başlatmıyor -> toplu yola girmez
 
-    ; Yedek bir sayım değil high-water mark; kayıt diffi üretilemez. Onun
-    ; yerine auditLine "oturumda kaç yeni kayıt doğdu"yu doğrudan veriyor.
+    ; hwm bir sayım değil -> kayıt diffi üretilemez; auditLine kendisi hesaplar.
     baselineCount(root) => -1
 
     auditLine(root) {
@@ -384,8 +371,7 @@ class RegDeltaStore extends RegStore {
         try FileDelete(this._file(root))
         try FileDelete(this._absentFile(root))
         if (!this._keyExists()) {
-            ; Anahtar enable() anında hiç yoktu -> oturumda oluştuysa komple
-            ; silinmeli. RegStore ile aynı ".absent" sözleşmesi.
+            ; Oturumda oluştuysa komple silinsin — RegStore ile aynı sözleşme.
             try FileAppend("1", this._absentFile(root))
             return 0
         }
@@ -405,8 +391,7 @@ class RegDeltaStore extends RegStore {
         local f := this._file(root)
         if (!FileExist(f))
             return { pid: 0, done: false }   ; snapshot alınamamış — DOKUNMA
-        ; Okunamayan/bozuk marker'da da dokunmuyoruz: yanlış bir high-water
-        ; mark, kullanıcının eski kayıtlarını silmek demek olurdu.
+        ; Bozuk marker'da dokunmuyoruz: yanlış hwm = eski kayıtları silmek.
         local hwm := -1
         try hwm := Integer(Trim(FileRead(f), " `t`r`n"))
         if (hwm < 0)
@@ -455,11 +440,8 @@ class FileGlobStore extends TraceStore {
         this.pattern := pattern
     }
 
-    ; Yedek KLASÖR DEĞİL, TEK DOSYA (".pack").
-    ; Recent\*.lnk'te 156 dosya var ama toplamı 152 KB; maliyet veri
-    ; hacminden değil DOSYA ADEDİNDEN geliyordu (156 dosya yaratmak 229 ms,
-    ; aynı baytları okumak 31 ms). Tek pakete yazınca 51 ms, üstelik bir
-    ; sonraki enable()'ın sildiği de ~200 dosya değil 1 dosya oluyor.
+    ; Yedek KLASÖR DEĞİL, TEK DOSYA (".pack"): maliyet veri hacminden değil
+    ; DOSYA ADEDİNDEN geliyordu (156 dosya yaratmak 229 ms, tek paket 51 ms).
     ;
     ; BİÇİM (küçük-endian, hepsi ham):
     ;   "AHKGLOB1"          8 bayt imza
@@ -473,9 +455,8 @@ class FileGlobStore extends TraceStore {
     _pack(root) => root this.name ".pack"
     _bak(root) => root this.name "\"        ; yalnız archive() (cleanNow) kullanır
 
-    ; Taban = başlıktaki u32; paketi açmaya gerek yok. Paket YOKSA gerçekten
-    ; "yedek alınamamış" demek (-1), "klasör boştu" değil — snapshot()
-    ; paketi her durumda yazıyor.
+    ; Taban = başlıktaki u32; paketi açmaya gerek yok. Paket YOKSA "yedek
+    ; alınamamış" (-1) demek — snapshot() paketi her durumda yazıyor.
     baselineCount(root) {
         local p := this._pack(root)
         if (!FileExist(p))
@@ -505,10 +486,9 @@ class FileGlobStore extends TraceStore {
         return n
     }
 
-    ; Paket HER durumda yazılır (this.dir yok olsa bile): boş paket,
-    ; restore()'a "enable() anında burada hiçbir şey yoktu" bilgisini taşır.
-    ; Atlanırsa, oturum sırasında ilk kez yaratılan klasörde restore "yedek
-    ; yok" deyip dokunmuyor ve oturum izi kalıcı kalıyor.
+    ; Paket HER durumda yazılır (this.dir yok olsa bile): boş paket restore()'a
+    ; "enable() anında burada hiçbir şey yoktu" bilgisini taşır. Atlanırsa
+    ; oturumda ilk kez yaratılan klasördeki iz kalıcı kalıyor.
     snapshot(root) {
         local p := this._pack(root)
         try FileDelete(p)
@@ -645,8 +625,7 @@ class FileGlobStore extends TraceStore {
             ; dokunmak veriyi bozmak olur.
             if (!e.mtime)
                 continue
-            ; Birebir aynıysa yazma — oturumda .lnk'lerin çoğuna hiç
-            ; dokunulmuyor, bu kontrol disable()'ı sıfıra yakın tutuyor.
+            ; Birebir aynıysa yazma — disable()'ı sıfıra yakın tutan kontrol.
             if (live.Has(name) && live[name].size = e.size && live[name].mtime = e.mtime)
                 continue
             try {
@@ -654,16 +633,14 @@ class FileGlobStore extends TraceStore {
                 if (e.size > 0)
                     out.RawWrite(e.data, e.size)
                 out.Close()
-                ; Damga da geri konmalı (FileCopy kendiliğinden koruyordu,
-                ; ham yazma korumaz): "şimdi" kalması başlı başına iz.
+                ; Damgayı da geri koy — "şimdi" kalması başlı başına iz.
                 FileSetTime(e.mtime, this.dir name, "M")
             }
         }
         return true
     }
 
-    ; cleanNow()'un KALICI yedeği: orada hız değil elle karıştırılabilirlik
-    ; önemli -> paket değil düz klasör kopyası.
+    ; cleanNow()'un KALICI yedeği: elle karıştırılabilsin diye düz klasör kopyası.
     archive(root) {
         local dst := this._bak(root)
         try DirCreate(dst)
@@ -741,14 +718,14 @@ class PolicyGuard {
     }
 
     ; ── Çökme kurtarma ───────────────────────────────────────────────────
-    ; apply() durumu yalnız bellekte tutuyor; script çökerse yeni instance'ın
-    ; applied'ı false olur, revert() no-op kalır ve politikalar KALICI olarak
-    ; takılı kalırdı (Explorer'ın "Son kullanılanlar"ı bir daha dönmezdi).
-    ; Bu ikili eski değerleri diske yazıp instance'tan bağımsız geri yüklüyor.
+    ; apply() durumu yalnız bellekte; script çökerse revert() no-op kalır ve
+    ; politikalar KALICI takılı kalırdı (Explorer'ın "Son kullanılanlar"ı bir
+    ; daha dönmezdi). Bu ikili eski değerleri diske yazıp instance'tan bağımsız
+    ; geri yüklüyor. Kodlama revertFrom'un okuduğuyla aynı olmak ZORUNDA.
     saveTo(path) {
         try FileDelete(path)
         for s in this.saved
-            try FileAppend(s.key "`t" s.value "`t" (s.had ? "1" : "0") "`t" s.old "`n", path)
+            try FileAppend(s.key "`t" s.value "`t" (s.had ? "1" : "0") "`t" s.old "`n", path, "UTF-8-RAW")
     }
 
     static revertFrom(path) {
