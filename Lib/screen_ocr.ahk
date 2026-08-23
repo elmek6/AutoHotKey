@@ -13,8 +13,12 @@
 ; 1) snipInteractive()  (F13+o, ana akış)
 ;    Seç → alan ekranda KALIR, kenarlarından büyütülüp küçültülebilir,
 ;    içinden sürüklenip taşınabilir. Panel seçimin YANINA (sağda/solda hangisi
-;    genişse) açılır: metin (seçilebilir, düzenlenebilir), altında dil, kolon
-;    biçimi, ayraç kutusu ve Kopyala.
+;    genişse) açılır: metin (seçilebilir, düzenlenebilir), altında dil,
+;    kolon biçimi, ayraç, ölçek, gri tonlama, kolon eşiği ve Kopyala.
+;    TÜM AYARLAR BURADA — menüde ayar yok, orada yalnız eylemler var. Her
+;    değişiklik sonucu anında üstteki kutuda gösterir; ölçek/gri yeniden OCR
+;    yapar (ekranı tekrar ÇEKMEDEN, cache'li bitmap üzerinden), biçim/ayraç/
+;    kolon eşiği ise OCR bile gerektirmez (cache'li Result yeniden dizilir).
 ; 2) snip(mode)  (menüden "Hızlı")
 ;    Seç → oku → panoya. Pencere yok. Tek atışlık kullanım için.
 ;
@@ -74,6 +78,14 @@ class singleScreenOcr {
         { label: "Boşluk",           v: " "  }
     ]
 
+    ; Kolon ayracı sayılacak en küçük boş dikey şerit için hazır değerler.
+    ; Çok küçük → kelime araları kolon sanılır. Çok büyük → kolonlar birleşir.
+    ; Panelde düzenlenebilir kutu; listede olmayan bir sayı da yazılabilir.
+    ; Ayraç kutusundaki "listede yok, elle gireceğim" satırı.
+    static SEP_CUSTOM := "Özel..."
+
+    static GUTTERS := ["Otomatik", "20px", "40px", "80px", "150px"]
+
     static getInstance() {
         if (!singleScreenOcr.instance)
             singleScreenOcr.instance := singleScreenOcr()
@@ -87,8 +99,10 @@ class singleScreenOcr {
         this.band    := 0       ; seçim çerçevesi (halka)
         this.grips   := 0       ; 8 tutamaç karesi
         this.panel   := 0       ; sonuç paneli
-        this.txtBox := 0, this.langBox := 0, this.modeBox := 0, this.statusTxt := 0
-        this.sepBox := 0
+        this.txtBox := 0, this.langBox := 0, this.modeBox := 0
+        this.sepBox := 0, this.scaleBox := 0, this.grayChk := 0, this.gutterBox := 0
+        this.advChk := 0, this.advCtrls := [], this.baseBottom := 0, this.advBottom := 0
+        this.advanced := false  ; gelişmiş satır açık mı (oturumlar arası hatırlanır)
         this.session := false
         this.rect    := 0
         this.shot    := 0       ; yakalanan HBITMAP sarmalayıcısı (kendi __Delete'i var)
@@ -135,7 +149,7 @@ class singleScreenOcr {
         if (!res)
             return ""
         local out := this._layout(res, mode)
-        return this._finish(out.text, out.info)
+        return this._finish(out.text, mode == "plain" ? "" : out.info)
     }
 
     ; Aktif pencerenin tamamını oku. Örtü/seçim yok, tek çağrı.
@@ -156,56 +170,6 @@ class singleScreenOcr {
         return this._finish(out.text, out.info)
     }
 
-    ; ── Menü ─────────────────────────────────────────────────────────────────
-
-    ; F13 menüsüne alt menü olarak takılıyor. Her açılışta yeniden kuruluyor,
-    ; bu yüzden işaretler (Check) her zaman güncel.
-    buildMenu() {
-        local m := Menu()
-        m.Add("Alan seç ve oku (pencereli)`tF13+o", (*) => this.snipInteractive())
-        m.Add()
-        m.Add("Hızlı — düz metin", (*) => this.snip("plain"))
-        m.Add("Hızlı — kolonlu (sırayla)", (*) => this.snip("columns"))
-        m.Add("Hızlı — kolonlu (" this._sepLabel(this.sep) " ayraçlı)", (*) => this.snip("table"))
-        m.Add("Aktif pencereyi oku", (*) => this.readWindow())
-        m.Add()
-
-        local sub := Menu()
-        for s in [1, 2, 3, 4] {
-            ; IIFE ile döngü değişkenini yakala (kod tabanındaki ortak deyim)
-            sub.Add("x" s, ((v) => (*) => this._setScale(v))(s))
-            if (s == this.scale)
-                sub.Check("x" s)
-        }
-        m.Add("Ölçek (OCR öncesi büyütme)", sub)
-
-        m.Add("Gri tonlama", (*) => this._toggleGray())
-        if (this.grayscale)
-            m.Check("Gri tonlama")
-
-        m.Add("Kolon boşluk eşiği", this._buildGutterMenu())
-        m.Add("Ayraç: " this._sepLabel(this.sep), this._buildSepMenu())
-        this._ensureLang()
-        m.Add("Dil: " (this.lang == "" ? "yok!" : this.lang), this._buildLangMenu())
-        return m
-    }
-
-    ; Kolon ayracı sayılacak en küçük boş dikey şerit.
-    ; Çok küçük → kelime araları kolon sanılır. Çok büyük → kolonlar birleşir.
-    _buildGutterMenu() {
-        local m := Menu()
-        m.Add("Otomatik (satır yüksekliği x1.5)", (*) => this._setGutter(0))
-        if (this.gutter == 0)
-            m.Check("Otomatik (satır yüksekliği x1.5)")
-        m.Add()
-        for g in [20, 40, 80, 150] {
-            m.Add(g "px", ((v) => (*) => this._setGutter(v))(g))
-            if (g == this.gutter)
-                m.Check(g "px")
-        }
-        return m
-    }
-
     ; ── Ayraç ────────────────────────────────────────────────────────────────
     ;
     ; Ayraç YALNIZCA "Kolonlu (ayraçlı)" biçiminde kullanılır: aynı satırın
@@ -213,27 +177,23 @@ class singleScreenOcr {
     ; okunur çıktı için " | " tipik. Panelde düzenlenebilir ComboBox var —
     ; listeden seçmek de elle yazmak da mümkün.
 
-    _buildSepMenu() {
-        local m := Menu()
-        for s in singleScreenOcr.SEPS {
-            m.Add(s.label, ((v) => (*) => this._setSep(v))(s.v))
-            if (s.v == this.sep)
-                m.Check(s.label)
-        }
-        m.Add()
-        m.Add("Özel...", (*) => this._askSep())
-        return m
-    }
-
-    ; Elle giriş. \t \n \s kaçışları çözülür, böylece görünmez karakterler de
-    ; yazılabilir; kutuya yazılan boşluklar da aynen korunur.
+    ; Elle giriş kutusu; panelin ayraç kutusundaki "Özel..." satırı buraya gelir.
+    ; Kaçış dizileri çözülür — ters bölü + t/n/s sırasıyla TAB, satır sonu ve
+    ; boşluk olur; görünmez karakterler ancak böyle yazılabiliyor.
     _askSep() {
         local ib := InputBox("Hücre ayracı olarak kullanılacak metin.`n"
                            . "Kaçışlar: \t = TAB, \n = satır sonu, \s = boşluk",
                              "OCR ayracı", "w360 h150", this._sepEscape(this.sep))
-        if (ib.Result != "OK")
+        if (ib.Result != "OK" || ib.Value == "") {
+            ; Vazgeçildi: kutuda "Özel..." yazılı kalmasın, eski ayraca dön.
+            if (this.sepBox)
+                try this.sepBox.Text := this._sepLabel(this.sep)
             return
-        this._setSep(this._sepUnescape(ib.Value))
+        }
+        this.sep := this._sepUnescape(ib.Value)
+        if (this.sepBox)
+            try this.sepBox.Text := this._sepLabel(this.sep)
+        this._applyLayout()
     }
 
     ; Ayracın kullanıcıya gösterilecek adı. Hazır seçeneklerden biriyse etiketi,
@@ -279,21 +239,6 @@ class singleScreenOcr {
     ; Kurulum (admin PowerShell):
     ;   Get-WindowsCapability -Online -Name "Language.OCR*"
     ;   Add-WindowsCapability -Online -Name "Language.OCR~~~tr-TR~0.0.1.0"
-    _buildLangMenu() {
-        local m := Menu()
-        local langs := this.availableLanguages()
-        if (langs.Length == 0) {
-            m.Add("Kurulu OCR dili bulunamadı!", (*) => 0)
-            return m
-        }
-        for code in langs {
-            m.Add(code, ((c) => (*) => this._setLang(c))(code))
-            if (code == this.lang)
-                m.Check(code)
-        }
-        return m
-    }
-
     ; Arayüzde "(varsayılan)" diye MUĞLAK bir giriş göstermiyoruz.
     ; Kütüphanenin varsayılanı TryCreateFromUserProfileLanguages, yani Windows'un
     ; kullanıcı profili dillerinden KENDİ seçtiği motor — hangisini seçtiğini geri
@@ -390,8 +335,21 @@ class singleScreenOcr {
     ; metninde ayraç bulunamaz ve düz metne düşer — bu doğru davranış, durum
     ; satırında "kolon ayracı yok" diye söylenir.
 
+    ; res.Text KULLANILMAZ — ölçüm: 11 satırlık dikey bir menü OCR'landığında
+    ; motor satırları DOĞRU ayırıyor (res.Lines.Length = 11) ama WinRT'nin
+    ; OcrResult.Text özelliği satırları BOŞLUKLA birleştiriyor: içinde sıfır
+    ; satır sonu var. Sonuç "Repository GUI Clipboard history win Clipboard
+    ; history ..." diye tek satır — ekranda alt alta duran şeyler yan yana
+    ; görünüyor. Doğrusu res.Lines'ı tek tek gezip `n ile birleştirmek.
+    _plainText(res) {
+        local out := ""
+        for ln in res.Lines
+            out .= ln.Text "`n"
+        return Trim(out, " `t`r`n")
+    }
+
     _layout(res, mode) {
-        local plain := Trim(res.Text, " `t`r`n")
+        local plain := this._plainText(res)
         if (mode == "plain")
             return { text: plain, info: "düz metin" }
 
@@ -553,6 +511,9 @@ class singleScreenOcr {
         this._buildPanel()
         this._drawChrome()
         this.panel.Show()
+        ; Show sonrası: yükseklik gerçek pencere ölçüsünden hesaplanıyor,
+        ; _placePanel de o yüksekliğe göre yer seçsin.
+        this._setAdvanced(this.advanced)
         this._placePanel()
         ; Fare etkileşimi: clip_image_dialog'daki deyim — kriter SABİT bir
         ; fonksiyon nesnesi. "ahk_id <hwnd>" kullanılsaydı her oturumda yeni
@@ -590,8 +551,9 @@ class singleScreenOcr {
                 try g.Destroy()
         }
         this.band := 0, this.grips := 0, this.panel := 0
-        this.txtBox := 0, this.langBox := 0, this.modeBox := 0, this.statusTxt := 0
-        this.sepBox := 0
+        this.txtBox := 0, this.langBox := 0, this.modeBox := 0
+        this.sepBox := 0, this.scaleBox := 0, this.grayChk := 0, this.gutterBox := 0
+        this.advChk := 0, this.advCtrls := []
         this.panelPlaced := false
         this.shot := 0       ; sarmalayıcının __Delete'i HBITMAP+DC'yi bırakır
         this.lastRes := 0
@@ -608,52 +570,71 @@ class singleScreenOcr {
                 chosen := A_Index
         }
 
-        this.panel := Gui("+AlwaysOnTop +ToolWindow +Resize", "OCR — seçili alan")
-        this.panel.MarginX := 8, this.panel.MarginY := 8
+        ; Başlık durum satırı olarak kullanılıyor (_setStatus), ayrı bir metin
+        ; kontrolü yok — panelde bir satır yer kazanıyor.
+        this.panel := Gui("+AlwaysOnTop +ToolWindow +Resize", "OCR")
+        this.panel.MarginX := 14, this.panel.MarginY := 14
         this.panel.SetFont("s10", "Segoe UI")
-        ; Düzenlenebilir bırakıldı: OCR l/1/I ve 0/O karıştırır, elle düzeltmek
-        ; yeniden taramaktan hızlı. Seçim yapılırsa Kopyala YALNIZ seçimi alır.
-        ; Genişlik DAR tutuluyor: panel artık seçimin YANINA konuyor (_placePanel)
-        ; ve geniş bir panel yan boşluğa sığmayıp alta düşerdi. Pencere +Resize,
-        ; uzun metinde elle genişletilebilir.
-        this.txtBox := this.panel.AddEdit("w558 r14 +VScroll Multi")
-
-        this.panel.SetFont("s8 c505050")
-        this.statusTxt := this.panel.AddText("xm y+4 w558 h16", "okunuyor...")
-        this.panel.SetFont("s10")
+        ; Düzenlenebilir: OCR l/1/I ve 0/O karıştırır, elle düzeltmek yeniden
+        ; taramaktan hızlı. Seçim varsa Kopyala YALNIZ seçimi alır.
+        this.txtBox := this.panel.AddEdit("w520 r14 +VScroll Multi")
 
         this.panel.SetFont("s9")
-        this.panel.AddText("xm y+8 w120 h16", "Dil")
-        this.panel.AddText("x+8 yp w190 h16", "Biçim")
-        this.panel.AddText("x+8 yp w110 h16", "Ayraç")
-        ; LİSTE, dropdown DEĞİL. İki sebep:
-        ;  1) Tek tıkla seçim — aç / seç / kapan turu yok.
-        ;  2) Açık bir DropDownList'in listesi (ComboLBox) AYRI bir ÜST DÜZEY
-        ;     penceredir. ~LButton kancamız oradaki tıklamayı "tuvale tıklandı"
-        ;     sanıp seçimi iptal ediyordu; seçim de bu yüzden commit olmuyor,
-        ;     biçim hep "Düz metin"e geri dönüyordu. Liste alt kontrol, sorun yok.
-        this.langBox := this.panel.AddListBox("xm y+2 w120 r4 Choose" chosen, this.langs)
-        this.modeBox := this.panel.AddListBox("x+8 yp w190 r4 Choose1",
+        this.panel.AddText("xm y+16 w140 h18", "Dil")
+        this.panel.AddText("x+14 yp w210 h18", "Biçim")
+        this.panel.AddText("x+14 yp w140 h18", "Ayraç")
+
+        ; LİSTE, dropdown DEĞİL: tek tıkla seçiliyor, ayrıca açık bir DDL listesi
+        ; (ComboLBox) ayrı üst düzey pencere olduğu için ~LButton kancamızla
+        ; çakışıp seçimi iptal ediyordu.
+        this.langBox := this.panel.AddListBox("xm y+6 w140 r4 Choose" chosen, this.langs)
+        this.modeBox := this.panel.AddListBox("x+14 yp w210 r4 Choose1",
                             ["Düz metin", "Kolonlu (sırayla)", "Kolonlu (ayraçlı)"])
-        ; DÜZENLENEBİLİR ComboBox: listeden seç ya da doğrudan yaz. Yukarıdaki
-        ; "liste kullan" kuralının istisnası — elle giriş DropDownList'te yok.
-        ; Açılan liste (ComboLBox) ayrı bir üst düzey pencere; _isOverCanvas
-        ; artık KENDİ sürecimizin pencerelerini tuval saymıyor, bu yüzden
-        ; eskiden seçimi iptal eden çakışma burada yaşanmıyor.
         local sepLabels := []
         for s in singleScreenOcr.SEPS
             sepLabels.Push(s.label)
-        this.sepBox := this.panel.AddComboBox("x+8 yp w110", sepLabels)
+        sepLabels.Push(singleScreenOcr.SEP_CUSTOM)
+        this.sepBox := this.panel.AddComboBox("x+14 yp w140", sepLabels)
         this.sepBox.Text := this._sepLabel(this.sep)
-        this.panel.AddButton("x+12 yp w110 h36 Default", "Kopyala").OnEvent("Click", (*) => this._copy())
 
-        ; Dil değişince yeniden OCR gerekir ama EKRANI TEKRAR ÇEKMEYE GEREK YOK
-        ; (this.shot duruyor). Kolon biçimi ise OCR bile gerektirmez.
+        ; y+N BİR ÖNCEKİ kontrolün altına hizalar; sıradaki son kontrol tek
+        ; satırlık ayraç kutusu olduğu için düğme listelerin ÜSTÜNE biniyordu.
+        ; Bu yüzden y, listenin dibinden açıkça hesaplanıyor.
+        local lbY := 0, lbH := 0
+        this.langBox.GetPos(, &lbY, , &lbH)
+        this.panel.SetFont("s10")
+        local btn := this.panel.AddButton("xm y" (lbY + lbH + 20) " w400 h40 Default", "Kopyala")
+        btn.OnEvent("Click", (*) => this._copy())
+
+        this.panel.SetFont("s9")
+        this.advChk := this.panel.AddCheckBox("x+18 yp+11 h20" (this.advanced ? " Checked" : ""), "Gelişmiş")
+        this.advChk.OnEvent("Click", (*) => this._setAdvanced(this.advChk.Value ? true : false))
+
+        ; Gelişmiş satır EN ALTTA: gizlenince altında taşınacak kontrol kalmıyor,
+        ; pencere yalnız kısalıyor. +0x200 = SS_CENTERIMAGE (dikey hizalama).
+        local btnY := 0, btnH := 0
+        btn.GetPos(, &btnY, , &btnH)
+        this.baseBottom := btnY + btnH
+        local ay := this.baseBottom + 16
+        local lblScale := this.panel.AddText("xm y" ay " h24 +0x200", "Ölçek")
+        this.scaleBox := this.panel.AddDDL("x+8 yp w64 Choose" this.scale, ["x1", "x2", "x3", "x4"])
+        this.grayChk := this.panel.AddCheckBox("x+28 yp+3 h20" (this.grayscale ? " Checked" : ""), "Gri tonlama")
+        local lblGutter := this.panel.AddText("x+28 yp-3 h24 +0x200", "Kolon eşiği")
+        this.gutterBox := this.panel.AddComboBox("x+8 yp w110", singleScreenOcr.GUTTERS)
+        this.gutterBox.Text := this._gutterLabel(this.gutter)
+        this.advCtrls := [lblScale, this.scaleBox, this.grayChk, lblGutter, this.gutterBox]
+        this.advBottom := ay + 24
+        for c in this.advCtrls
+            c.Visible := this.advanced
+
+        ; Dil/ölçek/gri → yeniden OCR (ekran tekrar ÇEKİLMEZ, this.shot duruyor).
+        ; Biçim/ayraç/kolon eşiği → yalnız yeniden dizme, OCR yok.
         this.langBox.OnEvent("Change", (*) => this._onLangChange())
         this.modeBox.OnEvent("Change", (*) => this._onModeChange())
-        ; Change hem listeden seçimde hem de kutuya yazarken tetiklenir; ikisi de
-        ; yalnız yeniden biçimlendirme demek, OCR tekrarlanmaz.
         this.sepBox.OnEvent("Change", (*) => this._onSepChange())
+        this.scaleBox.OnEvent("Change", (*) => this._onScaleChange())
+        this.grayChk.OnEvent("Click", (*) => this._onGrayChange())
+        this.gutterBox.OnEvent("Change", (*) => this._onGutterChange())
         this.panel.OnEvent("Escape", (*) => this._closeSession())
         this.panel.OnEvent("Close", (*) => this._closeSession())
     }
@@ -754,6 +735,12 @@ class singleScreenOcr {
     _onSepChange() {
         if (!this.sepBox)
             return
+        ; "Özel..." bir ayraç değil, bir KOMUT: kutuya doğrudan yazmak da
+        ; mümkün ama kaçışları (\t, \n, \s) ancak bu kutucuk anlatabiliyor.
+        if (this.sepBox.Text == singleScreenOcr.SEP_CUSTOM) {
+            this._askSep()
+            return
+        }
         local v := this._sepFromText(this.sepBox.Text)
         if (v == "")
             return          ; kutu boşaltıldı; kullanıcı hâlâ yazıyor olabilir
@@ -762,6 +749,59 @@ class singleScreenOcr {
         if (this.modeBox && this.modeBox.Value != 3)
             try this.modeBox.Value := 3
         this._applyLayout()
+    }
+
+    ; Gelişmiş satırı aç/kapa. Yükseklik, kontrollerin kendi koordinatlarından
+    ; hesaplanıyor: ikisi de Gui birimleri, DPI karışıklığı doğmuyor.
+    _setAdvanced(show) {
+        this.advanced := show
+        if (!this.panel)
+            return
+        for c in this.advCtrls
+            try c.Visible := show
+        local wh := 0, ch := 0
+        this.panel.GetPos(, , , &wh)
+        this.panel.GetClientPos(, , , &ch)
+        local want := (show ? this.advBottom : this.baseBottom) + this.panel.MarginY
+        this.panel.Move(, , , (wh - ch) + want)
+    }
+
+    _onScaleChange() {
+        local v := this.scaleBox.Value
+        if (v < 1 || v > 4)
+            return
+        this.scale := v
+        this._reOcr()
+    }
+
+    _onGrayChange() {
+        this.grayscale := this.grayChk.Value ? true : false
+        this._reOcr()
+    }
+
+    _onGutterChange() {
+        local v := this._gutterFromText(this.gutterBox.Text)
+        if (v < 0)
+            return          ; anlamsız giriş; kullanıcı hâlâ yazıyor olabilir
+        this.gutter := v
+        this._applyLayout()
+    }
+
+    _gutterLabel(v) {
+        return (v == 0) ? "Otomatik" : v "px"
+    }
+
+    ; Kutudaki metinden piksel değeri. 0 = otomatik, -1 = anlaşılmadı.
+    ; "80px", "80 px", "80" hepsi kabul; sayı yoksa kullanıcı yazmayı
+    ; sürdürüyordur, sessizce yok sayılır.
+    _gutterFromText(txt) {
+        txt := Trim(txt)
+        if (txt == "" || InStr(txt, "Oto") == 1)
+            return 0
+        local m := 0
+        if (!RegExMatch(txt, "\d+", &m))
+            return -1
+        return Integer(m[0])
     }
 
     _onLangChange() {
@@ -798,13 +838,14 @@ class singleScreenOcr {
     _reOcr() {
         if (!this.session || !this.shot)
             return
+        this._setStatus("okunuyor...")
         try {
             local t := A_TickCount
             this.lastRes := OCR.FromBitmap(this.shot, this._opts())
             this.lastMs := A_TickCount - t
         } catch as err {
             App.ErrHandler.handleError("ScreenOcr._reOcr: " err.Message, err)
-            this._setStatus("⚠ OCR hatası: " err.Message)
+            this._setStatus("⚠ " err.Message)
             return
         }
         this._applyLayout()
@@ -816,14 +857,18 @@ class singleScreenOcr {
             return
         local out := this._layout(this.lastRes, this._modeKey())
         this.txtBox.Value := out.text
-        this._setStatus(this.rect.w "×" this.rect.h " px · " this.lang " · " this.lastMs " ms · "
-                      . StrLen(out.text) " karakter · " out.info
-                      . " · ölçek x" this.scale (this.grayscale ? " · gri" : ""))
+        ; Dil, biçim, ölçek zaten panelde görünüyor — başlıkta yalnız ekranda
+        ; okunamayanlar: boyut, süre, uzunluk. Uyarı varsa (kolon ayracı yok
+        ; gibi) o da eklenir; başka türlü hiçbir yerde görünmezdi.
+        local s := this.rect.w "x" this.rect.h " " this.lastMs "ms " StrLen(out.text) "len"
+        if (InStr(out.info, "⚠"))
+            s .= " · " out.info
+        this._setStatus(s)
     }
 
     _setStatus(s) {
-        if (this.statusTxt)
-            try this.statusTxt.Value := s
+        if (this.panel)
+            try this.panel.Title := "OCR: " s
     }
 
     ; Edit'te seçili parça varsa YALNIZ onu, yoksa metnin tamamını kopyala.
@@ -1243,50 +1288,6 @@ class singleScreenOcr {
         A_Clipboard := text
         ShowTip((info == "" ? "" : info "`n────────`n") text, TipType.Copy, 3000)
         return text
-    }
-
-    _setScale(v) {
-        this.scale := v
-        ShowTip("OCR ölçeği: x" v, TipType.Info, 700)
-        this._reOcr()
-    }
-
-    _toggleGray() {
-        this.grayscale := !this.grayscale
-        ShowTip("Gri tonlama: " (this.grayscale ? "açık" : "kapalı"), TipType.Info, 700)
-        this._reOcr()
-    }
-
-    ; Menüden ayraç değişimi. Panel açıksa kutu da senkron kalsın.
-    _setSep(v) {
-        if (v == "") {
-            ShowTip("Ayraç boş olamaz", TipType.Warning, 1200)
-            return
-        }
-        this.sep := v
-        ShowTip("OCR ayracı: " this._sepLabel(v), TipType.Info, 700)
-        if (this.sepBox)
-            try this.sepBox.Text := this._sepLabel(v)
-        this._applyLayout()
-    }
-
-    _setGutter(v) {
-        this.gutter := v
-        ShowTip("Kolon eşiği: " (v == 0 ? "otomatik" : v "px"), TipType.Info, 700)
-        this._applyLayout()
-    }
-
-    _setLang(code) {
-        this.lang := code
-        ShowTip("OCR dili: " code, TipType.Info, 700)
-        ; Panel açıkken menüden dil değiştirilirse liste de senkron kalsın
-        if (this.langBox) {
-            for c in this.langs {
-                if (c == code)
-                    try this.langBox.Value := A_Index
-            }
-        }
-        this._reOcr()
     }
 
     __Delete() {

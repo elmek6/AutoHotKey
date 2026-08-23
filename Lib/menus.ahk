@@ -30,13 +30,31 @@ getStatsArray(showMsgBox := false) {
     return statsArray
 }
 
+; ── Menü kolonları ─────────────────────────────────────────────────────
+; Win32 menüsü dikeyde ekran boyuyla sınırlı: sığmayınca Windows kolon
+; açmaz, üste/alta kaydırma oku koyar (Win95 dönemindeki otomatik kolona
+; sarma davranışı Win2000'de kaldırıldı). Kolonu ELLE istemek gerekiyor.
+;
+; Bunun bayrağı MFT_MENUBARBREAK / MFT_MENUBREAK: bayrağı taşıyan öğe YENİ
+; BİR KOLONUN ilk öğesi olur. AHK v2 bunu Menu.Add'in 3. parametresinden
+; veriyor — GetMenuItemInfo ile doğrulandı (BarBreak -> fType 0x20,
+; Break -> 0x40), yani DllCall'a gerek yok.
+;
+;   MENU_COL     "BarBreak" : yeni kolon + araya dikey ayraç çizgisi
+;   MENU_COL_NL  "Break"    : yeni kolon, çizgisiz
+;
+; Kullanımı: bölünecek öğenin Add çağrısına 3. argüman olarak ver —
+;   menu.Add("Yeni kolonun ilk öğesi", cb, MENU_COL)
+; Alt menülerde de çalışır. Kolon başına satır sayısını Windows değil sen
+; belirlersin; ekrana sığmayan kolon yine kaydırma oku alır.
+global MENU_COL := "BarBreak"
+global MENU_COL_NL := "Break"
+
 showF13menu() {
     Click("Middle", 1)
     State.window.update()
 
     menuF13 := Menu()
-    menuAppProfile(menuF13)
-    menuF13.Add()
     ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
 
     subKeyMenu := Menu()
@@ -45,20 +63,29 @@ showF13menu() {
     subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
     subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
 
-    menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
-    menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
+    ; ── 1. KOLON: pano · ekran görüntüsü · OCR ──────────────────────
     menuF13.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
-    menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
-    menuF13.Add("OCR ayarlari / hizli mod", App.ScreenOcr.buildMenu())
-    menuF13.Add("Ekrandan metin oku (OCR)", (*) => App.ScreenOcr.snipInteractive())
-    menuF13.Add("Select text with OCR", (*) => Send("{LWin down}{Shift down}t{Shift up}{LWin up}"))
+    menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
+    menuF13.Add()
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
+    menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
+    menuF13.Add()
+    menuF13.Add("Select text with OCR", (*) => Send("{LWin down}{Shift down}t{Shift up}{LWin up}"))
+    menuF13.Add("Ekrandan metin oku (OCR)", (*) => App.ScreenOcr.snipInteractive())
+    menuF13.Add("Basit OCR (duz metin, panoya)", (*) => App.ScreenOcr.snip("plain"))
+
+    ; ── 2. KOLON: aktif pencere profili · araçlar · hep üstte ───────
+    ; Kolon ayracını MENU_COL çiziyor; bu yüzden 1. kolonun sonunda
+    ; ayrıca menuF13.Add() ayracı YOK — olsaydı kolon dibinde boşta
+    ; asılı bir yatay çizgi kalırdı.
+    menuAppProfile(menuF13, MENU_COL)
+    menuF13.Add()
+    menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
     menuF13.Add("Incognito modu", (*) => App.Incognito.toggle())
     menuF13.Add("Special keys", subKeyMenu)
     if (App.Incognito.isActive())
         menuF13.Check("Incognito modu")
-
     menuF13.Add()
     menuAlwaysOnTop(menuF13)
 
@@ -127,7 +154,15 @@ menuStats() {
     return menuStats
 }
 
-menuAppProfile(targetMenu) {
+; firstOpt : bu bloğun İLK öğesine verilecek Menu.Add seçeneği. MENU_COL
+;            geçilirse blok yeni bir kolondan başlar. Blok boş olamaz —
+;            profil yoksa "Ekle" öğesi ilk sırayı alır — yani bayrak hep
+;            bir yere düşer, kolon sessizce kaybolmaz.
+; colEvery : kaç kısayolda bir yeni kolona geçilsin (0 = hiç bölme).
+;            Kısayol sayısı profile göre değişiyor; sabit bir yere kolon
+;            koymak yerine sayarak bölmek gerekiyor, yoksa kalabalık bir
+;            profil yine ekranı taşırıp kaydırma okuna düşürür.
+menuAppProfile(targetMenu, firstOpt := "", colEvery := 20) {
     profile := App.AppShorts.findProfileByWindow()
     className := State.Window.getClass()
 
@@ -135,26 +170,37 @@ menuAppProfile(targetMenu) {
         for sc in profile.shortCuts {
             ; IIFE şart: closure değişkeni referansla yakalar, tek 'lambda' değişkeni
             ; kullanılınca tüm menü öğeleri SON kısayolu oynatıyordu
-            targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), ((s) => (*) => s.play())(sc))
+            local opt := firstOpt
+            firstOpt := ""
+            if (colEvery && A_Index > 1 && Mod(A_Index - 1, colEvery) = 0)
+                opt := MENU_COL
+            targetMenu.Add("▸" . sc.shortCutName . (sc.keyDescription ? " - " sc.keyDescription : ""), ((s) => (*) => s.play())(sc), opt)
         }
-        targetMenu.Add("Profili düzenle", (*) => App.AppShorts.showManagerGui(profile))
+        ; Kısayolu olmayan profilde döngü hiç dönmez; bayrak buraya düşer.
+        targetMenu.Add("Profili düzenle", (*) => App.AppShorts.showManagerGui(profile), firstOpt)
     } else {
-        targetMenu.Add("▸ Ekle (" className ")", (*) => App.AppShorts.editProfileForActiveWindow())
+        targetMenu.Add("▸ Ekle (" className ")", (*) => App.AppShorts.editProfileForActiveWindow(), firstOpt)
         targetMenu.Add("Profiller", (*) => App.AppShorts.showManagerGui())
     }
 }
 
-menuAlwaysOnTop(targetMenu) {
+; firstOpt: bu bloğun İLK öğesine verilecek Menu.Add seçeneği. MENU_COL
+; geçilirse blok yeni bir kolondan başlar (bkz. dosya başındaki not).
+; Bayrak sonraki öğelere DEĞİL yalnız ilkine gitmeli — hepsine verilirse
+; her satır kendi kolonunu açar.
+menuAlwaysOnTop(targetMenu, firstOpt := "") {
     title := State.Window.getTitle()
     hwnd := State.Window.getHwnd()
 
     if (!State.Window.onTopWindows.Has(hwnd)) {
         local label := SubStr(title, 1, 60)
-        targetMenu.Add("📍 Add " . label, (*) => State.Window.toggleAlwaysOnTop(hwnd, title))
+        targetMenu.Add("📍 Add " . label, (*) => State.Window.toggleAlwaysOnTop(hwnd, title), firstOpt)
+        firstOpt := ""
     }
 
     for key, value in State.Window.onTopWindows {
-        targetMenu.Add("📌 " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value))
+        targetMenu.Add("📌 " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value), firstOpt)
+        firstOpt := ""
         targetMenu.Check("📌 " . value)
     }
 

@@ -2,33 +2,20 @@
 ;  incognito.ahk — Windows "Incognito" (Jump List dondurma) modülü
 ; ────────────────────────────────────────────────────────────────────────
 ;  Orijinal fikir: RemiGC/WindowsIncognito (C#/WPF, 2015 — terk edilmiş).
-;  O program %APPDATA%\...\Recent\AutomaticDestinations\*.automaticDestinations-ms
-;  dosyalarını FileShare.None ile açıp handle'ı açık tutarak Windows'un jump
-;  list geçmişini güncellemesini engelliyordu.
 ;
-;  Bu port (Win10/11 için güçlendirilmiş):
-;   • AutomaticDestinations + CustomDestinations klasörlerini birlikte kapsar.
-;   • "rw-" flag'i ile dosyaları exclusive (yazma+silme dış süreçlere kapalı)
-;     açar; dosya truncate EDİLMEZ, mevcut içerik korunur.
-;   • Canlı izleme: aktifken bir timer yeni oluşan jump list dosyalarını da
-;     anında kilitler (yeni açılan uygulamalar da yakalanır).
-;   • cleanNow(): CCleaner/PrivaZer mantığı — dosyaları sonradan siler.
-;   • Friendly-name eşlemesi: Files\incognito_appids.json (EricZimmerman listesi).
-;
-;  ÜÇ KATMAN (ölçüm sonucu eklendi — jump list tek başına yetmiyordu):
+;  ÜÇ KATMAN — jump list kilidi tek başına yetmiyordu (tek bir indirme 5 ayrı
+;  depoya iz bırakıyor, kilit bunun 1'ini kapsıyordu):
 ;   1. ÖNLE   : PolicyGuard, oturum boyunca Explorer'ın izlemesini kapatır.
-;   2. DONDUR : jump list kilidi (aşağıdaki _lockFile).
-;   3. GERİ AL: trace_store snapshot/restore — oturumda oluşan registry ve
-;               dosya izleri enable() anındaki haline döndürülür.
-;  Tek bir indirme ölçümde 5 ayrı depoya iz bırakıyordu; kilit bunun yalnızca
-;  1'ini kapsıyordu. Kapsam listesi için bkz. this.stores.
+;   2. DONDUR : jump list kilidi (_lockFile).
+;   3. GERİ AL: trace_store snapshot/restore.
 ;
-; ────────────────────────────────────────────────────────────────────────
-;  GELİŞTİRME NOTLARI (acı çekerek öğrenildi):
-;   • Kilit flag'i "rw-": exclusive (FileShare.None), dosyayı truncate ETMEZ.
-;     Ampirik test: "rw" tiresiz = paylaşımlı (kilitlemez); tire şart.
-;   • Sıralama kritik: snapshot KİLİTLEMEDEN ÖNCE, restore KİLİT AÇILDIKTAN
-;     SONRA olmalı — kilitli dosya kopyalanamaz (FileShare.None okumayı da keser).
+;  İKİ KURAL — bozarsan sessizce veri kaybedersin:
+;   • Kilit flag'i "r-". "w-" ASLA — AHK'da "w" dosyayı SIFIRLAR (bkz.
+;     _lockFile). Tiresiz "rw" ise hiç kilitlemez; tire şart.
+;   • Snapshot KİLİTLEMEDEN ÖNCE, restore KİLİT AÇILDIKTAN SONRA — kilitli
+;     dosya kopyalanamaz (FileShare.None okumayı da keser).
+;
+;  Hız çalışmasının ölçümleri ve gerekçeleri: incognito-hizlandirma-plani.md
 ; ════════════════════════════════════════════════════════════════════════
 
 class singleIncognito {
@@ -46,13 +33,10 @@ class singleIncognito {
             throw Error("singleIncognito zaten oluşturuldu! getInstance kullan.")
         }
         this.active := false
-        ; enable()/disable() reg.exe'ye RunWait/ProcessWaitClose ile beklerken
-        ; AHK diğer timer/GUI olaylarına ARA VERİR (Critical değiliz) — yani
-        ; "Kapat" düğmesine üst üste basmak, ilk disable() daha bitmeden İKİNCİ
-        ; bir disable()'ı ÜSTÜNE başlatabiliyordu (this.active henüz false
-        ; olmadığı için erken-çıkış kontrolü işe yaramıyordu). Sonuç: aynı
-        ; registry anahtarlarına çakışan reg delete/import'lar, "takılmış"
-        ; görünüm, gereksiz uzayan süre. Bu bayrak ikinci çağrıyı no-op yapar.
+        ; Critical değiliz: ProcessWaitClose sırasında AHK timer/GUI olaylarına
+        ; ara veriyor, yani "Kapat"a üst üste basmak ilk disable() bitmeden
+        ; ikincisini başlatabiliyor (this.active henüz false). Bu bayrak
+        ; ikinci çağrıyı no-op yapar.
         this._busy := false
         this.handles := Map()           ; fullPath -> FileObject (açık kilit handle'ları)
         this.handles.CaseSense := "Off"
@@ -63,6 +47,7 @@ class singleIncognito {
         this._badgeInfo := 0            ; pencere içindeki sayaç metni
         this._cbVlc := 0               ; checkbox kontrolü
         this._cbRestore := 0           ; checkbox kontrolü
+        this._cbDeep := 0              ; checkbox kontrolü — derin izler
         this._btnClose := 0            ; "Kapat" düğmesi — tıklanınca anında devre dışı bırakılır
 
         local recent := A_AppData "\Microsoft\Windows\Recent\"
@@ -71,50 +56,89 @@ class singleIncognito {
             { path: recent "CustomDestinations\", ext: "customDestinations-ms" }
         ]
 
-        ; "Son dosyalar" kısayolları (.lnk). Açtığın her dosya buraya kısayol bırakır
-        ; (Hızlı Erişim'de görünür). Kilitlemek Explorer'ı bozar -> sürekli SİL.
-        ; Eski geçmişi korumak için yalnız oturumda oluşanlar silinir (zaman filtresi).
-        ; Bu, oturum SIRASINDA da görünmemesini sağlar; kapanıştaki asıl temizlik
-        ; snapshot/restore ile yapılır.
+        ; "Son dosyalar" kısayolları. Kilitlemek Explorer'ı bozuyor -> sürekli
+        ; SİL, ama yalnız oturumda oluşanları (eski geçmiş korunsun).
         this.recentDir := recent
         this._sessionStart := 0
 
         ; ── Katman 3: iz depoları (snapshot + geri yükle) ────────────────
-        ; Ölçüm: tek bir indirme bu depoların 5'ine birden yazıyor.
+        ; Liste tahminle değil, SANS FOR500 / RegRipper / CrowdStrike-Group-IB
+        ; kesişiminden ve her biri bu makinede ölçülerek kuruldu.
+        ;
+        ; SIRA ÖNEMLİ — EN AĞIR DEPO EN ÖNDE; başlatma sırası bu.
+        ; Yeni depo eklerken ölçüp ağırlığına göre yerleştir, sona ekleme.
+        ;
+        ; KADEME: core = DOSYA ADI taşıyan izler (varsayılan açık).
+        ;         deep = klasör gezinme + program çalıştırma izleri, dosya adı
+        ;                tutmaz; maliyetin büyük kısmı burada (varsayılan
+        ;                kapalı, rozetteki "Derin izler" kutusundan açılır).
+        ; Örnek: C:\foto\tatil.jpg açıldığında core "tatil.jpg" adını, deep
+        ; yalnız "C:\foto" klasörünü görür.
+        ;
+        ; BİLEREK KAPSAM DIŞI (araştırıldı, ölçüldü, elendi):
+        ;  • Thumbcache (thumbcache_*.db) — MODÜLÜN EN BÜYÜK AÇIĞI. Önizlenen
+        ;    her görselin küçük resmi orada kalıyor, DOSYA SİLİNSE BİLE
+        ;    (~1,1 GB). Explorer dosyaları açık tuttuğu için ne kilitlenebiliyor
+        ;    ne silinebiliyor; önleme kolu Explorer restart istiyor olabilir.
+        ;  • Windows Timeline — dosya CDPUserSvc'de kilitli, politika HKLM
+        ;    (admin+reboot), üstelik Win11'de kaldırıldı.
+        ;  • Prefetch / SRUM / ShimCache / BAM / olay günlükleri — admin ister;
+        ;    bu modül bilinçli HKCU-only.
+        ;  • MountPoints2 — var ama bu makinede USB kullanılmıyor.
         local E := "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer"
         local SH := "HKCU\Software\Microsoft\Windows\Shell"                                  ; Shellbags (NTUSER.DAT)
         local SC := "HKCU\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell"   ; Shellbags + MUICache (UsrClass.dat)
-        this.stores := [
-            RegStore("RecentDocs", E "\RecentDocs"),                        ; Explorer "son dosyalar"
-            RegStore("OpenSavePidlMRU", E "\ComDlg32\OpenSavePidlMRU"),     ; "Farklı kaydet" geçmişi
-            RegStore("LastVisitedPidlMRU", E "\ComDlg32\LastVisitedPidlMRU"), ; uygulama başına son klasör
-            RegStore("TypedPaths", E "\TypedPaths"),                        ; adres çubuğuna yazılanlar
-            RegStore("WordWheelQuery", E "\WordWheelQuery"),                ; Explorer arama kutusu
-            RegStore("RunMRU", E "\RunMRU"),                                ; Win+R geçmişi
-            ; UserAssist: çalıştırılan GUI programların adı (ROT13) + çalışma
-            ; sayısı/son çalışma zamanı — klasik "evidence of execution" izi.
-            ; reg export/import ham veriyle çalışır, ROT13 çözmemize gerek yok.
-            RegStore("UserAssist", E "\UserAssist"),
-            ; MUICache: Explorer'dan başlatılan her programın adı. DİKKAT — çoğu
-            ; kaynakta geçen ShellNoRoam\MUICache yolu XP dönemine ait; Win10/11'de
-            ; burası (UsrClass.dat hive'ı içinde). Ampirik: eski yol hiç yok, bu 214 kayıt.
-            RegStore("MUICache", SC "\MuiCache"),
-            ; Shellbags: gezinilen klasörlerin görünüm/boyut/konum geçmişi —
-            ; RecentDocs/MRU'nun KAPSAMADIĞI, adli bilişimde ayrıca aranan bir
-            ; iz kaynağı (EricZimmerman'ın ShellBags Explorer'ının konusu).
-            ; İki hive'da da var: NTUSER.DAT (SH) ve UsrClass.dat (SC), her
-            ; ikisinde de BagMRU (gezinilen sıra) + Bags (görünüm ayarları) çifti.
-            RegStore("ShellBagMRU", SH "\BagMRU"),
-            RegStore("ShellBags", SH "\Bags"),
-            RegStore("ShellBagMRU_UsrClass", SC "\BagMRU"),
-            RegStore("ShellBags_UsrClass", SC "\Bags"),
+        this.allStores := [
+            ; Shellbags çifti: BagMRU = gezinilen klasör sırası (asıl kanıt,
+            ; tam snapshot şart), Bags = yalnız görünüm ayarı ama 8.2 MB /
+            ; 47k kayıtla maliyetin ~%90'ıydı -> delta yoluna alındı.
+            RegStore("ShellBagMRU_UsrClass", SC "\BagMRU", "deep"),         ; 2.75 MB — en ağır, klasör izi
+            RegStore("OpenSavePidlMRU", E "\ComDlg32\OpenSavePidlMRU"),     ; "Farklı kaydet"te seçilen DOSYA adları — 1.70 MB
+            RegStore("RecentDocs", E "\RecentDocs"),                        ; Explorer "son dosyalar" — 1.28 MB
+            RegStore("UserAssist", E "\UserAssist", "deep"),                ; çalıştırılan programlar (ROT13) — 231 KB
+            RegDeltaStore("ShellBags_UsrClass", SC "\Bags", "deep"),        ; BagMRU_UsrClass ile EŞLİ, bkz. this.coupled
+            ; ComDlg32'nin DÖRDÜ birden kapsamda: ikisini izleyip ikisini
+            ; bırakmak kapıyı yarı kapatmak oluyordu.
+            RegStore("LastVisitedPidlMRU", E "\ComDlg32\LastVisitedPidlMRU"), ; uygulama başına son klasör — 55 KB
+            RegStore("CIDSizeMRU", E "\ComDlg32\CIDSizeMRU", "deep"),       ; Aç/Kaydet penceresi açan programlar — 199 KB
+            RegStore("FirstFolder", E "\ComDlg32\FirstFolder", "deep"),     ; Aç/Kaydet'te ilk gösterilen klasör
+            RegStore("FeatureUsage", E "\FeatureUsage", "deep"),            ; hangi program kaç kez öne getirildi
+            RegStore("ShellBags", SH "\Bags", "deep"),                      ; NTUSER tarafı; küçük ama kapsamda
+            RegStore("ShellBagMRU", SH "\BagMRU", "deep"),
+            RegStore("WordWheelQuery", E "\WordWheelQuery", "deep"),        ; Explorer arama kutusu
+            RegStore("TypedPaths", E "\TypedPaths", "deep"),                ; adres çubuğuna yazılanlar
+            RegStore("RunMRU", E "\RunMRU", "deep"),                        ; Win+R geçmişi
+            ; DİKKAT: kaynaklarda geçen ShellNoRoam\MUICache XP dönemine ait,
+            ; bu makinede yok. Local Settings\MuiCache\<n>\<hash> ise BAŞKA
+            ; bir şey (yerelleştirme önbelleği, kullanıcı izi değil).
+            RegStore("MUICache", SC "\MuiCache", "deep"),                   ; Explorer'dan başlatılan program adları
             FileGlobStore("RecentLnk", recent, "*.lnk"),
             FileGlobStore("JumpListAuto", recent "AutomaticDestinations\", "*.automaticDestinations-ms"),
             FileGlobStore("JumpListCustom", recent "CustomDestinations\", "*.customDestinations-ms")
         ]
+
+        ; EŞLİ DEPOLAR — birlikte geri yüklenmek ZORUNDA. Delta silmesi boş
+        ; NodeSlot bırakıyor; slotun yeniden kullanılmaması NodeSlots bitmap'ini
+        ; İÇEREN BagMRU deposunun tam geri yüklenmesine bağlı. Üyeler aynı
+        ; kademede olmalı, yoksa delta deposu kardeşi olmadan çalışır ve
+        ; sessizce sızdırır.
+        this.coupled := [["ShellBags_UsrClass", "ShellBagMRU_UsrClass"]]
         this.snapDir := A_ScriptDir "\Files\incognito_snapshot\"
+        this.optFile := A_ScriptDir "\Files\incognito.ini"
         this.restoreOnClose := true     ; badge'daki [x] Geri yükle checkbox'u
-        this._baseline := Map()         ; store adı -> enable() anındaki kayıt sayısı
+        this.deepMode := this._readOpt("deep", false)   ; varsayılan KAPALI
+        this.stores := this._selectStores()
+        this._lastSkipped := 0          ; son disable()'da dokunulmamış depo sayısı
+        this._snapGen := 0              ; ertelenmiş yedek silmesini geçersiz kılan sayaç
+        this._pendingSnap := 0          ; beklenmemiş yedek; bkz. _finishSnapshot
+        this._pendingPid := 0           ; toplu reg export'un cmd.exe pid'i (yoklama için)
+
+        ; Adım adım süreyi Files\incognito_perf.log'a yazar. Kapalıyken
+        ; maliyeti sıfır (her kanca ilk satırda dönüyor).
+        this.perfLog := true
+        this._perfBuf := ""
+        this._perfT := 0
+        this._perfT0 := 0
 
         ; ── Katman 1: önleme ────────────────────────────────────────────
         ; Snapshot/restore'u güvenilir kılan parça: Explorer listeyi bellekte
@@ -126,19 +150,106 @@ class singleIncognito {
               value: "NoRecentDocsHistory", data: 1 }
         ])
 
-        ; Uygulama-içi geçmiş tutan programlar (VLC vb.) için ek hedefler.
-        ; Jump list değil; bu dosyaları kilitlemek uygulamayı bozabilir, bu yüzden
-        ; varsayılan olarak BOŞ. İstenirse addExtraTarget() ile eklenebilir.
-        ; Örn (VLC son medya listesi):
-        ;   this.addExtraTarget(A_AppData "\vlc\vlc-qt-interface.ini")
+        ; Uygulama-içi geçmiş dosyaları. Kilitlemek uygulamayı bozabildiği
+        ; için varsayılan BOŞ; addExtraTarget() ile eklenir.
         this.extraTargets := []
 
-        ; VLC son-medya geçmişi (jump list değil, uygulama-içi). Kilitlemek VLC'yi
-        ; bozabileceği için kilit yerine "sürekli boşalt" yöntemi kullanılır.
+        ; VLC: kilit yerine "sürekli boşalt" (kilitlemek VLC'yi bozuyor).
         this.coverVlc := true
         this.vlcIni := A_AppData "\vlc\vlc-qt-interface.ini"
 
         this.appIds := this._loadAppIds()   ; hex(lower) -> friendly name
+    }
+
+    ; ── Kademe ──────────────────────────────────────────────────────────
+    ; Oturumda kapsanacak depolar. Sıra korunur (en ağır önde).
+    _selectStores() {
+        if (this.deepMode)
+            return this.allStores.Clone()
+        local sel := []
+        for s in this.allStores {
+            if (s.tier = "core")
+                sel.Push(s)
+        }
+        return sel
+    }
+
+    ; Derin izleri aç/kapat. AKTİFKEN de çağrılabilir: açarken yedek O AN
+    ; alınır (öncesi kapsam dışı kalır — yedek geçmişe gidemez), kapatırken
+    ; o depolardaki oturum izleri KALIR.
+    setDeepMode(on) {
+        on := !!on
+        if (on = this.deepMode)
+            return
+        this.deepMode := on
+        this._writeOpt("deep", on)
+        if (!this.active) {
+            this.stores := this._selectStores()
+            return
+        }
+        ; Kapsam değişiyor; bekleyen yedek yarım kalmasın.
+        this._finishSnapshot()
+        local before := Map()
+        for s in this.stores
+            before[s.name] := true
+        local next := this._selectStores()
+        if (on) {
+            local added := []
+            for s in next {
+                if (!before.Has(s.name))
+                    added.Push(s)
+            }
+            this.stores := next
+            this._snapshotStores(added)
+        } else {
+            local dropped := []
+            for s in this.stores {
+                if (s.tier = "deep")
+                    dropped.Push(s)
+            }
+            this.stores := next
+            ; Her depo tipinin yedek uzantısı — biri eklenirse buraya da
+            ; eklenmeli, yoksa kapsam dışına çıkan depo yedek sızdırır.
+            for s in dropped {
+                try s.endWatch()
+                for ext in [".reg", ".hwm", ".absent", ".pack"]
+                    try FileDelete(this.snapDir s.name ext)
+                try DirDelete(this.snapDir s.name, true)
+            }
+        }
+        this._refreshBadgeList()
+    }
+
+    ; Oturum ORTASINDA kapsama giren depoları yedekle. Bekleme senkron:
+    ; kullanıcı kutuyu az önce tıkladı, iş de birkaç depo.
+    _snapshotStores(list) {
+        if (!list.Length)
+            return
+        try DirCreate(this.snapDir)
+        for s in list {
+            try s.beginWatch()
+        }
+        local pending := Map()
+        for s in list {
+            try pending[s.name] := s.beginSnapshot(this.snapDir)
+        }
+        for s in list {
+            try s.endSnapshot(this.snapDir, pending.Has(s.name) ? pending[s.name] : 0)
+        }
+    }
+
+    ; ── Ayar kalıcılığı (Files\incognito.ini) ───────────────────────────
+    _readOpt(name, def) {
+        local v := ""
+        try {
+            v := IniRead(this.optFile, "opts", name, def ? "1" : "0")
+        } catch {
+            return def
+        }
+        return (v = "1")
+    }
+    _writeOpt(name, val) {
+        try IniWrite(val ? "1" : "0", this.optFile, "opts", name)
     }
 
     ; ── Durum ───────────────────────────────────────────────────────────
@@ -147,8 +258,8 @@ class singleIncognito {
 
     ; ── Aç / Kapa ───────────────────────────────────────────────────────
     toggle() {
-        ; NOT: v2.1-alpha'da çıplak ternary-statement ("a ? b : c") syntax error verir;
-        ; '?' postfix maybe-operatörüyle çakışıyor. Statement konumunda if/else kullan.
+        ; v2.1-alpha: çıplak ternary-statement syntax error verir ('?' postfix
+        ; maybe-operatörüyle çakışıyor) -> statement konumunda if/else.
         if (this.active)
             this.disable(true)
         else
@@ -160,23 +271,41 @@ class singleIncognito {
             return
         this._busy := true
         try {
+            this._perfStart("ENABLE")
             this._recoverStaleSnapshot()         ; önceki oturum çökmüşse önce onu çöz
+            this._perfMark("recoverStale")
             this.active := true
+            this.stores := this._selectStores()  ; kademe her açılışta yeniden okunur
             this._sessionStart := A_Now          ; bu andan sonra oluşan .lnk'ler silinecek
             try DirCreate(this.snapDir)
             this.policy.apply()                  ; 1) önle
+            this._perfMark("policy.apply")
             this.policy.saveTo(this.snapDir "POLICY.tsv")  ; çökme kurtarma için diske yaz
-            this._snapshotAll()                  ; 2) yedekle — KİLİTLEMEDEN ÖNCE olmalı
+            this._perfMark("policy.saveTo")
+            ; 2) yedekle — İKİ PARÇA, arada kilitleme. KASITLI: kilitlemenin
+            ;    beklemesi gereken tek şey DOSYA yedekleri (kilitli jump list
+            ;    kopyalanamaz) ve onlar _snapshotBegin içinde senkron bitiyor.
+            ;    Registry export'larının kilitle ilgisi yok, ikisi örtüşüyor.
+            ;    YENİ DEPO EKLERKEN: beginSnapshot'ı asenkron olan bir depo
+            ;    DOSYAYA dokunuyorsa bu sıra bozulur — o depoyu senkron yap.
+            this._pendingSnap := this._snapshotBegin()
+            this._perfMark("snapshotBegin")
             this._lockAllExisting()              ; 3) dondur
+            this._perfMark("lockAllExisting")
+            ; Export'ları BEKLEMEDEN dönüyoruz; yarış penceresi açılmıyor
+            ; (export'lar aynı anda başladı, gözcüler de öncesinde kurulu).
+            ; Bitişi _watchTick yokluyor; yedeğe DOKUNAN her yol ise
+            ; _finishSnapshot() ile tamamlanmayı garanti ediyor.
             this._clearVlcRecents()
+            this._perfMark("clearVlcRecents")
             this._timer := ObjBindMethod(this, "_watchTick")
             SetTimer(this._timer, this.watchPeriod)
             this._applyIcon(true)
-            this._showBadge()
-            if (notify) {
-                ShowTip("🔒 Incognito AÇIK — " this.handles.Count " jump list + " this.stores.Length " iz deposu", TipType.Success, 1300)
-                SoundBeep(900, 90)
-            }
+            this._perfMark("applyIcon")
+            this._perfEnd()
+            ; Rozet (47 ms) ve ses (78 ms) kritik yolda değil. EN SONDA:
+            ; -1 timer bu thread'i kesebiliyor, kesilecek kod az kalsın.
+            SetTimer(() => this._afterEnable(notify), -1)
         } finally {
             this._busy := false
         }
@@ -187,99 +316,345 @@ class singleIncognito {
             return
         this._busy := true
         try {
+            this._perfStart("DISABLE")
             if (this._timer) {
                 SetTimer(this._timer, 0)
                 this._timer := 0
             }
+            ; Yarım yedekle geri yükleme = o depoların oturum izini kalıcı
+            ; bırakmak. Önce tamamlansın.
+            this._finishSnapshot()
+            this._perfMark("finishSnapshot")
             this._unlockAll()                    ; kilit önce açılmalı, yoksa restore kopyalayamaz
+            this._perfMark("unlockAll")
             local restored := 0
             if (this.restoreOnClose) {
-                restored := this._restoreAll()
+                ; true = yedeği silmeyi ERTELE (bkz. _discardSnapshotLater).
+                ; Kurtarma yolundan çağrıldığında bu false kalır ve silme
+                ; senkron olur — orada hemen ardından yeni yedek alınıyor.
+                restored := this._restoreAll(true)
+                this._perfMark("restoreAll")
                 this._refreshShell()
+                this._perfMark("refreshShell")
             } else {
+                this._closeAllWatches()
                 this._discardSnapshot()
+                this._perfMark("discardSnapshot")
             }
             this.policy.revert()
+            this._perfMark("policy.revert")
             this.active := false
             this._applyIcon(false)
+            this._perfMark("applyIcon")
             this._destroyBadge()
+            this._perfMark("destroyBadge")
             if (notify) {
-                if (this.restoreOnClose)
-                    ShowTip("🔓 Incognito kapalı — " restored " iz deposu geri yüklendi", TipType.Success, 1400)
-                else
+                if (this.restoreOnClose) {
+                    local skipNote := this._lastSkipped ? " (" this._lastSkipped " depoya hiç dokunulmamış)" : ""
+                    ShowTip("🔓 Incognito kapalı — " restored " iz deposu geri yüklendi" skipNote, TipType.Success, 1400)
+                } else {
                     ShowTip("🔓 Incognito kapalı (geri yükleme atlandı, izler duruyor)", TipType.Warning, 1600)
-                SoundBeep(500, 90)
+                }
+                SetTimer(() => SoundBeep(500, 90), -1)   ; senkron 78 ms blokluyor
+                this._perfMark("tip")
             }
+            this._perfEnd()
         } finally {
             this._busy := false
         }
     }
 
-    ; ── Snapshot yaşam döngüsü ──────────────────────────────────────────
-    ; SESSION işaret dosyası: varlığı "açık bir oturumun yedeği duruyor"
-    ; demek. Script çökerse bir sonraki enable() bunu görüp kurtarma sunar.
-    ;
-    ; MALİYET (ölçüldü, ilk 7 depoluk sürümde): ~710 ms / ~4 MB — reg export
-    ; 343 ms, dosya kopyası 367 ms. enable() bu süre boyunca bloklardı.
-    ; Depo sayısı 7'den 12'ye çıkınca (UserAssist + Shellbags) ardışık export
-    ; ~600ms'e çıkardı — o yüzden artık iki geçişli: 1) tüm depolar için
-    ; işlemi BEKLEMEDEN başlat (RegStore.beginSnapshot -> Run, non-blocking),
-    ; 2) hepsini TEK TEK bekle (endSnapshot). Bu noktada reg.exe'ler OS'te
-    ; zaten paralel çalışmış oluyor; toplam süre "N × tekil süre" yerine
-    ; "en yavaş tekilin süresi"ne yakınsıyor. Snapshot yine de KİLİTLEMEDEN
-    ; (_lockAllExisting) ÖNCE tamamen bitmiş olur — yarış riski yok, yalnız
-    ; N ayrı bekleme yerine N ayrı BAŞLATMA + tek bir bekleme turu var.
+    ; enable() DÖNDÜKTEN sonra. Yalnız kozmetik iş konur — koruma adımı
+    ; buraya taşınırsa açıkta pencere kalır.
+    _afterEnable(notify) {
+        if (!this.active)                        ; arada kapatıldıysa rozet açma
+            return
+        this._showBadge()
+        if (notify) {
+            ShowTip("🔒 Incognito AÇIK — " this.handles.Count " jump list + " this.stores.Length " iz deposu"
+                . (this.deepMode ? " (derin)" : ""), TipType.Success, 1300)
+            SoundBeep(900, 90)
+        }
+    }
+
+    ; ── Süre ölçümü (bkz. this.perfLog) ─────────────────────────────────
+    ; _perfStart -> _perfMark × N -> _perfEnd. _perfSub faz saatini
+    ; SIFIRLAMADAN alt satır ekler.
+    ; A_TickCount çözünürlüğü ~15.6 ms: 15/16/31 tek bir "tick" demek —
+    ; küçük satırları tek tek yorumlama, TOPLAM'a bak.
+    _perfStart(phase) {
+        if (!this.perfLog)
+            return
+        this._perfT0 := A_TickCount
+        this._perfT := this._perfT0
+        this._perfBuf := "=== " phase " @ " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " ===`r`n"
+    }
+    _perfMark(label) {
+        if (!this.perfLog)
+            return
+        local now := A_TickCount
+        this._perfBuf .= Format("  {:-22} {:6} ms`r`n", label, now - this._perfT)
+        this._perfT := now
+    }
+    _perfSub(label, ms) {
+        if (!this.perfLog || this._perfBuf = "")
+            return
+        this._perfBuf .= Format("      - {:-18} {:6} ms`r`n", label, ms)
+    }
+    ; Süre değil, sayı/durum bilgisi için (ms yazmasın).
+    _perfNote(text) {
+        if (!this.perfLog || this._perfBuf = "")
+            return
+        this._perfBuf .= "      - " text "`r`n"
+    }
+    _perfEnd() {
+        if (!this.perfLog)
+            return
+        this._perfBuf .= Format("  {:-22} {:6} ms`r`n`r`n", "TOPLAM", A_TickCount - this._perfT0)
+        try FileAppend(this._perfBuf, A_ScriptDir "\Files\incognito_perf.log", "UTF-8")
+        this._perfBuf := ""
+    }
+
+    ; Tek parçalı yedek (cleanNow ve kurtarma yolları için). enable() bunu
+    ; KULLANMAZ — orada begin/end ayrı çağrılıp araya kilitleme giriyor.
     _snapshotAll() {
+        this._pendingSnap := this._snapshotBegin()
+        this._finishSnapshot()
+    }
+
+    ; Bekleyen yedeği TAMAMLA (idempotent). enable() export'ları beklemeden
+    ; döndüğü için, yedeğin İÇERİĞİNE bakan her giriş noktası (disable /
+    ; audit / setDeepMode / cleanNow) önce bunu beklemeli çağırmalı.
+    ; wait=false: yalnız yokla, koşuyorsa bloklamadan çık — _watchTick
+    ; sonraki turda (≤700 ms) tekrar bakar.
+    _finishSnapshot(wait := true) {
+        if (!this._pendingSnap)
+            return
+        if (!wait && this._pendingPid && ProcessExist(this._pendingPid))
+            return                           ; export sürüyor, sonraki tura bırak
+        local pending := this._pendingSnap
+        this._pendingSnap := 0               ; önce temizle: yeniden girişte döngü olmasın
+        local t := A_TickCount
+        this._snapshotEnd(pending)
+        if (!this.perfLog)
+            return
+        ; Açık bir fazın içindeysek ona satır ekle; _perfStart burada
+        ; çağrılamaz, o fazın tamponunu ezerdi.
+        if (this._perfBuf != "") {
+            this._perfMark("endSnapshot(ertelenmis)")
+        } else {
+            try FileAppend(Format("  [arka plan] endSnapshot (ertelenmis) : {} ms`r`n`r`n", A_TickCount - t)
+                , A_ScriptDir "\Files\incognito_perf.log", "UTF-8")
+        }
+    }
+
+    ; ── Yedeğin BAŞLATMA yarısı ─────────────────────────────────────────
+    ; Dönüş: depo adı -> endSnapshot'a verilecek "pending" değeri.
+    _snapshotBegin() {
+        ; Ertelenmiş yedek silmesini (bkz. _discardSnapshotLater) iptal edip
+        ; işini burada senkron yapıyoruz: yoksa 400 ms sonra ateşlenen timer
+        ; az önce aldığımız TAZE yedeği siler. Atlamak da olmaz — eski
+        ; dosyalar yenileriyle karışır.
+        local _pt := A_TickCount
+        this._snapGen++
+        this._clearSnapPayload()
         try DirCreate(this.snapDir)
-        local pending := Map()
+        this._perfSub("clearSnapPayload", A_TickCount - _pt)
+
+        ; SESSION = "açık bir oturumun yedeği duruyor"; çökme sonrası
+        ; kurtarmayı bu tetikliyor. EN BAŞTA yazılmalı — sonda yazılırken,
+        ; export ortasındaki çökme "yedek yok" gibi görünüyor, kurtarma
+        ; sunulmuyor ve POLICY.tsv okunmadığı için Start_TrackDocs kapalı
+        ; takılı kalıyordu.
+        try FileDelete(this.snapDir "SESSION")   ; cleanNow() ikinci kez çağırabilir
+        try FileAppend(A_Now, this.snapDir "SESSION")
+
+        ; Gözcüler export'tan ÖNCE kurulur — sıralama şart, bkz. RegStore.beginWatch.
+        _pt := A_TickCount
         for s in this.stores {
+            try s.beginWatch()
+        }
+        this._perfSub("beginWatch×" this.stores.Length, A_TickCount - _pt)
+
+        local pending := Map()
+
+        ; 1) reg.exe'li depolar: hepsi TEK cmd.exe'de. Her ayrı `Run` bizim
+        ;    thread'imizde ~17 ms tutuyor (14 depo = 235 ms), tek cmd 16 ms.
+        _pt := A_TickCount
+        local batch := []
+        this._pendingPid := 0
+        for s in this.stores {
+            if (s.usesRegExport())
+                batch.Push(s)
+        }
+        this._launchRegBatch(batch, pending)
+        this._perfSub("regBatch×" batch.Length, A_TickCount - _pt)
+
+        ; 2) kalanlar (dosya kopyası, delta) — senkron, süreç başlatmıyorlar.
+        _pt := A_TickCount
+        for s in this.stores {
+            if (s.usesRegExport())
+                continue
+            local _st := A_TickCount
             try {
                 pending[s.name] := s.beginSnapshot(this.snapDir)
             } catch as e {
                 try App.ErrHandler.handleError("incognito snapshot begin (" s.name "): " e.Message)
             }
+            if (A_TickCount - _st >= 30)
+                this._perfSub("  kopyaladi: " s.name, A_TickCount - _st)
         }
-        this._baseline := Map()
+        this._perfSub("beginSnapshot(yerel)", A_TickCount - _pt)
+        return pending
+    }
+
+    ; ── Yedeğin BEKLEME yarısı ──────────────────────────────────────────
+    _snapshotEnd(pending) {
+        local _pt := A_TickCount
         for s in this.stores {
+            local _st := A_TickCount
             try {
                 s.endSnapshot(this.snapDir, pending.Has(s.name) ? pending[s.name] : 0)
-                this._baseline[s.name] := s.count()
             } catch as e {
                 try App.ErrHandler.handleError("incognito snapshot end (" s.name "): " e.Message)
             }
+            ; Yalnız gerçekten bekleten depoyu yaz — 18 satır gürültü olmasın.
+            if (A_TickCount - _st >= 30)
+                this._perfSub("  bekledi: " s.name, A_TickCount - _st)
         }
-        try FileDelete(this.snapDir "SESSION")   ; cleanNow() sırasında ikinci kez çağrılabilir
-        try FileAppend(A_Now, this.snapDir "SESSION")
+        this._perfSub("endSnapshot×" this.stores.Length, A_TickCount - _pt)
+        ; Taban sayımı burada YAPILMAZ; audit() yedekten türetiyor
+        ; (bkz. TraceStore.baselineCount).
     }
 
-    ; _snapshotAll ile aynı iki-geçişli desen: depo sayısı 7'den 12'ye
-    ; çıkınca (UserAssist + Shellbags) ardışık delete+import disable()'ı
-    ; ~1-2 saniyeye kadar yavaşlatabiliyordu — bu da "Kapat"a üst üste
-    ; basılmasına (ve _busy koruması olmadan çakışan ikinci bir disable()
-    ; çağrısına) yol açan asıl sebepti. Silme senkron kalır (zaten hızlı);
-    ; İÇE AKTARMA (asıl ağır iş) tüm depolar için BEKLEMEDEN başlatılır,
-    ; sonra hepsi TEK TEK beklenir.
-    _restoreAll() {
+    ; Export'ları TEK cmd.exe'de zincirler, pid'i her depo için `pending`e
+    ; yazar (ilk bekleyiş süreci kapattığı için sonrakiler anında döner).
+    ;
+    ; TIRNAKLAMA: dış tırnak YOK (`cmd /c a & b`). `cmd /c "a & b"` biçiminde
+    ; cmd dış tırnağı soyup yeniden ayrıştırıyor ve "Local Settings" gibi
+    ; boşluklu yollardaki iç tırnaklar bozuluyor.
+    _launchRegBatch(list, pending) {
+        if (!list.Length)
+            return
+        local cmd := ""
+        local queued := []
+        for s in list {
+            local one := ""
+            try {
+                one := s.prepareExport(this.snapDir)
+            } catch as e {
+                ; pending'e HİÇ girmesin: endSnapshot "yedek alınamadı" sayar
+                ; ve restore dokunmaz — sessizce silinmesinden iyidir.
+                try App.ErrHandler.handleError("incognito prepareExport (" s.name "): " e.Message)
+                continue
+            }
+            cmd .= (cmd = "" ? "" : " & ") one
+            queued.Push(s)
+        }
+        if (!queued.Length)
+            return
+        ; cmd /c satır sınırı ~8191 karakter. Bu listeyle ~3,3 KB; yine de
+        ; aşılırsa toplu yoldan vazgeçip depo depo başlat (yavaş ama doğru).
+        if (StrLen(cmd) > 7500) {
+            this._perfNote("regBatch: komut cok uzun, depo depo baslatiliyor")
+            for s in queued {
+                try pending[s.name] := s.beginSnapshot(this.snapDir)
+            }
+            return
+        }
+        local pid := 0
+        try Run(A_ComSpec ' /c ' cmd, , "Hide", &pid)
+        this._pendingPid := pid          ; _finishSnapshot(false) bunu yoklar
+        for s in queued
+            pending[s.name] := pid
+    }
+
+    ; Silme senkron (RegDeleteKey, süreç başlatmıyor); İÇE AKTARMA tüm
+    ; depolar için beklemeden başlatılıp sonra hep birlikte bekleniyor.
+    ;
+    ; ASIL HIZLANMA: önce her depoya "oturumda sana hiç dokunuldu mu?" diye
+    ; soruluyor (RegStore.hasChanged, çekirdek gözcüsü, maliyeti sıfır).
+    ; Dokunulmadıysa sil+geri yaz TAMAMEN atlanıyor — aynı içeriği silip
+    ; aynen geri yazmakla birebir aynı sonuç. Kanıt yoksa hasChanged() true
+    ; döner ve tam yol işler.
+    _restoreAll(deferDiscard := false) {
         if (!DirExist(this.snapDir))
             return 0
-        local pending := Map()
+
+        ; 1) Soruyu SOR ve gözcüyü KAPAT. Kapatmak silmeden önce olmalı:
+        ;    silinecek anahtarın üzerinde açık KEY_NOTIFY handle'ı kalmasın.
+        local changed := Map()
         for s in this.stores {
+            local ch := true
+            try ch := s.hasChanged()
+            try s.endWatch()
+            changed[s.name] := ch
+        }
+
+        ; 1b) EŞLİ DEPOLARI HİZALA (bkz. this.coupled). Gözcü her depoyu
+        ;     bağımsız değerlendiriyor; ama delta silme ile kardeşinin
+        ;     NodeSlots bitmap'i aynı anda eski hale dönmezse boşalan slot
+        ;     yeniden kullanılır ve delta o bag'i kaçırır. Biri değiştiyse
+        ;     hepsi değişmiş sayılır — yalnız iş EKLER, asla atlamaz.
+        for grp in this.coupled {
+            local any := false
+            for nm in grp {
+                if (changed.Has(nm) && changed[nm])
+                    any := true
+            }
+            if (!any)
+                continue
+            for nm in grp {
+                if (changed.Has(nm))
+                    changed[nm] := true
+            }
+        }
+
+        local skipped := 0
+        for s in this.stores {
+            if (!changed[s.name])
+                skipped++
+        }
+        this._lastSkipped := skipped
+        this._perfNote("dokunulmamis (atlanan) depo: " skipped " / " this.stores.Length)
+
+        ; 2) Değişmiş depolar için işi beklemeden başlat.
+        local pending := Map()
+        local _pt := A_TickCount
+        for s in this.stores {
+            if (!changed[s.name])
+                continue
+            local _st := A_TickCount
             try {
                 pending[s.name] := s.beginRestore(this.snapDir)
             } catch as e {
                 try App.ErrHandler.handleError("incognito restore begin (" s.name "): " e.Message)
             }
+            if (A_TickCount - _st >= 30)
+                this._perfSub("  sildi: " s.name, A_TickCount - _st)
         }
+        this._perfSub("beginRestore", A_TickCount - _pt)
+        _pt := A_TickCount
+        ; 3) Hepsini birlikte bekle.
         local n := 0
         for s in this.stores {
+            if (!pending.Has(s.name))
+                continue
+            local _st := A_TickCount
             try {
-                if (pending.Has(s.name) && s.endRestore(this.snapDir, pending[s.name]))
+                if (s.endRestore(this.snapDir, pending[s.name]))
                     n++
             } catch as e {
                 try App.ErrHandler.handleError("incognito restore end (" s.name "): " e.Message)
             }
+            if (A_TickCount - _st >= 30)
+                this._perfSub("  bekledi: " s.name, A_TickCount - _st)
         }
-        this._discardSnapshot()
+        this._perfSub("endRestore", A_TickCount - _pt)
+        if (deferDiscard)
+            this._discardSnapshotLater()
+        else
+            this._discardSnapshot()
         return n
     }
 
@@ -287,15 +662,54 @@ class singleIncognito {
         try DirDelete(this.snapDir, true)
     }
 
+    ; Yedek klasörünü boşalt ama POLICY.tsv'YE DOKUNMA — enable() sırası
+    ; "policy.saveTo -> _snapshotBegin" olduğu için düz _discardSnapshot()
+    ; az önce yazılan POLICY.tsv'yi de siliyordu; çökme sonrası revertFrom()
+    ; okuyacak dosyayı bulamıyor ve Start_TrackDocs kapalı takılı kalıyordu.
+    _clearSnapPayload() {
+        if (!DirExist(this.snapDir))
+            return
+        Loop Files, this.snapDir "*.*", "FD" {
+            if (A_LoopFileName = "POLICY.tsv")
+                continue
+            ; Süslü parantez ŞART: parantezsiz `try` gövdesinden sonra gelen
+            ; `else` v2'de "Unexpected Else" veriyor.
+            if (InStr(A_LoopFileAttrib, "D")) {
+                try DirDelete(A_LoopFileFullPath, true)
+            } else {
+                try FileDelete(A_LoopFileFullPath)
+            }
+        }
+    }
+
+    ; Yedeği silmenin disable()'ın kritik yolunda işi yok. İki incelik:
+    ;  • SESSION SENKRON silinir; ertelenirse arada bir çökme sıradaki
+    ;    enable()'da gereksiz "kurtarayım mı?" sorusu çıkarır.
+    ;  • Kuşak sayacı: bu arada yeniden enable() edilirse timer TAZE yedeği
+    ;    silmeden geri çekilir.
+    _discardSnapshotLater() {
+        try FileDelete(this.snapDir "SESSION")
+        local gen := ++this._snapGen
+        SetTimer(() => (gen = this._snapGen ? this._discardSnapshot() : 0), -400)
+    }
+
+    ; Geri yükleme yapılmayan yollar için (restore yolunda _restoreAll zaten
+    ; depo depo kapatıyor). Her enable() depo başına anahtar+event açıyor,
+    ; sızdırmamak şart.
+    _closeAllWatches() {
+        for s in this.stores {
+            try s.endWatch()
+        }
+    }
+
     ; Script çökmesi / zorla kapatma sonrası kalan yedek
     _recoverStaleSnapshot() {
         if (!FileExist(this.snapDir "SESSION"))
             return
-        ; Politika geri alma, kullanıcının izleri geri yükleyip yüklemeyeceği
-        ; kararından BAĞIMSIZ ve önce yapılır: "Hayır" (izler kalsın) derse
-        ; bile Start_TrackDocs/Start_TrackProgs kalıcı kapalı takılı kalmasın.
-        ; Ayrıca _discardSnapshot() az sonra snapDir'i komple sildiği için
-        ; POLICY.tsv'yi okumadan önce davranmak şart.
+        ; Politika geri alma kullanıcının kararından BAĞIMSIZ ve ÖNCE yapılır:
+        ; "Hayır" dese bile Start_TrackDocs kapalı takılı kalmasın. Ayrıca
+        ; _discardSnapshot() az sonra snapDir'i sileceği için POLICY.tsv'yi
+        ; okumakta geç kalmamak gerek.
         PolicyGuard.revertFrom(this.snapDir "POLICY.tsv")
         local ans := MsgBox("Önceki incognito oturumu düzgün kapanmamış — yedek duruyor.`n`n"
             . "Geri yükleyeyim mi? (Hayır = yedeği at, izler kalır)", "Incognito", "YesNo Icon!")
@@ -313,16 +727,24 @@ class singleIncognito {
     }
 
     ; ── Denetim ─────────────────────────────────────────────────────────
-    ; enable() anındaki sayımla şimdiki sayımı karşılaştırır. Kapsamın
-    ; gerçekten çalıştığını ölçmenin tek yolu — yeni hedef eklerken de bu kullanılır.
+    ; enable() anındaki sayımla şimdikini karşılaştırır — kapsamın gerçekten
+    ; çalıştığını ölçmenin tek yolu. Taban YEDEKTEN türetiliyor (bkz.
+    ; TraceStore.baselineCount), yani maliyet enable()'a değil bu çağrıya
+    ; yazılıyor: 6,2 MB .reg ayrıştırmak ~330 ms.
     audit() {
         local lines := []
+        this._finishSnapshot()          ; taban yedekten okunuyor -> yedek tam olmalı
+        if (!DirExist(this.snapDir))
+            return ["Yedek klasörü yok — denetim yapılamıyor."]
         for s in this.stores {
-            local now := s.count()
-            local base := this._baseline.Has(s.name) ? this._baseline[s.name] : 0
-            local diff := now - base
-            if (diff != 0)
-                lines.Push(Format("{1}: {2}{3}   ({4} → {5})", s.name, (diff > 0 ? "+" : ""), diff, base, now))
+            local ln := ""
+            try {
+                ln := s.auditLine(this.snapDir)
+            } catch as e {
+                ln := s.name ": denetlenemedi (" e.Message ")"
+            }
+            if (ln != "")
+                lines.Push(ln)
         }
         return lines
     }
@@ -333,7 +755,17 @@ class singleIncognito {
             return false
         local f := ""
         try {
-            f := FileOpen(path, "rw-")   ; rw = aç (truncate yok), "-" = dış süreçlere kapalı
+            ; "r-" : r = salt okuma aç, "-" = dış süreçlere KAPALI (dwShareMode=0).
+            ;
+            ; Dışlamayı erişim modu değil PAYLAŞIM modu ("-") sağlıyor:
+            ; rw-/w-/r- üçü de dışarıdan yazma+okuma+silmeyi engelliyor,
+            ; tiresiz "rw" hiçbirini. Hiç yazmayacağımız dosyaya yazma
+            ; erişimi istemek gereksiz -> "r-".
+            ;
+            ; "w-" KULLANMA: AHK'da "w" dosyayı TRUNCATE eder (C#'taki
+            ; FileAccess.Write'ın aksine — orijinal proje onu kullanıyor).
+            ; Ölçerken 49 jump list dosyası bu yüzden sıfırlandı.
+            f := FileOpen(path, "r-")
         } catch {
             return false                 ; o an Windows tutuyor olabilir; timer tekrar dener
         }
@@ -344,12 +776,26 @@ class singleIncognito {
     }
 
     _lockAllExisting() {
+        local _n := 0, _slow := 0, _worst := 0, _worstName := ""
         for d in this.dirs {
             if (!DirExist(d.path))
                 continue
-            Loop Files, d.path "*." d.ext
+            Loop Files, d.path "*." d.ext {
+                local _st := A_TickCount
                 this._lockFile(A_LoopFileFullPath)
+                local _d := A_TickCount - _st
+                _n++
+                if (_d >= 30)
+                    _slow++
+                if (_d > _worst) {
+                    _worst := _d
+                    _worstName := A_LoopFileName
+                }
+            }
         }
+        ; Dağılım sorunun cinsini söyler: hepsi yavaşsa sistemik (AV taraması),
+        ; tek dosya yavaşsa o dosya.
+        this._perfNote(_n " dosya, 30ms+ suren: " _slow ", en yavas: " _worst " ms (" _worstName ")")
         for t in this.extraTargets {
             if (FileExist(t))
                 this._lockFile(t)
@@ -357,6 +803,9 @@ class singleIncognito {
     }
 
     _watchTick() {
+        ; Ertelenmiş yedek varsa YOKLA (bloklamadan). Genelde ilk turda
+        ; hazır olur; olmadıysa bir sonraki tur bakar.
+        this._finishSnapshot(false)
         ; Aktifken periyodik: yeni oluşan dosyaları kilitle.
         for d in this.dirs {
             if (!DirExist(d.path))
@@ -374,9 +823,8 @@ class singleIncognito {
         this._clearRecentLnk()        ; oturumda açılan dosyaların .lnk izlerini sil
     }
 
-    ; Recent\*.lnk temizliği. onlySession=true: yalnız incognito oturumunda oluşanlar
-    ; (eski geçmiş korunur). onlySession=false: hepsi (tam temizlik / cleanNow).
-    ; Oturum SIRASINDA da görünmemesi için; kapanıştaki asıl güvence restore.
+    ; onlySession=true: yalnız oturumda oluşanlar (eski geçmiş korunur).
+    ; Oturum SIRASINDA da görünmesin diye; asıl güvence kapanıştaki restore.
     _clearRecentLnk(onlySession := true) {
         if (!DirExist(this.recentDir))
             return
@@ -411,22 +859,25 @@ class singleIncognito {
         this.handles.CaseSense := "Off"
     }
 
-    ; ── Tam temizlik (cleaner mantığı: sonradan sil) ────────────────────
+    ; ── Tam temizlik ────────────────────────────────────────────────────
     ; DİKKAT: geri dönüşü olmayan tek işlem — snapshot/restore'un aksine ESKİ
-    ; geçmişi de siler. Bu yüzden öncesinde Files\incognito_backup_<zaman>\
-    ; altına kalıcı yedek alınır; istenirse reg dosyaları elle import edilebilir.
+    ; geçmişi de siler. Öncesinde Files\incognito_backup_<zaman>\ altına
+    ; kalıcı yedek alınır (elle import edilebilir biçimde).
     ; Aktifken de çağrılabilir: kilitler açılır, temizlenir, tekrar kilitlenir.
     cleanNow() {
         local wasActive := this.active
+        this._finishSnapshot()      ; yarım export'lar silinenleri yedeğe sokmasın
         if (wasActive)
             this._unlockAll()
 
         local bak := A_ScriptDir "\Files\incognito_backup_" FormatTime(A_Now, "yyyyMMdd_HHmmss") "\"
         try DirCreate(bak)
         local count := 0
-        for s in this.stores {
+        ; KADEMEYE BAKMAZ — allStores. Kademe hız içindi; "her şeyi sil"
+        ; açık bir kullanıcı eylemi, kapsamı daraltmanın anlamı yok.
+        for s in this.allStores {
             try {
-                s.snapshot(bak)
+                s.archive(bak)          ; kalıcı yedek: elle karıştırılabilir biçim
                 count += s.purge()
             } catch as e {
                 try App.ErrHandler.handleError("incognito cleanNow (" s.name "): " e.Message)
@@ -436,11 +887,9 @@ class singleIncognito {
         this._refreshShell()
 
         if (wasActive) {
-            ; BUG NOTU: oturumun canlı yedeği (this.snapDir, enable() anında
-            ; alındı) burada YENİLENMEZSE az önce KALICI silinen kayıtları
-            ; hâlâ içerir. disable() → restoreOnClose bunu geri yazar ve
-            ; cleanNow()'un "kalıcı temizlik" sözünü boşa çıkarır. Purge
-            ; sonrası (artık temiz) durumu yeni taban olarak kaydediyoruz.
+            ; Oturumun canlı yedeği YENİLENMEZSE az önce kalıcı silinen
+            ; kayıtları hâlâ içerir ve disable() onları geri yazarak
+            ; cleanNow()'un sözünü boşa çıkarır.
             this._snapshotAll()
             this._lockAllExisting()   ; Windows yeniden yaratırsa "boş" halde donsun
         }
@@ -469,9 +918,8 @@ class singleIncognito {
                 f.Close()
                 local parsed := jsongo.Parse(data)
                 if (parsed is Map) {
-                    ; CaseSense yalnızca BOŞ Map'te değiştirilebilir; dolu parse
-                    ; sonucuna atamak "Map must be empty" fırlatıyordu. Bunun
-                    ; yerine girdileri baştan CaseSense=Off kurulmuş m'ye kopyala.
+                    ; CaseSense yalnızca BOŞ Map'te değiştirilebilir -> dolu
+                    ; parse sonucunu kullanmak yerine m'ye kopyalıyoruz.
                     for k, v in parsed
                         m[k] := v
                 }
@@ -526,8 +974,17 @@ class singleIncognito {
         ; Bilgi + kilitli uygulama listesi
         this._badgeInfo := g.AddText("xm ym w300", "")
         this._badgeList := g.AddListBox("xm y+6 w300 r12", [])
+        this._cbDeep := g.AddCheckbox("xm y+12", "Derin izler (klasör + program geçmişi — yavaşlatır)")
+        this._cbDeep.Value := this.deepMode ? 1 : 0
+        this._cbDeep.OnEvent("Click", (cb, *) => this.setDeepMode(cb.Value))
+        this._cbDeep.ToolTip := "Kapalıyken kapsam: açılan/kaydedilen DOSYA adları"
+            . " (RecentDocs, Aç/Kaydet geçmişi, Recent kısayolları, jump list).`n"
+            . "Açıkken ayrıca: gezilen klasörler (ShellBags), çalıştırılan programlar"
+            . " (UserAssist/MUICache/FeatureUsage), adres çubuğu ve Win+R geçmişi.`n`n"
+            . "Incognito AÇIKKEN işaretlersen yedek O AN alınır — o ana kadar"
+            . " oluşmuş derin izler geri alınamaz."
         ; Checkbox sırası: [x] VLC | [x] Kapanışta geri yükle
-        this._cbVlc := g.AddCheckbox("xm y+12", "VLC")
+        this._cbVlc := g.AddCheckbox("xm y+8", "VLC")
         this._cbVlc.Value := this.coverVlc ? 1 : 0
         this._cbVlc.OnEvent("Click", (cb, *) => (this.coverVlc := !!cb.Value))
         this._cbRestore := g.AddCheckbox("x+24 yp", "Kapanışta geri yükle")
@@ -559,7 +1016,8 @@ class singleIncognito {
         if (!this._badge)
             return
         try {
-            this._badgeInfo.Value := "Donduruldu: " this.handles.Count " jump list dosyası"
+            this._badgeInfo.Value := "Donduruldu: " this.handles.Count " jump list dosyası   ·   "
+                . this.stores.Length "/" this.allStores.Length " iz deposu"
             local names := this.getLockedNames(300)
             this._badgeList.Delete()
             if (names.Length)
@@ -579,16 +1037,16 @@ class singleIncognito {
             for l in lines
                 msg .= l "`n"
         }
+        ; Kapsamı her zaman yaz: "iz yok" ile "o iz zaten kapsam dışı"
+        ; birbirine karışmasın.
+        msg .= "`n──────────`nKapsam: " this.stores.Length " / " this.allStores.Length " depo"
+            . (this.deepMode ? " (derin izler AÇIK)" : " (derin izler kapalı — klasör/program geçmişi kapsam dışı)")
         MsgBox(msg, "🔍 Incognito denetim", "Iconi")
     }
 
-    ; Rozet/pencere event'i İÇİNDE Destroy riskli -> timer ile ertele.
-    ; BUG NOTU: disable() artık 12 registry deposu yüzünden ~1-2sn sürebiliyor;
-    ; bu süre boyunca düğme tıklanabilir kalırsa her tıklama yeni bir timer
-    ; kuruyordu — disable() içindeki _busy koruması bunları artık no-op
-    ; yapıyor, ama düğme görsel olarak "tepki vermiyor" gibi durmaya devam
-    ; ederdi. Anında devre dışı bırakıp metni değiştirmek, "takılı kaldı mı?"
-    ; hissini önlüyor.
+    ; Pencere event'inin İÇİNDE Destroy riskli -> timer'a ertele. Düğmeyi
+    ; anında devre dışı bırakmak "takıldı mı?" hissini önlüyor (_busy zaten
+    ; ikinci çağrıyı no-op yapıyor ama düğme tepkisiz görünüyordu).
     _closeFromBadge() {
         if (this._busy || !this.active)
             return
@@ -605,6 +1063,7 @@ class singleIncognito {
             this._badge := 0
             this._cbVlc := 0
             this._cbRestore := 0
+            this._cbDeep := 0
             this._btnClose := 0
         }
     }
