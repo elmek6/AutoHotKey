@@ -102,6 +102,8 @@ class singleScreenOcr {
         this.txtBox := 0, this.langBox := 0, this.modeBox := 0
         this.sepBox := 0, this.scaleBox := 0, this.grayChk := 0, this.gutterBox := 0
         this.advChk := 0, this.advCtrls := [], this.baseBottom := 0, this.advBottom := 0
+        this.layout := [], this.txtH := 0, this.txtW := 0   ; dinamik yerleşim
+        this.baseCH := 0, this.advCH := 0, this.extraH := 0
         this.advanced := false  ; gelişmiş satır açık mı (oturumlar arası hatırlanır)
         this.session := false
         this.rect    := 0
@@ -514,6 +516,10 @@ class singleScreenOcr {
         ; Show sonrası: yükseklik gerçek pencere ölçüsünden hesaplanıyor,
         ; _placePanel de o yüksekliğe göre yer seçsin.
         this._setAdvanced(this.advanced)
+        ; Taban ölçünün altına inilmesin: alt satırlar kırpılmasın.
+        local pw := 0, ph := 0
+        this.panel.GetPos(, , &pw, &ph)
+        this.panel.Opt("+MinSize" pw "x" ph)
         this._placePanel()
         ; Fare etkileşimi: clip_image_dialog'daki deyim — kriter SABİT bir
         ; fonksiyon nesnesi. "ahk_id <hwnd>" kullanılsaydı her oturumda yeni
@@ -553,7 +559,7 @@ class singleScreenOcr {
         this.band := 0, this.grips := 0, this.panel := 0
         this.txtBox := 0, this.langBox := 0, this.modeBox := 0
         this.sepBox := 0, this.scaleBox := 0, this.grayChk := 0, this.gutterBox := 0
-        this.advChk := 0, this.advCtrls := []
+        this.advChk := 0, this.advCtrls := [], this.layout := [], this.txtW := 0
         this.panelPlaced := false
         this.shot := 0       ; sarmalayıcının __Delete'i HBITMAP+DC'yi bırakır
         this.lastRes := 0
@@ -577,7 +583,9 @@ class singleScreenOcr {
         this.panel.SetFont("s10", "Segoe UI")
         ; Düzenlenebilir: OCR l/1/I ve 0/O karıştırır, elle düzeltmek yeniden
         ; taramaktan hızlı. Seçim varsa Kopyala YALNIZ seçimi alır.
-        this.txtBox := this.panel.AddEdit("w520 r14 +VScroll Multi")
+        ; +HScroll kelime kaydırmayı kapatır: OCR satırları sarılmayıp yana kayar,
+        ; böylece kaynaktaki satır yapısı korunur.
+        this.txtBox := this.panel.AddEdit("w520 r14 +VScroll +HScroll Multi")
 
         this.panel.SetFont("s9")
         this.panel.AddText("xm y+16 w140 h18", "Dil")
@@ -637,6 +645,52 @@ class singleScreenOcr {
         this.gutterBox.OnEvent("Change", (*) => this._onGutterChange())
         this.panel.OnEvent("Escape", (*) => this._closeSession())
         this.panel.OnEvent("Close", (*) => this._closeSession())
+        this.panel.OnEvent("Size", (*) => this._onResize())
+        this._captureLayout()
+    }
+
+    ; ── Dinamik yerleşim ─────────────────────────────────────────────
+    ; Büyüyen alanın TAMAMINI metin kutusu alır; alt satırlar ölçüsü değişmeden
+    ; aşağı kayar. Saklanan tek şey her kontrolün TABAN y'si.
+    _captureLayout() {
+        local y := 0, h := 0
+        this.txtBox.GetPos(, , , &h)
+        this.txtH := h
+        this.txtW := 0                       ; yeni panel → ilk Size mutlaka uygulansın
+        this.layout := []
+        for hwnd, c in this.panel {
+            if (c == this.txtBox)
+                continue
+            c.GetPos(, &y)
+            this.layout.Push({ c: c, y: y })
+        }
+        ; İki taban yükseklik: gelişmiş satır kapalı / açık.
+        this.baseCH := this.baseBottom + this.panel.MarginY
+        this.advCH  := this.advBottom + this.panel.MarginY
+    }
+
+    ; Size olayının w/h parametreleri KULLANILMIYOR: DPI %100 dışındayken ham
+    ; piksel gelip Move'un Gui birimiyle karışıyorlar. GetClientPos doğru birim.
+    _onResize() {
+        if (!this.panel || !this.layout.Length)
+            return
+        local cw := 0, ch := 0
+        try this.panel.GetClientPos(, , &cw, &ch)
+        catch
+            return
+        if (cw <= 0 || ch <= 0)              ; simge durumu
+            return
+        ; extraH = taban boydan SAPMA. Gelişmiş satır açılıp kapandıkça taban
+        ; değişiyor, kullanıcının verdiği fazlalık korunuyor (_setAdvanced okuyor).
+        local extra := Max(0, ch - (this.advanced ? this.advCH : this.baseCH))
+        local tw := cw - this.panel.MarginX * 2
+        if (extra == this.extraH && tw == this.txtW)   ; sürüklerken yinelenen olay
+            return
+        this.extraH := extra, this.txtW := tw
+        try this.txtBox.Move(, , tw, this.txtH + extra)
+        for it in this.layout
+            try it.c.Move(, it.y + extra)
+        try this.txtBox.Redraw()             ; büyüyen bölge kirli kalmasın
     }
 
     ; YERLEŞİM: önce YAN taraflar. Panel yüksek ama dar; ekranın üstü/altı
@@ -762,7 +816,9 @@ class singleScreenOcr {
         local wh := 0, ch := 0
         this.panel.GetPos(, , , &wh)
         this.panel.GetClientPos(, , , &ch)
-        local want := (show ? this.advBottom : this.baseBottom) + this.panel.MarginY
+        ; Kullanıcının elle verdiği fazlalık korunuyor; Move'un tetiklediği Size
+        ; olayı yerleşimi kendisi tazeliyor.
+        local want := (show ? this.advCH : this.baseCH) + this.extraH
         this.panel.Move(, , , (wh - ch) + want)
     }
 

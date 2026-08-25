@@ -43,6 +43,11 @@ class singleClipImageDialog {
         this.curBitmap := 0    ; çözülmüş pBitmap (zoom/pan kaynağı)
         this.srcW := 0, this.srcH := 0
         this.zoom := 1.0, this.fitZoom := 1.0
+        ; Önizleme kutusunun GÜNCEL ölçüsü — zoom/pan/fit hesaplarının hepsi
+        ; PREVIEW_W/H yerine bunu okur (_createGui kurar, _onResize tazeler).
+        this.picW := 0, this.picH := 0
+        this.layout := []      ; taban y'ler — alt satırlar bununla aşağı kayar
+        this.baseCW := 0, this.baseCH := 0
         this.panX := 0, this.panY := 0
         this.pendingRow := 0
         this.selectBound := (*) => this._select(this.pendingRow)   ; tek referans → timer coalescing
@@ -70,6 +75,7 @@ class singleClipImageDialog {
             this._fill()
             this._refreshStats()
             this.gui.Show()
+            this._captureLayout()
             ; Modify(...,"Select") zaten ItemSelect'i tetikler → _select(1) oradan gelir.
             ; Ayrıca burada _select çağırmak önizlemeyi ikinci kez kurup bozuyordu.
             this.lv.Modify(1, "Select Focus")
@@ -82,6 +88,7 @@ class singleClipImageDialog {
         local W  := singleClipImageDialog.LIST_W
         local PW := singleClipImageDialog.PREVIEW_W
         local PH := singleClipImageDialog.PREVIEW_H
+        this.picW := PW, this.picH := PH   ; her açılış taban ölçüyle başlıyor
         local BH := singleClipImageDialog.BTN_H
         local btnY := PH + 16
         local infoY := btnY + BH + 8
@@ -123,6 +130,7 @@ class singleClipImageDialog {
         this.lv.OnEvent("DoubleClick", (lv, row) => this._copyOnly())
         this.gui.OnEvent("Escape", (*) => this.close())
         this.gui.OnEvent("Close", (*) => this.close())
+        this.gui.OnEvent("Size", (*) => this._onResize())
 
         ; Sadece fare — klavye kısayolu kaydetmiyoruz.
         ; Kriter olarak SABİT bir fonksiyon nesnesi kullanılıyor. Eskiden
@@ -190,12 +198,59 @@ class singleClipImageDialog {
         this._resetView()
     }
 
+    ; ── Dinamik yerleşim ─────────────────────────────────────────────
+    ; Fazla ENi önizleme alır, fazla BOYu liste + önizleme birlikte alır; alt
+    ; satırlar ölçüsü değişmeden kayar. Liste GENİŞLEMEZ (sütunları sabit).
+    _captureLayout() {
+        local pw := 0, ph := 0, y := 0
+        this.gui.GetPos(, , &pw, &ph)
+        this.gui.Opt("+MinSize" pw "x" ph)      ; tabanın altına inilmesin
+        this.gui.GetClientPos(, , &pw, &ph)
+        this.baseCW := pw, this.baseCH := ph
+        this.layout := []
+        for hwnd, c in this.gui {
+            if (c == this.lv || c == this.pic)
+                continue
+            c.GetPos(, &y)
+            this.layout.Push({ c: c, y: y })
+        }
+    }
+
+    ; Size olayının w/h parametreleri KULLANILMIYOR: DPI %100 dışındayken ham
+    ; piksel gelip Move'un Gui birimiyle karışıyorlar. GetClientPos doğru birim.
+    _onResize() {
+        if (!this.gui || !this.layout.Length)
+            return
+        local cw := 0, ch := 0
+        try this.gui.GetClientPos(, , &cw, &ch)
+        catch
+            return
+        if (cw <= 0 || ch <= 0)                 ; simge durumu
+            return
+        local dw := Max(0, cw - this.baseCW), dh := Max(0, ch - this.baseCH)
+        local nw := singleClipImageDialog.PREVIEW_W + dw
+        local nh := singleClipImageDialog.PREVIEW_H + dh
+        if (nw == this.picW && nh == this.picH)   ; sürükleme sırasında yinelenen olay
+            return
+        ; Sığdırılmış görünümdeysek yeni kutuya göre yeniden sığdırılır; elle
+        ; zoom yapılmışsa o oran korunur, yalnız kaydırma sınırları tazelenir.
+        local wasFit := Abs(this.zoom - this.fitZoom) < 0.001
+        this.picW := nw, this.picH := nh
+        try this.lv.Move(, , , this.picH)
+        try this.pic.Move(, , this.picW, this.picH)
+        for it in this.layout
+            try it.c.Move(, it.y + dh)
+        if (wasFit)
+            this._resetView()                   ; _setZoom → _center → _render
+        else
+            this._render()
+    }
+
     ; Seçim değişince varsayılan görünüm: kutudan küçükse 1:1, büyükse sığdır.
     _resetView() {
         if (!this.curBitmap)
             return
-        local PW := singleClipImageDialog.PREVIEW_W
-        local PH := singleClipImageDialog.PREVIEW_H
+        local PW := this.picW, PH := this.picH
         this.fitZoom := Min(PW / this.srcW, PH / this.srcH, 1.0)
         this._setZoom(this.fitZoom)
     }
@@ -222,8 +277,7 @@ class singleClipImageDialog {
     }
 
     _center() {
-        local PW := singleClipImageDialog.PREVIEW_W
-        local PH := singleClipImageDialog.PREVIEW_H
+        local PW := this.picW, PH := this.picH
         this.panX := (PW - this.srcW * this.zoom) / 2
         this.panY := (PH - this.srcH * this.zoom) / 2
     }
@@ -231,8 +285,7 @@ class singleClipImageDialog {
     _render() {
         if (!this.curBitmap)
             return
-        local PW := singleClipImageDialog.PREVIEW_W
-        local PH := singleClipImageDialog.PREVIEW_H
+        local PW := this.picW, PH := this.picH
         this._clampPan()
         local hbm := GdipMini.renderView(this.curBitmap, PW, PH,
                         Round(this.panX), Round(this.panY),
@@ -244,8 +297,7 @@ class singleClipImageDialog {
 
     ; Görsel kutudan büyükse boşluk açılmasın; küçükse ortada kalsın.
     _clampPan() {
-        local PW := singleClipImageDialog.PREVIEW_W
-        local PH := singleClipImageDialog.PREVIEW_H
+        local PW := this.picW, PH := this.picH
         local dw := this.srcW * this.zoom, dh := this.srcH * this.zoom
         this.panX := (dw <= PW) ? (PW - dw) / 2 : Min(0, Max(PW - dw, this.panX))
         this.panY := (dh <= PH) ? (PH - dh) / 2 : Min(0, Max(PH - dh, this.panY))
