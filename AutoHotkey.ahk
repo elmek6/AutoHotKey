@@ -1,9 +1,11 @@
-#Requires AutoHotkey >= 2.1-alpha.22
+﻿#Requires AutoHotkey >= 2.1-alpha.22
 #SingleInstance Force
 ; Ctrl^ RCtrl>^ Alt! Win# Shift+ RShift>+
 ; SC kodu 1 key, VK ve tus cok kez okunuyor ??
 #Include <jsongo.v2>
 #Include <error_handler>
+#Include <settings>   ; ayar tanimlayan tum liblerden ONCE gelmeli
+#Include <settings_dialog>
 #Include <script_state>
 #Include <menus>
 ; key_counter, error_handler tarafından zaten #Include ediliyor (bağımlılığı orada)
@@ -62,6 +64,7 @@ class Path {
     static Slot := Path.Dir "slots.json"
     static Profile := Path.Dir "profiles.json"
     static Repository := Path.Dir "repository.json"
+    static Settings := Path.Dir "settings.json"
     static initDirectory() {
         if !DirExist(Path.Dir) {
             DirCreate(Path.Dir)
@@ -69,6 +72,9 @@ class Path {
         ; FileAppend(FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") " - Resumed recording`n", AppConst.FILES_DIR "debug.log")
     }
 }
+SettingAction({ key: "genel.openLog", name: "log.txt aç", category: Cat.Genel,
+    tags: "log hata istatistik kayit", desc: "İstatistik ve hata kayıtlarını Notepad ile açar",
+    run: () => FileExist(Path.Log) ? Run('notepad.exe "' Path.Log '"') : ShowTip("log.txt yok", TipType.Info, 2000) })
 #SuspendExempt
 Pause & Home:: {
     ; DialogPauseGui()
@@ -113,6 +119,8 @@ LoadSettings() {
         App.currentConfig := App.stateConfig.home
     }
     Path.initDirectory()
+    Settings.load()
+    Settings.applyAll()
 }
 ; Work profilinde Outlook'u simge durumunda baslat.
 ; Reload da LoadSettings'i tekrar cagirdigi icin once surec kontrolu yapiliyor.
@@ -154,6 +162,7 @@ minimizeOutlookWindow(triesLeft) {
 }
 ExitSettings(ExitReason, ExitCode) {
     State.saveStats(State.Script.getStartTime())
+    Settings.save()
     App.ClipHist.__Delete()
     App.ClipSlot.__Delete()
     ; Reload / normal Exit de incognito'yu AÇIK bırakabilirdi (badge'in "Kapat"

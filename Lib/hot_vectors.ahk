@@ -1,4 +1,4 @@
-/************************************************************************
+﻿/************************************************************************
  * @description Eksen kilitli mouse vector sistemi - 4-way direction detection
  * Fare sabit tutulur (polling, hook YOK). Vektör bilgisi Gui ile gösterilir.
  * 
@@ -26,6 +26,28 @@ class HotVectors {
     static POLL_INTERVAL := 14   ; ms — while döngüsü uyku süresi
     static ACCELERATION_ENABLE := true ; İvme çarpanı aktif/pasif
     static MAX_SPEED_MULTIPLIER := 20   ; Maksimum hız çarpanı (1-20 arası önerilir)
+
+    static prefDirThreshold := Setting({ key: "hotVector.dirThreshold", name: "Yön kilidi eşiği", default: 8,
+        category: Cat.Fare, tags: "fare hassasiyet vektor jest", desc: "Yönün kilitlenmesi için gereken piksel",
+        validate: (v) => (v >= 1 && v <= 100) ? "" : "1-100 arası olmalı" })
+    static prefStepSize := Setting({ key: "hotVector.stepSize", name: "Adım eşiği", default: 14,
+        category: Cat.Fare, tags: "fare hassasiyet vektor jest", desc: "Bir tetiklenme için gereken piksel",
+        validate: (v) => (v >= 1 && v <= 200) ? "" : "1-200 arası olmalı" })
+    static prefPollInterval := Setting({ key: "hotVector.pollInterval", name: "Örnekleme aralığı", default: 14,
+        category: Cat.Fare, tags: "fare hassasiyet performans", desc: "Döngü uyku süresi (ms) - küçük değer daha hassas, daha çok CPU",
+        validate: (v) => (v >= 1 && v <= 100) ? "" : "1-100 ms olmalı" })
+    static prefAcceleration := Setting({ key: "hotVector.acceleration", name: "İvme çarpanı", default: true, kind: "bool",
+        category: Cat.Fare, tags: "fare hiz ivme", desc: "Hızlı hareket ettikçe adım çarpanı büyür" })
+    static prefMaxSpeed := Setting({ key: "hotVector.maxSpeed", name: "Maksimum hız çarpanı", default: 20,
+        category: Cat.Fare, tags: "fare hiz ivme", validate: (v) => (v >= 1 && v <= 20) ? "" : "1-20 arası olmalı" })
+
+    static __New() {
+        HotVectors.prefDirThreshold.subscribe((v, *) => HotVectors.DIRECTION_THRESHOLD := v)
+        HotVectors.prefStepSize.subscribe((v, *) => HotVectors.STEP_SIZE := v)
+        HotVectors.prefPollInterval.subscribe((v, *) => HotVectors.POLL_INTERVAL := v)
+        HotVectors.prefAcceleration.subscribe((v, *) => HotVectors.ACCELERATION_ENABLE := v)
+        HotVectors.prefMaxSpeed.subscribe((v, *) => HotVectors.MAX_SPEED_MULTIPLIER := v)
+    }
 
     ; ── Public API: direction flag'leri ─────────────────────────────────
     static bDir := {

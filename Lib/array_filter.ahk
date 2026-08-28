@@ -1,9 +1,15 @@
-class ArrayFilter {
+﻿class ArrayFilter {
     static instance := ""
     ; Arama modu diyalog örnekleri arasında korunur. Instance alanına koysaydık
     ; Cleanup() her kapanışta instance'ı öldürdüğü için mod sıfırlanırdı.
     static lastMode := 1        ; 1=Metin  2=Joker  3=RegExp
     static hoverPreview := true ; fare ile gezerken önizleme (oturum boyu kalıcı)
+    static prefHover := Setting({ key: "arrayFilter.hover", name: "Hover ile önizleme", default: true, kind: "bool",
+        category: Cat.Liste, tags: "fare liste onizleme hover",
+        desc: "Listede gezerken imlecin altındaki kaydın içeriğini önizleme kutusunda gösterir" })
+    static __New() {
+        ArrayFilter.prefHover.subscribe((v, *) => ArrayFilter.hoverPreview := v)
+    }
 
     myGui := ""
     listView := ""
@@ -293,7 +299,7 @@ class ArrayFilter {
         ; --- EVENTLER ---
         this.searchBox.OnEvent("Change", (*) => this.UpdateList())
         this.caseChk.OnEvent("Click", (*) => this.UpdateList())
-        this.hoverChk.OnEvent("Click", (*) => (ArrayFilter.hoverPreview := !!this.hoverChk.Value))
+        this.hoverChk.OnEvent("Click", (*) => ArrayFilter.prefHover.set(!!this.hoverChk.Value))
         this.modeDdl.OnEvent("Change", (*) => (ArrayFilter.lastMode := this.modeDdl.Value, this.UpdateList()))
         this.listView.OnEvent("DoubleClick", (*) => this.SelectFocused())
         this.listView.OnEvent("ItemSelect", (guiCtrl, item, selected) => selected ? this.UpdatePreviewContent(item) : "")
