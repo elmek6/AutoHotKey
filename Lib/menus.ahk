@@ -50,30 +50,56 @@ getStatsArray(showMsgBox := false) {
 global MENU_COL := "BarBreak"
 global MENU_COL_NL := "Break"
 
+; ── Menü ikonları ──────────────────────────────────────────────────────
+; Numara = 1-TABANLI ikon sırası (SetIcon sayımı).
+; İKONLU ÖĞEYE Check() VERME: onay işareti ikonun oluğuna çiziliyor, çakışır.
+global ICO_SHELL := A_WinDir "\System32\shell32.dll"
+global ICO_RES := A_WinDir "\System32\imageres.dll"
+
+; İkon yoksa/DLL değişmişse menü yine açılmalı — bu yüzden try.
+menuIcon(targetMenu, itemName, file, iconNum) {
+    try targetMenu.SetIcon(itemName, file, iconNum, 16)
+}
+
+; ── Kalın öğe (Win32 "default item") ───────────────────────────────────
+; Menüde kalın öğe TEKTİR; adaylar sıralı, küçük sayı kazanır:
+;   1 sabitlenmiş aktif pencere   2 profilsiz pencerede "Ekle"   3 boş "Add"
+global MENU_DEF_NONE := 99
+global menuDefRank := MENU_DEF_NONE
+
+setMenuDefault(targetMenu, itemName, rank) {
+    global menuDefRank
+    if (rank >= menuDefRank)
+        return
+    menuDefRank := rank
+    try targetMenu.Default := itemName
+}
+
 showF13menu() {
     Click("Middle", 1)
     State.window.update()
 
+    global menuDefRank               ; v2 assume-local: bildirmezsek yerel değişken açar
+    menuDefRank := MENU_DEF_NONE     ; her menü kendi kalın öğesini yeniden seçer
     menuF13 := Menu()
     ; mySwitchMenu.Add("Active Class: " WinGetClass("A"), (*) => (A_Clipboard := WinGetClass("A"), ToolTip("Copied: "), SetTimer(() => ToolTip(), -2000)))
 
-    subKeyMenu := Menu()
-    subKeyMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
-    subKeyMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
-    subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
-    subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
 
     ; ── 1. KOLON: pano · ekran görüntüsü · OCR ──────────────────────
     menuF13.Add("Clipboard history", App.ClipHist.buildHistoryMenu())
     menuF13.Add("Clipboard history win", (*) => SetTimer(() => Send("#v"), -20))
+    menuIcon(menuF13, "Clipboard history win", ICO_RES, 243)        ; panodan pencereye
     menuF13.Add()
     menuF13.Add("Select screenshot", (*) => Send("{LWin down}{Shift down}s{Shift up}{LWin up}"))
+    menuIcon(menuF13, "Select screenshot", ICO_SHELL, 260)          ; makas (kırpma)
     menuF13.Add("Window screenshot", (*) => Send("!{PrintScreen}"))
-    menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
-    menuF13.Add()
+    menuIcon(menuF13, "Window screenshot", ICO_SHELL, 196)          ; fotoğraf makinesi
     menuF13.Add("Select text with OCR", (*) => Send("{LWin down}{Shift down}t{Shift up}{LWin up}"))
-    menuF13.Add("Ekrandan metin oku (OCR)", (*) => App.ScreenOcr.snipInteractive())
-    menuF13.Add("Basit OCR (duz metin, panoya)", (*) => App.ScreenOcr.snip("plain"))
+    menuF13.Add("OCR Gelismis", (*) => App.ScreenOcr.snipInteractive())
+    menuF13.Add("OCR Basit", (*) => App.ScreenOcr.snip("plain"))
+    menuF13.Add()
+    menuF13.Add("Clipboard images", (*) => App.ClipImageDlg.show())
+    menuIcon(menuF13, "Clipboard images", ICO_RES, 109)             ; görsel
 
     ; ── 2. KOLON: aktif pencere profili · araçlar · hep üstte ───────
     ; Kolon ayracını MENU_COL çiziyor; bu yüzden 1. kolonun sonunda
@@ -82,31 +108,55 @@ showF13menu() {
     menuAppProfile(menuF13, MENU_COL)
     menuF13.Add()
     menuF13.Add("Repository GUI", (*) => App.Repo.showGui())
-    menuF13.Add("Incognito modu", (*) => App.Incognito.toggle())
-    menuF13.Add("Special keys", subKeyMenu)
-    if (App.Incognito.isActive())
-        menuF13.Check("Incognito modu")
+    ; Durum metinde: ikonlu öğede Check() ikonla çakışıyor.
+    local incoLabel := App.Incognito.isActive() ? "Incognito modu — AÇIK" : "Incognito modu"
+    menuF13.Add(incoLabel, (*) => App.Incognito.toggle())
+    menuIcon(menuF13, incoLabel, ICO_SHELL, App.Incognito.isActive() ? 48 : 45)   ; kilit / anahtar
     menuF13.Add()
     menuAlwaysOnTop(menuF13)
 
+    State.Busy.setFree()
     menuF13.Show()
 }
 
 showF14menu() {
     Click("Middle", 1)
 
+    subKeyMenu := Menu()
+    subKeyMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
+    subKeyMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
+    subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
+    subKeyMenu.Add("Select All + Cut", (*) => Send("^a^x"))
+    subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
+
     menuF14 := Menu()
-    menuF14.Add("Paste enter", (*) => Send("^v{Enter}"))
-    menuF14.Add("Select All + Cut", (*) => Send("^a^x"))
     menuF14.Add("Unformatted paste", (*) => Send("^+v"))
     menuF14.Add()
-    menuF14.Add("Load from slot", App.ClipSlot.buildLoadSlotMenu())
-    menuF14.Add("Save to slot", App.ClipSlot.buildSaveSlotMenu())
-    local sideLabel := "Side slot" . (App.ClipSlot.defaultGroupName != "" ? " [" . App.ClipSlot.defaultGroupName . "]" : "")
-    menuF14.Add(sideLabel, buildSideSlotMenu())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
+    menuIcon(menuF14, "Memory clip", ICO_RES, 30)                   ; bellek çubuğu
     menuF14.Add()
     menuF14.Add("System " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
+    menuF14.Add("Special keys", subKeyMenu)
+
+    ; 2. kolon: base grup slotları (eski "Load from slot" alt menüsü yerine)
+    menuF14.Add("Search in slots", (*) => App.ClipSlot.showSlotsSearch(), MENU_COL)
+    menuF14.Add()
+    App.ClipSlot.addSlotItems(menuF14, "")
+    menuF14.Add()
+    menuF14.Add("Save to ^ slot", App.ClipSlot.buildSaveSlotMenu(""))
+
+    ; 3. kolon: grup seçili olmasa da HEP açılır; kolonu Side slot başlatır.
+    local sideName := App.ClipSlot.defaultGroupName
+    local sideLabel := "Side slot" . (sideName != "" ? " [" . sideName . "]" : "")
+    menuF14.Add(sideLabel, buildSideSlotMenu(), MENU_COL)
+    if (sideName != "") {
+        menuF14.Add()
+        App.ClipSlot.addSlotItems(menuF14, sideName)
+        menuF14.Add()
+        menuF14.Add("Save to ⇥" . sideName, App.ClipSlot.buildSaveSlotMenu(sideName))
+    }
+
+    State.Busy.setFree()
     menuF14.Show()
 }
 
@@ -136,8 +186,9 @@ buildSideSlotMenu() {
                 ? App.ClipSlot.deleteGroup(n)
             : 0
         ))(name))
-        local groupLabel := name . (App.ClipSlot.defaultGroupName == name ? " ✓" : "")
-        m.Add(groupLabel, sub)
+        m.Add(name, sub)
+        if (App.ClipSlot.defaultGroupName == name)
+            try m.Default := name
     }
     return m
 }
@@ -179,7 +230,9 @@ menuAppProfile(targetMenu, firstOpt := "", colEvery := 20) {
         ; Kısayolu olmayan profilde döngü hiç dönmez; bayrak buraya düşer.
         targetMenu.Add("Profili düzenle", (*) => App.AppShorts.showManagerGui(profile), firstOpt)
     } else {
-        targetMenu.Add("▸ Ekle (" className ")", (*) => App.AppShorts.editProfileForActiveWindow(), firstOpt)
+        local addLabel := "▸ Ekle (" className ")"
+        targetMenu.Add(addLabel, (*) => App.AppShorts.editProfileForActiveWindow(), firstOpt)
+        setMenuDefault(targetMenu, addLabel, 2)
         targetMenu.Add("Profiller", (*) => App.AppShorts.showManagerGui())
     }
 }
@@ -193,15 +246,20 @@ menuAlwaysOnTop(targetMenu, firstOpt := "") {
     hwnd := State.Window.getHwnd()
 
     if (!State.Window.onTopWindows.Has(hwnd)) {
-        local label := SubStr(title, 1, 60)
-        targetMenu.Add("📍 Add " . label, (*) => State.Window.toggleAlwaysOnTop(hwnd, title), firstOpt)
+        local addLabel := "📍 Add " . SubStr(title, 1, 60)
+        targetMenu.Add(addLabel, (*) => State.Window.toggleAlwaysOnTop(hwnd, title), firstOpt)
         firstOpt := ""
+        if (!State.Window.onTopWindows.Count)   ; blok tek satırdan ibaret
+            setMenuDefault(targetMenu, addLabel, 3)
     }
 
     for key, value in State.Window.onTopWindows {
-        targetMenu.Add("📌 " . value, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value), firstOpt)
+        local pinLabel := "📌 " . value
+        targetMenu.Add(pinLabel, ((k, v) => (*) => State.Window.toggleAlwaysOnTop(k, v))(key, value), firstOpt)
         firstOpt := ""
-        targetMenu.Check("📌 " . value)
+        targetMenu.Check(pinLabel)
+        if (key == hwnd)   ; üstünde durduğun pencere zaten sabitlenmiş
+            setMenuDefault(targetMenu, pinLabel, 1)
     }
 
     return targetMenu

@@ -204,54 +204,37 @@ class singleClipSlot {
         qm.Add("Search slots", (*) => this.showSlotsSearch())
         qm.Show()
     }
+    ; Grubun 10 slotunu HAZIR bir menüye ekler (alt menü kurmadan).
+    ; firstOpt yalnız ilk öğeye gider — MENU_COL ile blok yeni kolondan başlar.
+    addSlotItems(targetMenu, groupName, firstOpt := "", prefix := "") {
+        Loop 10 {
+            local preview := this.getSlotPreview(groupName, A_Index)
+            local displayName := this.getName(groupName, A_Index) || "Slot " . A_Index
+            targetMenu.Add(prefix . displayName . " (" . A_Index . "): " . preview,
+                ((g, idx) => (*) => this.loadFromSlot(g, idx))(groupName, A_Index), firstOpt)
+            firstOpt := ""
+        }
+    }
+
     buildLoadSlotMenu() {
         local loadSlotMenu := Menu()
         loadSlotMenu.Add("Search in slots", (*) => this.showSlotsSearch())
         loadSlotMenu.Add()
-
-        local defaultName := ""
-        Loop 10 {
-            local preview := this.getSlotPreview(defaultName, A_Index)
-            local displayName := this.getName(defaultName, A_Index) || "Slot " . A_Index
-            loadSlotMenu.Add(displayName . " (" . A_Index . "): " . preview,
-                ((idx) => (*) => this.loadFromSlot(defaultName, idx))(A_Index))
-        }
-
-        if (this.groups.Count > 1 && this.defaultGroupName != "") {
+        this.addSlotItems(loadSlotMenu, "")
+        if (this.groups.Count > 1 && this.defaultGroupName != "" && this.groups.Has(this.defaultGroupName)) {
             loadSlotMenu.Add()
-            local selectedName := this.defaultGroupName
-            if (this.groups.Has(selectedName)) {
-                Loop 10 {
-                    local preview := this.getSlotPreview(selectedName, A_Index)
-                    local displayName := this.getName(selectedName, A_Index) || "Slot " . A_Index
-                    loadSlotMenu.Add("Tab " . displayName . " (" . A_Index . "): " . preview,
-                        ((idx) => (*) => this.loadFromSlot(selectedName, idx))(A_Index))
-                }
-            }
+            this.addSlotItems(loadSlotMenu, this.defaultGroupName, "", "Tab ")
         }
         return loadSlotMenu
     }
-    buildSaveSlotMenu() {
+    ; Tek grubun kaydetme menüsü — çağıran hangi grubu istediğini söyler.
+    buildSaveSlotMenu(groupName := "") {
         local saveSlotMenu := Menu()
-        local defaultName := ""
         Loop 10 {
-            local preview := this.getSlotPreview(defaultName, A_Index)
-            local displayName := this.getName(defaultName, A_Index) || "Slot " . A_Index
+            local preview := this.getSlotPreview(groupName, A_Index)
+            local displayName := this.getName(groupName, A_Index) || "Slot " . A_Index
             saveSlotMenu.Add(displayName . " (" . A_Index . "): " . preview,
-                ((idx) => (*) => this.promptAndSaveSlot(defaultName, idx))(A_Index))
-        }
-        saveSlotMenu.Add()
-
-        if (this.groups.Count > 1 && this.defaultGroupName != "") {
-            local selectedName := this.defaultGroupName
-            if (this.groups.Has(selectedName)) {
-                Loop 10 {
-                    local preview := this.getSlotPreview(selectedName, A_Index)
-                    local displayName := this.getName(selectedName, A_Index) || "Slot " . A_Index
-                    saveSlotMenu.Add("Tab " . displayName . " (" . A_Index . "): " . preview,
-                        ((idx) => (*) => this.promptAndSaveSlot(selectedName, idx))(A_Index))
-                }
-            }
+                ((g, idx) => (*) => this.promptAndSaveSlot(g, idx))(groupName, A_Index))
         }
         return saveSlotMenu
     }
@@ -325,11 +308,21 @@ class singleClipSlot {
             if (!this.groups.Has(groupName)) {
                 throw Error("Grup bulunamadı: " . groupName)
             }
+            ; Geri çağırma, yeni kopyalama değil → geçmişe düşmesin (şifre slotu
+            ; için güvenlik meselesi: geçmiş diske yazılıyor).
+            App.ClipHist.ignoreNextChange := true
             A_Clipboard := this.getContent(groupName, slotIndex)
             ClipWait(0.2)
             if (A_Clipboard == "") {
                 ShowTip("Slot boş! Grup: " . App.ClipSlot.defaultGroupName, TipType.Warning, 2000)
             }
+            ; If it is poassword show copied else show clipboard in tooltip
+            If (groupName == "" && slotIndex == 10) {
+                ShowTip("Kopyalandı", TipType.Success, 500)
+            } else {
+                ShowTip(A_Clipboard, TipType.Info, 1000)
+            }
+            ; Emulator icin farkli yapistirma metodu
             Sleep(20)
             if (State.Window.isClass("Qt5QWindowIcon")) {
                 SendText(A_Clipboard)

@@ -3,12 +3,14 @@ class ArrayFilter {
     ; Arama modu diyalog örnekleri arasında korunur. Instance alanına koysaydık
     ; Cleanup() her kapanışta instance'ı öldürdüğü için mod sıfırlanırdı.
     static lastMode := 1        ; 1=Metin  2=Joker  3=RegExp
-    
+    static hoverPreview := true ; fare ile gezerken önizleme (oturum boyu kalıcı)
+
     myGui := ""
     listView := ""
     searchBox := ""
     previewBox := ""
     caseChk := ""
+    hoverChk := ""
     modeDdl := ""
     baseTitle := ""
     patternError := false
@@ -61,7 +63,7 @@ class ArrayFilter {
             try this.myGui.Destroy()
             this.myGui := ""
         }
-        
+
         ; 5. Static Instance'ı öldür
         ArrayFilter.instance := ""
     }
@@ -78,7 +80,7 @@ class ArrayFilter {
 
     changeHotKeyMode(sw) {
         mode := sw ? "On" : "Off"
-        
+
         ; Enter ve NumpadEnter
         try Hotkey("Enter", sw ? (*) => this.SelectFocused() : "", mode)
         try Hotkey("NumpadEnter", sw ? (*) => this.SelectFocused() : "", mode)
@@ -101,15 +103,15 @@ class ArrayFilter {
     SelectByFKey(fKeyIndex) {
         if (!this.listView)
             return
-            
+
         ; LVM_GETTOPINDEX (0x1027): En üstteki görünür satırın indexini (0-based) verir.
         ; AHK Listview 1-based olduğu için, matematik şu:
         ; TopIndex(0-based) + F_Tuşu(1-based) = HedefSatır(1-based)
-        
+
         try {
             topIndex := SendMessage(0x1027, 0, 0, this.listView.Hwnd)
             targetIndex := topIndex + fKeyIndex
-            
+
             if (targetIndex <= this.results.Length) {
                 this.SelectAndClose(targetIndex)
             }
@@ -119,7 +121,7 @@ class ArrayFilter {
     SelectAndClose(index) {
         if (index < 1 || index > this.results.Length)
             return
-        
+
         local selectedSlot := this.results[index]
         this.closeGuiAndHotkeys()
         Sleep(50)
@@ -139,7 +141,7 @@ class ArrayFilter {
             local contentPreview := SubStr(slot["content"], 1, 120)
             if (StrLen(slot["content"]) > 120)
                 contentPreview .= "..."
-            
+
             if (this.MatchItem(search, slot)) {
                 this.listView.Add("", "", slot["name"], contentPreview)
                 this.results.Push(slot)
@@ -149,7 +151,7 @@ class ArrayFilter {
         ; İlk satırı seçili yap
         if (this.results.Length > 0) {
             this.listView.Modify(1, "Select Focus")
-            this.UpdatePreviewContent(1) 
+            this.UpdatePreviewContent(1)
         } else {
             this.previewBox.Value := ""
         }
@@ -213,7 +215,12 @@ class ArrayFilter {
     }
 
     UpdatePreviewContent(rowIndex) {
+        if (!this.listView)
+            return
+        if (rowIndex < 1 || rowIndex > this.results.Length)
+            try rowIndex := this.listView.GetNext(0, "F")   ; -1/0 geldiyse odağa sor
         if (rowIndex > 0 && rowIndex <= this.results.Length) {
+            this.lastHoveredRow := rowIndex                 ; hover bunu ezmesin
             try this.previewBox.Value := this.results[rowIndex]["content"]
         }
     }
@@ -225,10 +232,10 @@ class ArrayFilter {
         try {
             if !WinExist("ahk_id " . this.listView.Hwnd)
                 return
-            
+
             ; LVM_GETTOPINDEX + 1 (AHK 1-based uyumu için)
             currentTop := SendMessage(0x1027, 0, 0, this.listView.Hwnd) + 1
-            
+
             if (currentTop == this.lastTopIndex)
                 return
 
@@ -239,7 +246,7 @@ class ArrayFilter {
                 Loop 12 {
                     rIdx := this.lastTopIndex + (A_Index - 1)
                     if (rIdx <= this.results.Length)
-                        this.listView.Modify(rIdx, "Col1", "") 
+                        this.listView.Modify(rIdx, "Col1", "")
                 }
             }
 
@@ -274,19 +281,23 @@ class ArrayFilter {
         this.caseChk := this.myGui.AddCheckbox("x+10 yp+4 w60", "Case")
         ; yp-4: checkbox Edit'e göre 4px indirilmişti, DDL daha uzun olduğu için geri alınıyor
         this.modeDdl := this.myGui.AddDropDownList("x+5 yp-4 w110 Choose" . ArrayFilter.lastMode,
-                                                   ["Metin", "Joker *?", "RegExp"])
+            ["Metin", "Joker *?", "RegExp"])
         ; r12: Sabit 12 satır yüksekliği
         this.listView := this.myGui.AddListView("x10 y+10 w" . (guiWidth - 20) . " r12 Grid -Multi Count100", ["F#", "İsim", "İçerik"])
-        this.previewBox := this.myGui.AddEdit("x10 y+10 w" . (guiWidth - 20) . " h150 ReadOnly Multi +VScroll", "")
+        this.hoverChk := this.myGui.AddCheckbox("x10 y+8", "Hover preview")
+        this.hoverChk.Value := ArrayFilter.hoverPreview ? 1 : 0
+        this.previewBox := this.myGui.AddEdit("x10 y+6 w" . (guiWidth - 20) . " h150 ReadOnly Multi +VScroll", "")
         this.listView.ModifyCol(1, 40)              ; F#
         this.listView.ModifyCol(2, guiWidth * 0.18) ; İsim (grup-slotAdı sığsın)
         this.listView.ModifyCol(3, guiWidth * 0.70) ; İçerik (Geriye kalanı kapla)
         ; --- EVENTLER ---
         this.searchBox.OnEvent("Change", (*) => this.UpdateList())
         this.caseChk.OnEvent("Click", (*) => this.UpdateList())
+        this.hoverChk.OnEvent("Click", (*) => (ArrayFilter.hoverPreview := !!this.hoverChk.Value))
         this.modeDdl.OnEvent("Change", (*) => (ArrayFilter.lastMode := this.modeDdl.Value, this.UpdateList()))
         this.listView.OnEvent("DoubleClick", (*) => this.SelectFocused())
         this.listView.OnEvent("ItemSelect", (guiCtrl, item, selected) => selected ? this.UpdatePreviewContent(item) : "")
+        this.listView.OnEvent("Click", (guiCtrl, item) => this.UpdatePreviewContent(item))
         this.myGui.OnEvent("Escape", (*) => (this.searchBox.Value ? (this.searchBox.Value := "", this.UpdateList()) : this.closeGuiAndHotkeys()))
         this.myGui.OnEvent("Close", (*) => this.closeGuiAndHotkeys())
 
@@ -302,7 +313,7 @@ class ArrayFilter {
         this.UpdateList()
         this.myGui.Show("AutoSize")
         this.CheckFocus := (*) => this.WatchDog()
-        SetTimer this.CheckFocus, 50 
+        SetTimer this.CheckFocus, 50
     }
 
     MoveSelection(direction) {
@@ -340,11 +351,13 @@ class ArrayFilter {
         } catch {
             return
         }
+        if (!ArrayFilter.hoverPreview)
+            return
         MouseGetPos(&mouseX, &mouseY)
-        
+
         ; Koordinat Hesabı
         try WinGetPos(&winX, &winY, , , this.listView.Hwnd)
-        catch 
+        catch
             return
 
         relX := mouseX - winX

@@ -11,6 +11,9 @@
 ;   Çift tık          panoya al      Tekerlek          zoom
 ;   Sol tuş sürükle   kaydır         Esc               kapat
 ;
+; CANLI LİSTE: yeni görseller listeye kendiliğinden girer (_poll/_reload);
+; seçim satır no ile değil SLOT ile taşındığı için tazeleme onu bozmaz.
+;
 ; HBITMAP sahipliği: Picture kontrolüne "HBITMAP:*" ile atanan handle'ın
 ; sahipliğini KONTROL DEVRALIR ve eskisini kendi siler. Bu yüzden atadığımız
 ; handle'ları BİZ DeleteObject ETMEYİZ — çift serbest bırakma önizlemeyi
@@ -26,6 +29,7 @@ class singleClipImageDialog {
     static ZOOM_STEP := 1.25
     static ZOOM_MAX  := 8.0
     static ZOOM_MIN  := 0.05
+    static POLL_MS   := 900     ; depo değişikliği yoklama sıklığı
 
     static getInstance() {
         if (!singleClipImageDialog.instance)
@@ -51,6 +55,9 @@ class singleClipImageDialog {
         this.panX := 0, this.panY := 0
         this.pendingRow := 0
         this.selectBound := (*) => this._select(this.pendingRow)   ; tek referans → timer coalescing
+        this.storeRev := 0                  ; deponun son görülen rev'i
+        this.suppressSelect := false
+        this.pollBound := (*) => this._poll()
         ; Hotkey kriteri ve işleyicileri SABİT nesneler olarak burada üretiliyor;
         ; neden olduğu _build içinde anlatılıyor (hotkey varyantı birikmesi).
         this.hotIfBound     := (*) => (this.gui && WinActive("ahk_id " this.gui.Hwnd)) ? true : false
@@ -79,6 +86,8 @@ class singleClipImageDialog {
             ; Modify(...,"Select") zaten ItemSelect'i tetikler → _select(1) oradan gelir.
             ; Ayrıca burada _select çağırmak önizlemeyi ikinci kez kurup bozuyordu.
             this.lv.Modify(1, "Select Focus")
+            this.storeRev := App.ClipImages.getRev()
+            SetTimer(this.pollBound, singleClipImageDialog.POLL_MS)
         } catch as err {
             App.ErrHandler.handleError("ClipImageDialog.show: " err.Message, err)
         }
@@ -126,7 +135,9 @@ class singleClipImageDialog {
         this.lv.SetImageList(this.hIL, 1)
 
         ; Shift ile 20 satır seçilince 20 kez PNG çözmeyelim — son seçim kazansın
-        this.lv.OnEvent("ItemSelect", (lv, row, sel) => sel ? this._selectDeferred(row) : 0)
+        this.lv.OnEvent("ItemSelect", (lv, row, sel) => (sel && !this.suppressSelect) ? this._selectDeferred(row) : 0)
+        ; Zaten seçili satıra tekrar tıklamak ItemSelect ÜRETMEZ — tık yutuluyordu.
+        this.lv.OnEvent("Click", (lv, row) => this.suppressSelect ? 0 : this._selectDeferred(row))
         this.lv.OnEvent("DoubleClick", (lv, row) => this._copyOnly())
         this.gui.OnEvent("Escape", (*) => this.close())
         this.gui.OnEvent("Close", (*) => this.close())
@@ -147,6 +158,8 @@ class singleClipImageDialog {
 
     _fill() {
         this.lv.Delete()
+        if (this.hIL)   ; _reload yeniden dolduruyor; temizlemezsek thumb'lar birikir
+            DllCall("comctl32\ImageList_Remove", "Ptr", this.hIL, "Int", -1)
         this.lv.Opt("-Redraw")
         for item in this.items {
             local hbm := GdipMini.thumbToHbitmap(item["thumb"])
@@ -168,16 +181,84 @@ class singleClipImageDialog {
         this.lv.Opt("+Redraw")
     }
 
+    ; ── Canlı tazeleme ───────────────────────────────────────────────────────
+
+    _poll() {
+        if (!this.gui) {
+            SetTimer(this.pollBound, 0)
+            return
+        }
+        local rev := App.ClipImages.getRev()
+        if (rev == this.storeRev)
+            return
+        this.storeRev := rev
+        try {
+            this._reload()
+        } catch as err {
+            App.ErrHandler.handleError("ClipImageDialog._reload: " err.Message, err)
+        }
+    }
+
+    ; Listeyi baştan kurar ama SEÇİMİ ve önizlemeyi korur.
+    _reload() {
+        SetTimer(this.selectBound, 0)          ; bekleyen seçim eski satır no'suna bakıyor
+        local selSlots := Map(), focusSlot := -1
+        for row in this._selectedRows()
+            selSlots[this.items[row]["slot"]] := true
+        if (this.curRow >= 1 && this.curRow <= this.items.Length)
+            focusSlot := this.items[this.curRow]["slot"]
+
+        this.items := App.ClipImages.loadThumbs()
+        if (this.items.Length == 0) {
+            this.close()
+            ShowTip("Görsel geçmişi boşaldı.", TipType.Info, 1200)
+            return
+        }
+
+        this.suppressSelect := true
+        this._fill()
+        local focusRow := 0
+        for i, item in this.items {
+            if (selSlots.Has(item["slot"]))
+                this.lv.Modify(i, "Select")
+            if (item["slot"] == focusSlot)
+                focusRow := i
+        }
+        if (focusRow) {
+            this.lv.Modify(focusRow, "Focus Vis")
+            this.curRow := focusRow
+        }
+        this.suppressSelect := false
+
+        this._refreshStats()
+        if (!focusRow) {                       ; kayıt tahliye edilmiş, bitmap sahipsiz
+            this.curRow := 0
+            this.lv.Modify(1, "Select Focus")
+        }
+    }
+
     ; ── Seçim ve önizleme ────────────────────────────────────────────────────
 
-    ; Tek referanslı timer → hızlı ardışık seçimler tek çağrıda birleşir
+    ; Tek referanslı timer → hızlı ardışık seçimler tek çağrıda birleşir.
+    ; Satır no'suna güvenmiyoruz: çoklu seçimde Windows "hepsi değişti"yi
+    ; iItem = -1 ile yolluyor, eski kod onu geçersiz sayıp sessizce dönüyordu.
     _selectDeferred(row) {
+        if (row < 1 || row > this.items.Length)
+            row := this.lv.GetNext(0, "F")     ; odaklı satır
+        if (row < 1)
+            row := this.lv.GetNext(0)          ; ya da seçili ilk satır
+        if (row < 1 || row > this.items.Length)
+            return
         this.pendingRow := row
         SetTimer(this.selectBound, -80)
     }
 
     _select(row) {
         if (row < 1 || row > this.items.Length)
+            return
+        ; Sağlam gösterilen satıra dokunma (Click zoom/pan'ı sıfırlamasın);
+        ; bitmap yoksa tekrar dene — "bir daha tıklayınca düzeliyor" budur.
+        if (row == this.curRow && this.curBitmap)
             return
         this.curRow := row
         local item := this.items[row]
@@ -415,10 +496,24 @@ class singleClipImageDialog {
         local rows := this._selectedRows()
         if (rows.Length == 0)
             return
-        if (rows.Length > 1) {
-            if (MsgBox(rows.Length " görsel silinecek.`nEmin misiniz?", "Toplu silme", "YesNo Icon!") != "Yes")
-                return
+        ; Onay kutusu açıkken timer'lar çalışıyor; araya giren _reload satır
+        ; numaralarını kaydırır ve yanlış görsel silinir.
+        SetTimer(this.pollBound, 0)
+        try {
+            if (rows.Length > 1) {
+                if (MsgBox(rows.Length " görsel silinecek.`nEmin misiniz?", "Toplu silme", "YesNo Icon!") != "Yes")
+                    return
+            }
+            this._deleteRows(rows)
+        } finally {
+            if (this.gui) {
+                this.storeRev := App.ClipImages.getRev()
+                SetTimer(this.pollBound, singleClipImageDialog.POLL_MS)
+            }
         }
+    }
+
+    _deleteRows(rows) {
         local slots := []
         for row in rows
             slots.Push(this.items[row]["slot"])
@@ -438,6 +533,7 @@ class singleClipImageDialog {
             return
         }
         this._refreshStats()
+        this.curRow := 0   ; yoksa _select erken döner, silinen bitmap ekranda kalır
         local next := Min(rows[1], this.items.Length)
         this.lv.Modify(next, "Select Focus")
         ShowTip(n " görsel silindi", TipType.Info, 1200)
@@ -462,6 +558,7 @@ class singleClipImageDialog {
     ; ── Kapanış ──────────────────────────────────────────────────────────────
 
     close() {
+        SetTimer(this.pollBound, 0)
         SetTimer(this.selectBound, 0)   ; kapanıştan sonra ateşlenecek seçim kalmasın
         try {
             HotIf(this.hotIfBound)

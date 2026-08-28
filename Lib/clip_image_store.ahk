@@ -62,6 +62,7 @@ class singleClipImageStore {
         this.datUsed  := 0
         this.idxFile  := 0
         this.datFile  := 0
+        this.rev      := 0       ; her değişiklikte artar; dialog bunu yoklar
         GdipMini.startup()
         this._open()
     }
@@ -401,8 +402,10 @@ class singleClipImageStore {
 
         local offset := this.datHead
         this._writeBlobHeader(offset, total, tag ? tag : singleClipImageStore.TAG_PAD)
+        local c := this._ioBegin()
         this.datFile.Seek(offset + singleClipImageStore.BLOB_HDR)
         this.datFile.RawWrite(buf, size)
+        this._ioEnd(c)
         this.datHead := Mod(offset + total, singleClipImageStore.MAX_DAT)
         this.datUsed += total
         return offset
@@ -443,8 +446,11 @@ class singleClipImageStore {
             if (this.datUsed == 0 || ++guard > singleClipImageStore.MAX_SLOTS * 2)
                 return false
             local hdrBuf := Buffer(singleClipImageStore.BLOB_HDR, 0)
+            local c := this._ioBegin()
             this.datFile.Seek(this.datTail)
-            if (this.datFile.RawRead(hdrBuf, singleClipImageStore.BLOB_HDR) != singleClipImageStore.BLOB_HDR)
+            local n := this.datFile.RawRead(hdrBuf, singleClipImageStore.BLOB_HDR)
+            this._ioEnd(c)
+            if (n != singleClipImageStore.BLOB_HDR)
                 return false
             local len := NumGet(hdrBuf, 0, "UInt")
             local tag := NumGet(hdrBuf, 4, "UInt")
@@ -516,15 +522,19 @@ class singleClipImageStore {
         local hdrBuf := Buffer(singleClipImageStore.BLOB_HDR, 0)
         NumPut("UInt", len, hdrBuf, 0)
         NumPut("UInt", tag, hdrBuf, 4)
+        local c := this._ioBegin()
         this.datFile.Seek(offset)
         this.datFile.RawWrite(hdrBuf, singleClipImageStore.BLOB_HDR)
+        this._ioEnd(c)
     }
 
     _stampTag(offset, tag) {
         local tagBuf := Buffer(4, 0)
         NumPut("UInt", tag, tagBuf, 0)
+        local c := this._ioBegin()
         this.datFile.Seek(offset + 4)
         this.datFile.RawWrite(tagBuf, 4)
+        this._ioEnd(c)
     }
 
     ; ── Slot yönetimi ────────────────────────────────────────────────────────
@@ -548,8 +558,11 @@ class singleClipImageStore {
 
     _evictOne() {
         local hdrBuf := Buffer(singleClipImageStore.BLOB_HDR, 0)
+        local c := this._ioBegin()
         this.datFile.Seek(this.datTail)
-        if (this.datFile.RawRead(hdrBuf, singleClipImageStore.BLOB_HDR) != singleClipImageStore.BLOB_HDR)
+        local n := this.datFile.RawRead(hdrBuf, singleClipImageStore.BLOB_HDR)
+        this._ioEnd(c)
+        if (n != singleClipImageStore.BLOB_HDR)
             return false
         local len := NumGet(hdrBuf, 0, "UInt")
         local tag := NumGet(hdrBuf, 4, "UInt")
@@ -607,10 +620,11 @@ class singleClipImageStore {
     ; Tam çözünürlüklü PNG byte'ları — SADECE seçili kayıt için, tembel.
     _readBlob(rec) {
         local buf := Buffer(rec["datSize"])
+        local c := this._ioBegin()
         this.datFile.Seek(rec["datOffset"] + singleClipImageStore.BLOB_HDR)
-        if (this.datFile.RawRead(buf, rec["datSize"]) != rec["datSize"])
-            return 0
-        return buf
+        local n := this.datFile.RawRead(buf, rec["datSize"])
+        this._ioEnd(c)
+        return (n == rec["datSize"]) ? buf : 0
     }
 
     ; Dialog önizlemesi için HBITMAP. ÇAĞIRAN DeleteObject ETMELİ.
@@ -680,8 +694,10 @@ class singleClipImageStore {
 
     _readThumb(slot) {
         local thumb := Buffer(GdipMini.THUMB_BYTES, 0)
+        local c := this._ioBegin()
         this.idxFile.Seek(this._slotOffset(slot) + singleClipImageStore.META_BYTES)
         this.idxFile.RawRead(thumb, GdipMini.THUMB_BYTES)
+        this._ioEnd(c)
         return thumb
     }
 
@@ -714,6 +730,7 @@ class singleClipImageStore {
 
     ; 64 B metadata; thumb yalnız yeni kayıtta yazılır (16 KB boşuna yazılmasın).
     _writeMeta(rec, thumb := 0) {
+        this.rev += 1
         local meta := Buffer(singleClipImageStore.META_BYTES, 0)
         NumPut("UChar",  rec["state"],     meta, 0)
         NumPut("UChar",  rec["type"],      meta, 1)
@@ -729,17 +746,22 @@ class singleClipImageStore {
         NumPut("UInt64", rec["createdTs"], meta, 40)
         ; 48..63 rezerve (sıfır)
 
+        local c := this._ioBegin()
         this.idxFile.Seek(this._slotOffset(rec["slot"]))
         this.idxFile.RawWrite(meta, singleClipImageStore.META_BYTES)
         if (thumb)
             this.idxFile.RawWrite(thumb, GdipMini.THUMB_BYTES)
+        this._ioEnd(c)
     }
 
     ; state=0 yeterli; thumb baytları yerinde kalır (yeni kayıt üzerine yazar).
     _clearMeta(slot) {
+        this.rev += 1
         local zero := Buffer(singleClipImageStore.META_BYTES, 0)
+        local c := this._ioBegin()
         this.idxFile.Seek(this._slotOffset(slot))
         this.idxFile.RawWrite(zero, singleClipImageStore.META_BYTES)
+        this._ioEnd(c)
     }
 
     ; Commit noktası — her zaman EN SON çağrılır.
@@ -752,11 +774,26 @@ class singleClipImageStore {
         NumPut("UInt", this.datHead, hdr, 16)
         NumPut("UInt", this.datTail, hdr, 20)
         NumPut("UInt", this.datUsed, hdr, 24)
+        local c := this._ioBegin()
         this.idxFile.Seek(0)
         this.idxFile.RawWrite(hdr, singleClipImageStore.HDR_BYTES)
+        this._ioEnd(c)
     }
 
     ; ── Yardımcılar ──────────────────────────────────────────────────────────
+
+    ; Seek + Raw ÇİFTİ BÖLÜNEMEZ: handle tüm thread'lerde ortak, araya giren
+    ; timer başka offset'e Seek ederse okuma yanlış yerden gelir. Ağır iş
+    ; (PNG/GDI+) bölgenin dışında kalmalı.
+    _ioBegin() {
+        local prev := A_IsCritical
+        Critical "On"
+        return prev
+    }
+    _ioEnd(prev) {
+        Critical prev
+    }
+
 
     ; Depo özeti — TEK geçiş. Dialog her karede değil, yalnız açılışta/silmede çağırır.
     getStats() {
@@ -797,6 +834,8 @@ class singleClipImageStore {
               . singleClipImageStore.fmtSize(s["ringUsed"]) "/"
               . singleClipImageStore.fmtSize(s["ringMax"]) ")"]
     }
+
+    getRev() => this.rev
 
     static fmtSize(bytes) {
         if (bytes >= 1073741824)

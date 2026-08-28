@@ -21,14 +21,14 @@
 #Include <app_shorts>
 #Include <repository>
 #Include <incognito>
-#Include <trace_store> ; incognito
+#Include <trace_store>   ; incognito icin
 #Include <magnifier>
-#Include <screen_ocr>    ; OCR.ahk'yi (Descolada, MIT) kendi ceker
+#Include <screen_ocr>    ; OCR.ahk icin
 ; #Include <array_filter>
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_191_b")
+global State := singleState.getInstance("ver_192_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
