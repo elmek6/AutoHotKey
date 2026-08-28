@@ -1,4 +1,4 @@
-getStatsArray(showMsgBox := false) {
+﻿getStatsArray(showMsgBox := false) {
     statsArray := ["Busy status: " State.Busy.get()]
 
     for key, count in App.KeyCounts.getAll() {
@@ -122,12 +122,22 @@ showF13menu() {
 showF14menu() {
     Click("Middle", 1)
 
-    subKeyMenu := Menu()
-    subKeyMenu.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
-    subKeyMenu.Add("⌫ Backspace", (*) => Send("{Backspace}"))
-    subKeyMenu.Add("⌦ Delete", (*) => SendInput("{Delete}"))
-    subKeyMenu.Add("Select All + Cut", (*) => Send("^a^x"))
-    subKeyMenu.Add("⎋ Esc", (*) => Send("{Esc}"))
+    subMenuKey := Menu()
+    subMenuKey.Add("⏎ Enter (Right to left)", (*) => Send("{Enter}"))
+    subMenuKey.Add("⌫ Backspace", (*) => Send("{Backspace}"))
+    subMenuKey.Add("⌦ Delete", (*) => SendInput("{Delete}"))
+    subMenuKey.Add("Select All + Cut", (*) => Send("^a^x"))
+    subMenuKey.Add("⎋ Esc", (*) => Send("{Esc}"))
+
+    subMenuSet := Menu()
+    subMenuSet.Add("Reload", (*) => reloadScript())
+    subMenuSet.Add("Pause script", (*) => DialogPauseGui())
+    subMenuSet.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
+    subMenuSet.Add()
+    subMenuSet.Add("Settings", (*) => SettingsDialog.show())
+    subMenuSet.Add("Show stats", (*) => (getStatsArray(true)))
+    subMenuSet.Add("Copy last error", (*) => (App.ErrHandler.copyLastError()))
+
 
     menuF14 := Menu()
     menuF14.Add("Unformatted paste", (*) => Send("^+v"))
@@ -136,8 +146,8 @@ showF14menu() {
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuIcon(menuF14, "Memory clip", ICO_RES, 30)                   ; bellek çubuğu
     menuF14.Add()
-    menuF14.Add("System " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), menuStats())
-    menuF14.Add("Special keys", subKeyMenu)
+    menuF14.Add("System " . State.Script.getVersion() . (App.ErrHandler.lastFullError == "" ? "" : " (error)"), subMenuSet)
+    menuF14.Add("Special keys", subMenuKey)
 
     ; 2. kolon: base grup slotları (eski "Load from slot" alt menüsü yerine)
     menuF14.Add("Search in slots", (*) => App.ClipSlot.showSlotsSearch(), MENU_COL)
@@ -192,18 +202,6 @@ buildSideSlotMenu() {
             try m.Default := name
     }
     return m
-}
-
-menuStats() {
-    local menuStats := Menu()
-    menuStats.Add("Reload", (*) => reloadScript())
-    menuStats.Add("Pause script", (*) => DialogPauseGui())
-    menuStats.Add("Show KeyHistoryLoop", (*) => ShowKeyHistoryLoop())
-    menuStats.Add()
-    menuStats.Add("Show stats", (*) => (getStatsArray(true)))
-    menuStats.Add("Copy last error", (*) => (App.ErrHandler.copyLastError()))
-
-    return menuStats
 }
 
 ; firstOpt : bu bloğun İLK öğesine verilecek Menu.Add seçeneği. MENU_COL

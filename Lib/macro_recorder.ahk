@@ -1,9 +1,26 @@
-class SingleMacroRec {
+﻿class SingleMacroRec {
     static instance := ""
     static RecordingControl := ""
     static bak := ""
     static idx := 0
     static slotCount := 3
+
+    static prefSlotCount := Setting({ key: "macro.slotCount", name: "Kayıt slotu sayısı", default: 3,
+        category: Cat.Macro, tags: "macro kayit slot", desc: "Macro Recorder ekranındaki rec dosyası sayısı",
+        validate: (v) => (v >= 1 && v <= 9) ? "" : "1-9 arası olmalı" })
+    static prefKeyDelay := Setting({ key: "macro.keyDelay", name: "Tuş gecikmesi", default: 30,
+        category: Cat.Macro, tags: "macro oynatma hiz gecikme", desc: "Oynatmada tuşlar arası bekleme (ms)",
+        validate: (v) => (v >= 0 && v <= 500) ? "" : "0-500 ms olmalı" })
+    static prefSpeedUp := Setting({ key: "macro.speedUp", name: "Sleep çarpanı", default: 0.0,
+        category: Cat.Macro, tags: "macro oynatma hiz", desc: "Kayıttaki beklemeler bu katsayıyla çarpılır (0 = beklemesiz)",
+        validate: (v) => (v >= 0.0 && v <= 10.0) ? "" : "0-10 arası olmalı" })
+    static prefMouseMode := Setting({ key: "macro.mouseMode", name: "Fare koordinat modu", default: "screen",
+        category: Cat.Macro, tags: "macro fare koordinat", choices: ["screen", "window", "relative"],
+        desc: "Tıklamaların ekrana mı, pencereye mi, önceki noktaya göre mi kaydedileceği" })
+
+    static __New() {
+        SingleMacroRec.prefSlotCount.subscribe((v, *) => SingleMacroRec.slotCount := v)
+    }
 
     class recType {
         static key := 1
@@ -46,10 +63,13 @@ class SingleMacroRec {
         this.oldtitle := ""
         this.relativeX := 0
         this.relativeY := 0
-        this.mouseMode := "screen"
         this.prmSleepEnabled := 0
-        this.prmSetKeyDelay := 30
-        this.prmSpeedUp := 0.0
+        this.mouseMode := SingleMacroRec.prefMouseMode.get()
+        this.prmSetKeyDelay := SingleMacroRec.prefKeyDelay.get()
+        this.prmSpeedUp := SingleMacroRec.prefSpeedUp.get()
+        SingleMacroRec.prefMouseMode.subscribe((v, *) => this.mouseMode := v)
+        SingleMacroRec.prefKeyDelay.subscribe((v, *) => this.prmSetKeyDelay := v)
+        SingleMacroRec.prefSpeedUp.subscribe((v, *) => this.prmSpeedUp := v)
         ; Cached timer callbacks - tek seferlik BoundFunc oluştur
         this._boundStopRecording := ObjBindMethod(this, "stopRecording")
         this._boundShowTipChangeColor := ObjBindMethod(this, "showTipChangeColor")
