@@ -3,6 +3,7 @@ class SingleMacroRec {
     static RecordingControl := ""
     static bak := ""
     static idx := 0
+    static slotCount := 3
 
     class recType {
         static key := 1
@@ -35,6 +36,8 @@ class SingleMacroRec {
         this.recordType := SingleMacroRec.recType.key
         this.outputFile := "rec1.ahk"
         this.logFile := Path.Dir . this.outputFile
+        this.slotIndex := 1
+        this.slotNames := Map()   ; slot -> ad
         this.recording := false
         this.playing := false
         this.status := SingleMacroRec.macroStatusType.ready
@@ -53,8 +56,52 @@ class SingleMacroRec {
         this._boundLogWindow := ObjBindMethod(this, "logWindow")
     }
 
+    ; Kayıt adı dosyanın kendi başlığında saklanır: "; @name: ..."
+    slotPath(n) => Path.Dir "rec" n ".ahk"
+
+    getSlotName(n) {
+        if (this.slotNames.Has(n))
+            return this.slotNames[n]
+        name := "", f := this.slotPath(n)
+        if (FileExist(f)) {
+            Loop Read f {
+                if (RegExMatch(A_LoopReadLine, "i)^;\s*@name:\s*(.*)$", &m)) {
+                    name := Trim(m[1])
+                    break
+                }
+                if (A_Index > 5)
+                    break
+            }
+        }
+        this.slotNames[n] := name
+        return name
+    }
+
+    setSlotName(n, name) {
+        name := Trim(name)
+        if (this.getSlotName(n) == name)
+            return
+        this.slotNames[n] := name
+        f := this.slotPath(n)
+        if (!FileExist(f))
+            return
+        txt := FileRead(f)
+        repl := "; @name: " StrReplace(name, "$", "$$")
+        txt := RegExMatch(txt, "im)^;\s*@name:.*$")
+            ? RegExReplace(txt, "im)^;\s*@name:.*$", repl)
+            : repl "`n" txt
+        FileDelete(f)
+        FileAppend(txt, f)
+    }
+
+    slotLabel(n) {
+        name := this.getSlotName(n)
+        return "rec" n ".ahk" (name = "" ? "" : "  •  " name)
+    }
+
     recordAction(fileNumber, recordType) {
         this.isStrokeOnlyMode := false
+        this.slotIndex := fileNumber
         this.outputFile := "rec" . fileNumber . ".ahk"
         this.recordType := recordType
         this.logFile := Path.Dir . this.outputFile
@@ -136,6 +183,7 @@ class SingleMacroRec {
         ; Dosyaya yaz (normal kayıt modu için)
         coordMode := this.mouseMode == "window" ? "Window" : "Screen"
         lines := []
+        lines.Push("; @name: " this.getSlotName(this.slotIndex))
         lines.Push("; Generated: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss"))
         lines.Push("; run sample.ahk --repeat=1{1 to n} --speedUp=0.0{sleep * n} --keyDelay=30")
         lines.Push("#SingleInstance Force")
@@ -191,6 +239,7 @@ class SingleMacroRec {
     playKeyAction(fileNumber, repeatCount := 1) {
         if (this.recording || this.playing)
             this.stop()
+        this.slotIndex := fileNumber
         this.outputFile := "rec" . fileNumber . ".ahk"
         this.logFile := Path.Dir . this.outputFile
         if (!FileExist(this.logFile)) {
@@ -481,44 +530,87 @@ class SingleMacroRec {
         pauseGui := Gui("+ToolWindow +AlwaysOnTop", "Macro Recorder")
         pauseGui.SetFont("s10")
 
-        fileCombo := pauseGui.Add("ComboBox", "w100 x10 y10 +ReadOnly", ["rec1.ahk", "rec2.ahk"])
-        fileCombo.Value := 1
+        slot := 1
 
-        typeCombo := pauseGui.Add("ComboBox", "w100 x120 y10", ["key", "mouse", "hybrid"])
+        items := []
+        Loop SingleMacroRec.slotCount
+            items.Push(this.slotLabel(A_Index))
+        fileCombo := pauseGui.Add("ComboBox", "w230 x10 y10 +ReadOnly", items)
+        fileCombo.Value := slot
+
+        typeCombo := pauseGui.Add("ComboBox", "w100 x250 y10", ["key", "mouse", "hybrid"])
         typeCombo.Value := 1
 
-        recordBtn := pauseGui.Add("Button", "w80 h25 x10 y40", "🛑")
+        pauseGui.Add("Text", "x10 y48 w30", "Ad:")
+        nameEdit := pauseGui.Add("Edit", "w305 x45 y44", this.getSlotName(slot))
+
+        _commitName() {
+            if (!IsObject(pauseGui))   ; kapanışta geç gelen LoseFocus
+                return
+            this.setSlotName(slot, nameEdit.Value)
+            sel := fileCombo.Value
+            list := []
+            Loop SingleMacroRec.slotCount
+                list.Push(this.slotLabel(A_Index))
+            fileCombo.Delete()
+            fileCombo.Add(list)
+            fileCombo.Value := sel
+        }
+        nameEdit.OnEvent("LoseFocus", (*) => _commitName())
+
+        fileCombo.OnEvent("Change", (*) => (
+            _commitName(),
+            slot := fileCombo.Value,
+            nameEdit.Value := this.getSlotName(slot)
+        ))
+
+        _selectedType() => typeCombo.Text = "key" ? SingleMacroRec.recType.key
+            : (typeCombo.Text = "mouse" ? SingleMacroRec.recType.mouse : SingleMacroRec.recType.hybrid)
+
+        recordBtn := pauseGui.Add("Button", "w80 h25 x10 y80", "🛑")
         recordBtn.OnEvent("Click", (*) => (
-            fileNumber := SubStr(fileCombo.Text, 4, 1),
-            recordType := typeCombo.Text = "key" ? SingleMacroRec.recType.key : (typeCombo.Text = "mouse" ? SingleMacroRec.recType.mouse : SingleMacroRec.recType.hybrid),
-            this.recordAction(fileNumber, recordType)
+            _commitName(),
+            this.recordAction(slot, _selectedType())
         ))
 
-        stopBtn := pauseGui.Add("Button", "w80 h25 x95 y40", "⏹️")
+        stopBtn := pauseGui.Add("Button", "w80 h25 x95 y80", "⏹️")
         stopBtn.OnEvent("Click", (*) => (
-            this.stop()
+            this.stop(),
+            _commitName()
         ))
 
-        playBtn := pauseGui.Add("Button", "w80 h25 x180 y40", "▶️")
+        playBtn := pauseGui.Add("Button", "w80 h25 x180 y80", "▶️")
         playBtn.OnEvent("Click", (*) => (
-            fileNumber := SubStr(fileCombo.Text, 4, 1),
-            this.playKeyAction(fileNumber),  ; virgül eksikti: örtük string birleştirmeyle "tesadüfen" çalışıyordu
-            _destroyGui()
+            _commitName(),
+            playSlot := slot,
+            _destroyGui(),
+            this.playKeyAction(playSlot)
         ))
 
-        exitBtn := pauseGui.Add("Button", "w80 h25 x265 y40", "🚪")
+        notepadBtn := pauseGui.Add("Button", "w155 h25 x10 y115", "📝 Notepad ile aç")
+        notepadBtn.OnEvent("Click", (*) => (
+            _commitName(),
+            FileExist(this.slotPath(slot))
+                ? Run('notepad.exe "' this.slotPath(slot) '"')
+                : ShowTip("Dosya yok: " this.slotPath(slot), TipType.Error, 2000)
+        ))
+
+        exitBtn := pauseGui.Add("Button", "w155 h25 x195 y115", "🚪 Çıkış")
         exitBtn.OnEvent("Click", (*) => (
             this.stop(),
+            _commitName(),
             _destroyGui(),
             ExitApp
         ))
 
         pauseGui.OnEvent("Close", (*) => (
             this.stop(),
+            _commitName(),
             _destroyGui()
         ))
         pauseGui.OnEvent("Escape", (*) => (
             this.stop(),
+            _commitName(),
             _destroyGui()
         ))
 

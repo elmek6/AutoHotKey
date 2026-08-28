@@ -28,7 +28,7 @@
 
 ; https://github.com/ahkscript/awesome-AutoHotkey
 
-global State := singleState.getInstance("ver_192_b")
+global State := singleState.getInstance("ver_193_b")
 class App {
     static ErrHandler := singleErrorHandler.getInstance()
     static KeyCounts := singleKeyCounter.getInstance()
@@ -213,6 +213,7 @@ LButton:: {
 #HotIf App.currentConfig = App.stateConfig.work ; hotif olan tuslari override eder
 >#1:: App.Recorder.playKeyAction(1, 1) ;orta basinca kayit //uzun basinca run n olabilir
 >#2:: App.Recorder.playKeyAction(2, 1)
+>#3:: App.Recorder.playKeyAction(3, 1)
 ; >#3:: getPressTypeTest( ;belki önüne birsey gelince olabilir?
 ;     (pressType) => pressType == 0
 ;         ? App.Recorder.playKeyAction(3, 1)
@@ -374,3 +375,4 @@ GlobalErrorHandler(thrownValue, mode) {
 ;     bu yüzden tek başına yüklenemez; AutoHotkey.ahk içinde #Include edilmeli.
 ;   • AHK GUI uygulaması: hatayı stderr/ErrorStdOut'a yazmaz, EKRANDA pencerede
 ;     gösterir. Başsız test ederken hata satırını görmek için script'i elle çalıştır.
+;   Önemli ise aciklama satirlari ekle, gereksiz yere sisirme dosyalari!

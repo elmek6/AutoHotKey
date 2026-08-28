@@ -132,6 +132,7 @@ showF14menu() {
     menuF14 := Menu()
     menuF14.Add("Unformatted paste", (*) => Send("^+v"))
     menuF14.Add()
+    menuF14.Add("Macro recorder", (*) => App.Recorder.showButtons())
     menuF14.Add("Memory clip", (*) => App.MemSlots.start())
     menuIcon(menuF14, "Memory clip", ICO_RES, 30)                   ; bellek çubuğu
     menuF14.Add()
