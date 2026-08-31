@@ -7,3 +7,6 @@ SciTE/
 
 # Ignored files
 Files/log.txt
+# Python bytecode - otomatik uretiliyor
+__pycache__/
+*.pyc
