@@ -1,0 +1,24 @@
+clip history icin degisiklikler istiyorum su anki güzel calisiyor ama daha kullanisli hale getirilebilir
+
+    ; Format:
+    ;   Header 20 bytes: [u32 count][u64 unix timestamp][u64 reserved]
+    ;   Record N bytes:  [u32 byte_length][u8 ~ marker 0x7E][UTF-8 bytes]
+
+yukardaki yapiyi kullanyioruz ama asagidaki gibi degistirmek istiyorum
+
+    ; Format:
+    ;   Header 20 bytes: [u32 count][u64 unix timestamp][u64 reserved]
+    ;   Record N bytes:  [u64 unix timestamp][u32 byte_length][u8 count][u8 ~ marker 0x7E][UTF-8 bytes]
+
+artik veri yapisi list yerine map olabilir, key icin time stamp bilgisini kullanabiliriz.
+bunu görsel olarak sadece array filter icerisinde Isim yerine ilgili kayidin tarih bilgisini gösteririz.
+count ise kaydetme isleminde karsilastirma yapiyoruz ya ayni veri varsa eskisini cikartiyoruz,
+count ile kac kez yenilenmis onu yaziyoruz (bu count yapisi fazla komplex hale getiriyorsa kodu eklemesekte olur)
+---
+
+TODO (ayar sistemi): katmanli cozumleme
+Setting.get() degeri tek noktadan dondursun ki ileride araya katman eklenebilsin:
+  default  <  makine/profil (home|work)  <  kullanici secimi
+Simdilik sadece default < kullanici var. get() icine kademeli arama sonradan
+5 satirla eklenir, ama TUM okumalar get() uzerinden gitmeli - dogrudan
+Setting.value okuyan kod yazma, yoksa katman eklendiginde her yeri duzeltmek gerekir.
